@@ -1,0 +1,2 @@
+# pgAutoDBA
+PostgreSQL AutoDBA
