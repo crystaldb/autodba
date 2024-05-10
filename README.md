@@ -3,6 +3,10 @@
 This is an automated Database Administrator system for PostgreSQL databases.
 The AutoDBA agent monitors and optimizes the database.
 
+## Prerequisites
+- Docker
+- Docker Compose
+
 ## Structure
 - `agent/`: Handles the main agent tasks like metrics collection, recommendations, and configuration.
 - `api/`: Defines the API endpoints and services.
@@ -14,3 +18,41 @@ The AutoDBA agent monitors and optimizes the database.
 - `Dockerfile`: Defines the Docker setup for the agent.
 - `docker-compose.yml`: to use a local Postgres DB, we use Docker Compose
 
+## Setup Instructions
+
+1. Clone the repository:
+
+    ```bash
+    git clone git@github.com:crystalcld/pgAutoDBA.git
+    cd pgAutoDBA
+    ```
+
+2. Build the Docker images with Docker Compose:
+
+    ```bash
+    docker-compose build
+    ```
+
+3. Start the containers in the background:
+
+    ```bash
+    docker-compose up -d
+    ```
+
+4. Start the containers and rebuild if necessary:
+
+    ```bash
+    docker-compose up -d --build
+    ```
+
+5. Set up the database schema using the provided `create_db` command:
+
+    ```bash
+    docker-compose exec web python manage.py create_db
+    ```
+
+6. Access the Agent's local PostgreSQL database directly via `psql`:
+
+    ```bash
+    docker-compose exec db psql --username=autodba_db_user --dbname=autodba_db
+    ```
