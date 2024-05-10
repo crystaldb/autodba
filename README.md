@@ -45,14 +45,14 @@ The AutoDBA agent monitors and optimizes the database.
     docker-compose up -d --build
     ```
 
-5. Set up the database schema using the provided `create_db` command:
-
-    ```bash
-    docker-compose exec web python manage.py create_db
-    ```
-
-6. Access the Agent's local PostgreSQL database directly via `psql`:
+5. Access the Agent's local PostgreSQL database directly via `psql`:
 
     ```bash
     docker-compose exec db psql --username=autodba_db_user --dbname=autodba_db
+    ```
+
+6. Inspect the Docker volume for PostgreSQL data:
+
+    ```bash
+    docker volume inspect pgautodba_postgres_data
     ```

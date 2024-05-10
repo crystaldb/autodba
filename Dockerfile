@@ -7,6 +7,9 @@ FROM python:3.12.3-slim as base
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
 
+# install system dependencies
+RUN apt-get update && apt-get install -y netcat-traditional
+
 # Set work directory
 WORKDIR /app
 
@@ -21,5 +24,5 @@ COPY ./src /app/
 # Expose port 8080 for HTTP traffic
 EXPOSE 8080
 
-# Start the AutoDBA Agent when the container launches
-CMD ["python", "-m", "AutoDBA.agent"]
+# run entrypoint.sh
+ENTRYPOINT ["/app/entrypoint.sh"]
