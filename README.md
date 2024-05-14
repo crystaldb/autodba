@@ -37,16 +37,16 @@ The AutoDBA agent monitors and optimizes the database.
     ./run.sh --env prod
     ```
 
-    Note: you need to add a `.env.prod` file that contains the required environment variable.
-    Note: the production database is not created automatically. You can create it using the initialization SQL script in `src/agent/init/schema.sql`:
+    Note 1: you need to add a `.env.prod` file that contains the required environment variable.
+    Note 2: the production database is not created automatically. You can create it using the initialization SQL script in `src/agent/init/schema.sql`:
     ```bash
-    docker exec -it pgautodba /bin/bash -c "export FLASK_APP=\"api/endpoints.py\" && export FLASK_DEBUG=True && python manage.py create_db"
+    docker exec --env-file .env.prod -it pgautodba python manage.py create_db
     ```
 
 4. Seed the database using the provided `seed_db` command:
 
     ```bash
-    docker exec -it pgautodba /bin/bash -c "export FLASK_APP=\"api/endpoints.py\" && export FLASK_DEBUG=True && python manage.py seed_db"
+    docker exec --env-file .env.dev -it pgautodba python manage.py seed_db
     ```
 
 5. Access the Agent's local PostgreSQL database directly via `psql`:
