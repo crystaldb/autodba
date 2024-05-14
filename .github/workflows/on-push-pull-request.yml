@@ -2,21 +2,13 @@ name: pgAutoDBA application
 
 on:
   push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
-
-name: CI with Docker
-
-on:
-  push:
     branches:
       - main
-      - mdashti/project-skeleton
   pull_request:
-    branches:
-      - main
-      - mdashti/project-skeleton
+    types: [opened, synchronize, reopened]
+    paths-ignore:
+      - '**/README.md'
+      - 'docs/**'
 
 jobs:
   test:
