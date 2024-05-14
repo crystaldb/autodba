@@ -20,6 +20,7 @@ ENV PATH="/opt/venv/bin:$PATH"
 # create the appropriate directories
 ENV HOME=/home/app
 ENV APP_HOME=/home/app
+ENV TEST_HOME=/home/test
 WORKDIR $APP_HOME
 
 # Create a directory for the application
@@ -46,8 +47,13 @@ COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 # Expose port 8080 for HTTP traffic
 EXPOSE 8080
 
+RUN mkdir -p $TEST_HOME
+COPY pytest.ini $TEST_HOME/../
+COPY ./test $TEST_HOME
+
 # chown all the files to the app user
 RUN chown -R pgautodba_user:pgautodba_user $APP_HOME
+RUN chown -R pgautodba_user:pgautodba_user $TEST_HOME
 
 # run entrypoint.sh
 CMD ["/home/app/entrypoint.sh"]

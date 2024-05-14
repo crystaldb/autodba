@@ -1,0 +1,36 @@
+name: pgAutoDBA application
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+name: CI with Docker
+
+on:
+  push:
+    branches:
+      - main
+      - mdashti/project-skeleton
+  pull_request:
+    branches:
+      - main
+      - mdashti/project-skeleton
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Build Docker Container
+      run: ./run.sh
+
+    - name: Execute Tests
+      run: docker exec --env-file /home/.env.dev -it pgautodba bash -c "cd /home && pytest"
+
+    - name: Stop Docker Container
+      run: docker stop pgautodba

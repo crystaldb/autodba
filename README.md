@@ -49,13 +49,19 @@ The AutoDBA agent monitors and optimizes the database.
     docker exec --env-file .env.dev -it pgautodba python manage.py seed_db
     ```
 
-5. Access the Agent's local PostgreSQL database directly via `psql`:
+5. Run the tests (via a running container using `Step 2`):
+
+    ```bash
+    docker exec --env-file .env.dev -it pgautodba bash -c "cd /home && pytest"
+    ```
+
+6. Access the Agent's local PostgreSQL database directly via `psql`:
 
     ```bash
     docker exec -it pgautodba psql --username=autodba_db_user --dbname=autodba_db
     ```
 
-6. Inspect the Docker volume for PostgreSQL data:
+7. Inspect the Docker volume for PostgreSQL data:
 
     ```bash
     docker volume inspect autodba_postgres_data
