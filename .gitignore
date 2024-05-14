@@ -161,4 +161,3 @@ cython_debug/
 
 # Production files
 .env.prod
-.env.prod.db
