@@ -5,7 +5,6 @@ The AutoDBA agent monitors and optimizes the database.
 
 ## Prerequisites
 - Docker
-- Docker Compose
 
 ## Structure
 - `agent/`: Handles the main agent tasks like metrics collection, recommendations, and configuration.
@@ -16,7 +15,6 @@ The AutoDBA agent monitors and optimizes the database.
 
 ## Deployment
 - `Dockerfile`: Defines the Docker setup for the agent.
-- `docker-compose.yml`: to use a local Postgres DB, we use Docker Compose
 
 ## Setup Instructions
 
@@ -27,38 +25,38 @@ The AutoDBA agent monitors and optimizes the database.
     cd pgAutoDBA
     ```
 
-2. Build the Docker images with Docker Compose:
+2. Build and run the project (in development mode):
 
     ```bash
-    docker-compose build
+    ./run.sh
     ```
 
-3. Start the containers in the background:
+3. Build and run the project (in production mode):
 
     ```bash
-    docker-compose up -d
+    ./run.sh --env prod
     ```
 
-4. Start the containers and rebuild if necessary:
-
+    Note: you need to add a `.env.prod` file that contains the required environment variable.
+    Note: the production database is not created automatically. You can create it using the initialization SQL script in `src/agent/init/schema.sql`:
     ```bash
-    docker-compose up -d --build
+    docker exec -it pgautodba /bin/bash -c "export FLASK_APP=\"api/endpoints.py\" && export FLASK_DEBUG=True && python manage.py create_db"
     ```
 
-5. Seed the database using the provided `seed_db` command:
+4. Seed the database using the provided `seed_db` command:
 
     ```bash
-    docker-compose exec web python manage.py seed_db
+    docker exec -it pgautodba /bin/bash -c "export FLASK_APP=\"api/endpoints.py\" && export FLASK_DEBUG=True && python manage.py seed_db"
     ```
 
-6. Access the Agent's local PostgreSQL database directly via `psql`:
+5. Access the Agent's local PostgreSQL database directly via `psql`:
 
     ```bash
-    docker-compose exec db psql --username=autodba_db_user --dbname=autodba_db
+    docker exec -it pgautodba psql --username=autodba_db_user --dbname=autodba_db
     ```
 
-7. Inspect the Docker volume for PostgreSQL data:
+6. Inspect the Docker volume for PostgreSQL data:
 
     ```bash
-    docker volume inspect pgautodba_postgres_data
+    docker volume inspect autodba_postgres_data
     ```
