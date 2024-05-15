@@ -61,7 +61,7 @@ if [ "$RECREATE_VOLUME" = true ]; then
 else
     if ! docker volume inspect "$VOLUME_NAME" > /dev/null 2>&1; then
         echo "Creating Docker volume '$VOLUME_NAME'..."
-        docker volume create "$VOLUME_NAME"
+        docker volume create "$VOLUME_NAME" || true # Ignore error, as it fails on GitHub Actions
     else
         echo "Docker volume '$VOLUME_NAME' already exists."
     fi
