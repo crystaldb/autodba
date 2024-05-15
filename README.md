@@ -25,34 +25,37 @@ The AutoDBA agent monitors and optimizes the database.
     cd pgAutoDBA
     ```
 
-2. Build and run the project (in development mode):
+2. Build and run the project:
 
     ```bash
     ./run.sh
     ```
 
-3. Build and run the project (in production mode):
-
+    Note 1: The database is created automatically if it doesn't exist. If you apply any schema changes (to `src/agent/init/schema.sql`), you need to manually recreate the database, as currently there's no auto-upgrade mechanism in place:
     ```bash
-    ./run.sh --env prod
+    ./run.sh --recreate
+    ```
+    Note 2: For production, you need to add a `.env.prod` file that contains the required environment variable, and add the `--env prod` argument:
+    ```bash
+    ./run.sh --env prod # and optionally pass --recreate to recreate the database
     ```
 
-    Note 1: you need to add a `.env.prod` file that contains the required environment variable.
-    Note 2: the production database is not created automatically. You can create it using the initialization SQL script in `src/agent/init/schema.sql`:
-    ```bash
-    docker exec --env-file .env.prod -it pgautodba python manage.py create_db
-    ```
-
-4. Seed the database using the provided `seed_db` command:
+3. Seed the database using the provided `seed_db` command:
 
     ```bash
     docker exec --env-file .env.dev -it pgautodba python manage.py seed_db
     ```
 
-5. Run the tests (via a running container using `Step 2`):
+4. Run the tests (via a running container using `Step 2`):
 
     ```bash
     docker exec --env-file .env.dev -it pgautodba bash -c "cd /home && pytest"
+    ```
+
+5. View all logs (which are under `/home/src/logs` on the docker container):
+
+    ```bash
+    docker exec --env-file .env.dev -it pgautodba /home/scripts/view-logs.sh
     ```
 
 6. Access the Agent's local PostgreSQL database directly via `psql`:
@@ -61,13 +64,7 @@ The AutoDBA agent monitors and optimizes the database.
     docker exec -it pgautodba psql --username=autodba_db_user --dbname=autodba_db
     ```
 
-7. View all logs (which are under `/home/src/logs` on the docker container):
-
-    ```bash
-    docker exec --env-file .env.dev -it pgautodba /home/scripts/view-logs.sh
-    ```
-
-8. Inspect the Docker volume for PostgreSQL data:
+7. Inspect the Docker volume for PostgreSQL data:
 
     ```bash
     docker volume inspect autodba_postgres_data
