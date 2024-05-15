@@ -47,6 +47,9 @@ COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 COPY ./scripts/wait-for-postgres.sh /usr/local/bin/wait-for-postgres.sh
 RUN chmod +x /usr/local/bin/wait-for-postgres.sh
 
+COPY ./scripts $APP_HOME/../scripts
+RUN chmod +x $APP_HOME/../scripts/view-logs.sh
+
 # chown all the files to the pgautodba_user user
 RUN chown -R pgautodba_user:pgautodba_user $APP_HOME
 

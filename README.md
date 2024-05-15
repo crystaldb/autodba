@@ -61,7 +61,13 @@ The AutoDBA agent monitors and optimizes the database.
     docker exec -it pgautodba psql --username=autodba_db_user --dbname=autodba_db
     ```
 
-7. Inspect the Docker volume for PostgreSQL data:
+7. View all logs (which are under `/home/src/logs` on the docker container):
+
+    ```bash
+    docker exec --env-file .env.dev -it pgautodba /home/scripts/view-logs.sh
+    ```
+
+8. Inspect the Docker volume for PostgreSQL data:
 
     ```bash
     docker volume inspect autodba_postgres_data
