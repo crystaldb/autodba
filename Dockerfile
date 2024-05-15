@@ -18,15 +18,15 @@ RUN python3 -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 # create the appropriate directories
-ENV HOME=/home/app
-ENV APP_HOME=/home/app
+ENV HOME=/home/src
+ENV APP_HOME=/home/src
 ENV TEST_HOME=/home/test
 WORKDIR $APP_HOME
 
 # Create a directory for the application
 RUN mkdir -p $APP_HOME
 
-# create the app user and group
+# create the pgautodba_user user and group
 RUN addgroup --system pgautodba_user && adduser --system --group pgautodba_user
 
 # Set the working directory in the container
@@ -47,7 +47,7 @@ COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 COPY ./scripts/wait-for-postgres.sh /usr/local/bin/wait-for-postgres.sh
 RUN chmod +x /usr/local/bin/wait-for-postgres.sh
 
-# chown all the files to the app user
+# chown all the files to the pgautodba_user user
 RUN chown -R pgautodba_user:pgautodba_user $APP_HOME
 
 # Expose port 8080 for HTTP traffic
@@ -60,4 +60,4 @@ COPY ./test $TEST_HOME
 RUN chown -R pgautodba_user:pgautodba_user $TEST_HOME
 
 # run entrypoint.sh
-CMD ["/home/app/entrypoint.sh"]
+CMD ["/home/src/entrypoint.sh"]
