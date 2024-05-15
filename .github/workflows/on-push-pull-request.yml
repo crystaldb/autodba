@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - mdashti/project-skeleton
   pull_request:
     types: [opened, synchronize, reopened]
     paths-ignore:
