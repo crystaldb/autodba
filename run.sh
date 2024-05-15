@@ -48,6 +48,9 @@ done
 if [ "$ENV_TYPE" = "prod" ]; then
     DOCKERFILE="Dockerfile.prod"
     ENV_FILE=".env.prod"
+elif [ "$ENV_TYPE" = "github" ]; then
+    DOCKERFILE="Dockerfile"
+    ENV_FILE=".env.github"
 fi
 
 # Create or recreate Docker volume
