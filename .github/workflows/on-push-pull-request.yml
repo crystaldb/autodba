@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - mdashti/project-skeleton
   pull_request:
     types: [opened, synchronize, reopened]
     paths-ignore:
@@ -18,7 +19,7 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v2
 
-    - name: Build Docker Container
+    - name: Build Docker Container and Run
       run: ./run.sh
 
     - name: Execute Tests
