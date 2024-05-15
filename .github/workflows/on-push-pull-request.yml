@@ -31,6 +31,5 @@ jobs:
 
     - name: Run tests with pytest
       run: |
-        export POSTGRES_DATABASE_URL=NOT_SET_FOR_GITHUB_ACTIONS
         export PYTHONPATH=./src
         pytest
