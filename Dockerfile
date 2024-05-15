@@ -35,7 +35,7 @@ WORKDIR $APP_HOME
 # Install Python dependencies
 RUN pip install --upgrade pip
 COPY requirements.txt $APP_HOME/
-RUN pip3 install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the current directory contents into the container
 COPY ./src $APP_HOME/
@@ -44,15 +44,19 @@ RUN mkdir -p $APP_HOME/logs
 # Copy the Supervisor configuration file
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
-# Expose port 8080 for HTTP traffic
-EXPOSE 8080
-
-RUN mkdir -p $TEST_HOME
-COPY pytest.ini $TEST_HOME/../
-COPY ./test $TEST_HOME
+COPY ./scripts/wait-for-postgres.sh /usr/local/bin/wait-for-postgres.sh
+RUN chmod +x /usr/local/bin/wait-for-postgres.sh
 
 # chown all the files to the app user
 RUN chown -R pgautodba_user:pgautodba_user $APP_HOME
+
+# Expose port 8080 for HTTP traffic
+EXPOSE 8080
+
+# Testing
+RUN mkdir -p $TEST_HOME
+COPY pytest.ini $TEST_HOME/../
+COPY ./test $TEST_HOME
 RUN chown -R pgautodba_user:pgautodba_user $TEST_HOME
 
 # run entrypoint.sh
