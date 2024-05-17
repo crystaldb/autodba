@@ -4,7 +4,6 @@ FROM postgres:16.3
 # Set environment varibles
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
-ENV POSTGRES_DATABASE_URL=postgresql://$POSTGRES_USER:$POSTGRES_PASSWORD@$POSTGRES_HOST:$POSTGRES_PORT/$POSTGRES_DB
 
 # Install netcat, Supervisor, and Python
 RUN apt-get update && \
