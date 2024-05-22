@@ -8,6 +8,7 @@ CONTAINER_NAME="pgautodba"
 IMAGE_NAME="pgautodba-image"
 HOST_PORT=8081
 CONTAINER_PORT=8080
+POSTGRES_HOST_PORT=5432
 RECREATE_VOLUME=false
 ENV_TYPE="dev"  # Default environment
 DOCKERFILE="Dockerfile"
@@ -53,6 +54,18 @@ elif [ "$ENV_TYPE" = "github" ]; then
     ENV_FILE=".env.github"
 fi
 
+# Load environment variables from .env file
+unamestr=$(uname)
+if [ "$unamestr" = 'Linux' ]; then
+
+  export $(grep -v '^#' $ENV_FILE | xargs -d '\n')
+
+elif [ "$unamestr" = 'FreeBSD' ] || [ "$unamestr" = 'Darwin' ]; then
+
+  export $(grep -v '^#' $ENV_FILE | xargs -0)
+
+fi
+
 # Create or recreate Docker volume
 if [ "$RECREATE_VOLUME" = true ]; then
     echo "Recreating Docker volume '$VOLUME_NAME'..."
@@ -77,8 +90,19 @@ docker rm "$CONTAINER_NAME" > /dev/null 2>/dev/null || true
 
 # Run the container
 echo "Running Docker container '$CONTAINER_NAME' on port $HOST_PORT..."
-docker run --name "$CONTAINER_NAME" \
-    -v "$VOLUME_NAME":/var/lib/postgresql/data \
-    -p "$HOST_PORT":"$CONTAINER_PORT" \
-    --env-file "$ENV_FILE" \
-    "$IMAGE_NAME"
+if [ "$ENV_TYPE" = "prod" ] || [ "$ENV_TYPE" = "github" ] 
+then
+    docker run --name "$CONTAINER_NAME" \
+        -v "$VOLUME_NAME":/var/lib/postgresql/data \
+        -p "$HOST_PORT":"$CONTAINER_PORT" \
+        --env-file "$ENV_FILE" \
+        "$IMAGE_NAME"
+else # Development environment
+    # Run the container with the PostgreSQL port exposed
+    docker run --name "$CONTAINER_NAME" \
+        -v "$VOLUME_NAME":/var/lib/postgresql/data \
+        -p "$HOST_PORT":"$CONTAINER_PORT" \
+        -p "$POSTGRES_HOST_PORT":"$POSTGRES_PORT" \
+        --env-file "$ENV_FILE" \
+        "$IMAGE_NAME"
+fi

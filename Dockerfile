@@ -56,6 +56,9 @@ RUN chown -R pgautodba_user:pgautodba_user $APP_HOME
 # Expose port 8080 for HTTP traffic
 EXPOSE 8080
 
+# Expose port 5432 for PG traffic
+EXPOSE 5432
+
 # Testing
 RUN mkdir -p $TEST_HOME
 COPY pytest.ini $TEST_HOME/../
