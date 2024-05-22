@@ -4,17 +4,17 @@ This is an automated Database Administrator system for PostgreSQL databases.
 The AutoDBA agent monitors and optimizes the database.
 
 ## Prerequisites
-- Docker
+- Docker for agent development
+- The gym requires Kubernetes (see the `gym` directory for more information)
 
 ## Structure
-- `agent/`: Handles the main agent tasks like metrics collection, recommendations, and configuration.
-- `api/`: Defines the API endpoints and services.
-- `training/`: Handles machine learning models training.
+- `src/agent/`: Handles the main agent tasks like metrics collection, recommendations, and configuration.
+- `src/api/`: Defines the API endpoints and services.
+- `src/training/`: Handles machine learning models training.
 - `gym/`: Includes simulation and benchmarking logic.
-- `workloads/`: Deals with workload generation and management.
 
 ## Deployment
-- `Dockerfile`: Defines the Docker setup for the agent.
+- `src/Dockerfile`: Defines the Docker setup for the agent.
 
 ## Setup Instructions
 
@@ -28,44 +28,34 @@ The AutoDBA agent monitors and optimizes the database.
 2. Build and run the project:
 
     ```bash
-    ./run.sh
+    cd pgAutoDBA/src
+    docker build . -t autodba
+    docker run --name pgautodba -p 8081:8080 autodba
     ```
+    The --name option is optional.  For multi-user docker environments, make sure it's unique.
+    
+    Similarly, replace 8081 with whatever port number should be bound on the
+    docker host.
 
-    Note 1: The database is created automatically if it doesn't exist. If you apply any schema changes (to `src/agent/init/schema.sql`), you need to manually recreate the database, as currently there's no auto-upgrade mechanism in place:
-    ```bash
-    ./run.sh --recreate
-    ```
-    Note 2: For production, you need to add a `.env.prod` file that contains the required environment variable, and add the `--env prod` argument:
-    ```bash
-    ./run.sh --env prod # and optionally pass --recreate to recreate the database
-    ```
+    Note: The agent's ephemeral private database is automatically created at startup.
 
-3. Seed the database using the provided `seed_db` command:
-
-    ```bash
-    docker exec --env-file .env.dev -it pgautodba python manage.py seed_db
-    ```
-
-4. Run the tests (via a running container using `Step 2`):
+3. Run the unit tests + linter:
 
     ```bash
-    docker exec --env-file .env.dev -it pgautodba bash -c "cd /home && pytest"
+    cd pgAutoDBA/src
+    docker build . --target test
+    docker build . --target lint
     ```
 
-5. View all logs (which are under `/home/src/logs` on the docker container):
-
-    ```bash
-    docker exec --env-file .env.dev -it pgautodba /home/scripts/view-logs.sh
-    ```
-
-6. Access the Agent's local PostgreSQL database directly via `psql`:
+4. Access the Agent's local PostgreSQL database directly via `psql`:
 
     ```bash
     docker exec -it pgautodba psql --username=autodba_db_user --dbname=autodba_db
     ```
+    TODO: Setup environment variables so psql doesn't need those CLI arguments
 
-7. Inspect the Docker volume for PostgreSQL data:
-
+7. Setup + inspect a Docker volume for PostgreSQL data:
+    TODO: Write directions explaining how to use a volume or bind mount to preserve the database for debugging.  Then (for volumes):
     ```bash
     docker volume inspect autodba_postgres_data
     ```
