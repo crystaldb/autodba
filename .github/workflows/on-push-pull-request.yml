@@ -11,7 +11,7 @@ on:
       - 'docs/**'
 
 jobs:
-  test:
+  agent:
     runs-on: ubuntu-latest
     
     steps:

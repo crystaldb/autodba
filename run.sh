@@ -1,14 +1,12 @@
 #!/bin/bash
-
 set -e -u -o pipefail
 
 # Initialize variables
 # VOLUME_NAME="autodba_postgres_data"
 CONTAINER_NAME="pgautodba"
 IMAGE_NAME="pgautodba-image"
-HOST_PORT=8081
-CONTAINER_PORT=8080
-POSTGRES_HOST_PORT=5432
+HOST_PORT=$(($UID + 8000))
+POSTGRES_HOST_PORT=$((UID + 9000))
 DOCKERFILE="Dockerfile"
 
 # Function to display usage information
@@ -83,15 +81,23 @@ docker build -f "$DOCKERFILE" . --target test
 echo "Building Docker image using Dockerfile: $DOCKERFILE ..."
 docker build -t "$IMAGE_NAME" -f "$DOCKERFILE" .
 
-
 echo "Stopping and removing existing container '$CONTAINER_NAME'..."
 docker stop "$CONTAINER_NAME" > /dev/null 2>/dev/null || true
 docker rm "$CONTAINER_NAME" > /dev/null 2>/dev/null || true
 
 # Run the container
-echo "Running Docker container '$CONTAINER_NAME' on port $HOST_PORT..."
-docker run --name "$CONTAINER_NAME" \
-    -p "$HOST_PORT":"$CONTAINER_PORT" \
+echo "=============================================================="
+echo ""
+echo "Running Docker container: $CONTAINER_NAME-$USER"
+echo ""
+echo "   flask port: $HOST_PORT"
+echo "      pg port: $POSTGRES_HOST_PORT"
+echo ""
+echo "=============================================================="
+
+docker run --name "$CONTAINER_NAME-$USER" \
+    -p "$HOST_PORT":8080 \
+    -p "$POSTGRES_HOST_PORT":5432 \
     "$IMAGE_NAME"
 
     # -v "$VOLUME_NAME":/var/lib/postgresql/data \
