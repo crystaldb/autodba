@@ -62,7 +62,7 @@ RUN npm run format # todo...
 #       (or a script) that bind mounts the source checkout on top of . and runs
 #       `python -m pytest` in the builder container.
 WORKDIR /home/autodba/src
-RUN POSTGRES_DB=phony python -m pytest
+RUN POSTGRES_DB=phony_db AUTODBA_TARGET_DB=postgresql://phony_db_user:phony_db_pass@localhost:5432/phony_db python -m pytest
 
 FROM base as autodba
 
@@ -85,6 +85,8 @@ ENV POSTGRES_USER=autodba_db_user
 ENV POSTGRES_PASSWORD=autodba_db_pass
 ENV POSTGRES_HOST=localhost
 ENV POSTGRES_PORT=5432
+# Note: for testing purposes, the target database is the same as the internal database.
+ENV AUTODBA_TARGET_DB=postgresql://autodba_db_user:autodba_db_pass@localhost:5432/autodba_db
 
 # run entrypoint.sh
 CMD ["./entrypoint.sh"]
