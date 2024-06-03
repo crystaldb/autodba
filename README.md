@@ -28,7 +28,7 @@ The AutoDBA agent monitors and optimizes the database.
 2. Build and run the project:
 
     ```bash
-    cd pgAutoDBA/src
+    cd pgAutoDBA
     docker build . -t autodba
     docker run --name pgautodba -p 8081:8080 autodba
     ```
@@ -42,7 +42,7 @@ The AutoDBA agent monitors and optimizes the database.
 3. Run the unit tests + linter:
 
     ```bash
-    cd pgAutoDBA/src
+    cd pgAutoDBA
     docker build . --target test
     docker build . --target lint
     ```

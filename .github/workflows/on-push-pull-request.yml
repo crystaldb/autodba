@@ -13,31 +13,27 @@ on:
 jobs:
   agent:
     runs-on: ubuntu-latest
-    
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Build 'builder' container
-      id: build-builder
+    - name: Build
+      id: build
       uses: docker/build-push-action@v5
       with:
-        context: ./src
         push: false
         target: builder
 
-    - name: Lint agent
-      id: agent-lint
+    - name: Lint
+      id: lint
       uses: docker/build-push-action@v5
       with:
-        context: ./src
         push: false
         target: lint
 
-    - name: Test agent
-      id: agent-test
+    - name: Test
+      id: test
       uses: docker/build-push-action@v5
       with:
-        context: ./src
         push: false
         target: test
