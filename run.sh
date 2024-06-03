@@ -17,8 +17,6 @@ usage() {
     exit 1
 }
 
-cd src
-
 # Parse command-line options
 while [[ "$#" -gt 0 ]]; do
     case $1 in

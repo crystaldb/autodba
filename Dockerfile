@@ -25,17 +25,17 @@ RUN python3 -m venv /home/autodba/venv
 # Activate virtual environment
 ENV PATH="/home/autodba/venv/bin:$PATH"
 
+# install + cache python dependencies
+WORKDIR /home/autodba/src
+COPY src/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
 FROM base as builder
 
 # install + cache npm dependencies
 WORKDIR /home/autodba/elm
 COPY --chown=autodba:autodba elm/package.json .
 RUN npm install
-
-# install + cache python dependencies
-WORKDIR /home/autodba/src
-COPY src/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
 
 WORKDIR /home/autodba/elm
 COPY --chown=autodba:autodba elm .
