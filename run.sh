@@ -3,7 +3,7 @@ set -e -u -o pipefail
 
 # Initialize variables
 # VOLUME_NAME="autodba_postgres_data"
-CONTAINER_NAME="pgautodba"
+CONTAINER_NAME="pgautodba-$USER"
 IMAGE_NAME="pgautodba-image"
 HOST_PORT=$(($UID + 8000))
 POSTGRES_HOST_PORT=$((UID + 9000))
@@ -88,14 +88,14 @@ docker rm "$CONTAINER_NAME" > /dev/null 2>/dev/null || true
 # Run the container
 echo "=============================================================="
 echo ""
-echo "Running Docker container: $CONTAINER_NAME-$USER"
+echo "Running Docker container: $CONTAINER_NAME"
 echo ""
 echo "   flask port: $HOST_PORT"
 echo "      pg port: $POSTGRES_HOST_PORT"
 echo ""
 echo "=============================================================="
 
-docker run --name "$CONTAINER_NAME-$USER" \
+docker run --name "$CONTAINER_NAME" \
     -p "$HOST_PORT":8080 \
     -p "$POSTGRES_HOST_PORT":5432 \
     "$IMAGE_NAME"

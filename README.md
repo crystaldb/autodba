@@ -54,7 +54,7 @@ The AutoDBA agent monitors and optimizes the database.
     ```
     TODO: Setup environment variables so psql doesn't need those CLI arguments
 
-7. Setup + inspect a Docker volume for PostgreSQL data:
+5. Setup + inspect a Docker volume for PostgreSQL data:
     TODO: Write directions explaining how to use a volume or bind mount to preserve the database for debugging.  Then (for volumes):
     ```bash
     docker volume inspect autodba_postgres_data
