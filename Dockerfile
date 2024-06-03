@@ -37,6 +37,7 @@ WORKDIR /home/autodba/elm
 COPY --chown=autodba:autodba elm/package.json .
 RUN npm install
 
+# install + cache python dependencies
 WORKDIR /home/autodba/elm
 COPY --chown=autodba:autodba elm .
 RUN npm run build  # creates /home/autodba/elm/dist_prod
