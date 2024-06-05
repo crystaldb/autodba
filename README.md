@@ -30,11 +30,16 @@ The AutoDBA agent monitors and optimizes the database.
     ```bash
     cd pgAutoDBA
     docker build . -t autodba
-    docker run --name pgautodba -p 8081:8080 autodba
+    docker run --name pgautodba -e AUTODBA_TARGET_DB="<CONNECTION_STRING_TO_YOUR_TARGET_DB>" -p 8081:8080 autodba
     ```
-    The --name option is optional.  For multi-user docker environments, make sure it's unique.
+
+    The `AUTODBA_TARGET_DB` environment variable is necessary to connect AutoDBA to your target
+    PostgreSQL database that is being managed by AutoDBA. You should assign the connection string
+    to this environment variable, e.g., `postgresql://my_user:my_pass@localhost:5432/my_db`.
     
-    Similarly, replace 8081 with whatever port number should be bound on the
+    The `--name` option is optional.  For multi-user docker environments, make sure it's unique.
+    
+    Similarly, replace `8081` with whatever port number should be bound on the
     docker host.
 
     Note: The agent's ephemeral private database is automatically created at startup.

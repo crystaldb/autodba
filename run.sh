@@ -8,10 +8,11 @@ IMAGE_NAME="pgautodba-image"
 HOST_PORT=$(($UID + 8000))
 POSTGRES_HOST_PORT=$((UID + 9000))
 DOCKERFILE="Dockerfile"
+AUTODBA_TARGET_DB='postgresql://autodba_db_user:autodba_db_pass@localhost:5432/autodba_db'
 
 # Function to display usage information
 usage() {
-    echo "Usage: $0"
+    echo "Usage: $0 [--db-url <TARGET_DATABASE_URL>]"
     # echo "  --recreate      Recreate Docker volume even if it exists"
     # echo "  --env           Specify the environment ('dev' for development or 'prod' for production)"
     exit 1
@@ -20,6 +21,15 @@ usage() {
 # Parse command-line options
 while [[ "$#" -gt 0 ]]; do
     case $1 in
+        --db-url)
+            if [[ -n "$2" ]] && [[ ${2:0:1} != "-" ]]; then
+                AUTODBA_TARGET_DB="$2"
+                shift 2
+            else
+                echo "Error: Argument for $1 is missing" >&2
+                exit 1
+            fi
+            ;;
         # --recreate)
         #     RECREATE_VOLUME=true
         #     shift
@@ -96,7 +106,7 @@ echo "=============================================================="
 docker run --name "$CONTAINER_NAME" \
     -p "$HOST_PORT":8080 \
     -p "$POSTGRES_HOST_PORT":5432 \
+    -e AUTODBA_TARGET_DB="$AUTODBA_TARGET_DB" \
     "$IMAGE_NAME"
-
     # -v "$VOLUME_NAME":/var/lib/postgresql/data \
     # --env-file "$ENV_FILE" \

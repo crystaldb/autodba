@@ -85,8 +85,6 @@ ENV POSTGRES_USER=autodba_db_user
 ENV POSTGRES_PASSWORD=autodba_db_pass
 ENV POSTGRES_HOST=localhost
 ENV POSTGRES_PORT=5432
-# Note: for testing purposes, the target database is the same as the internal database.
-ENV AUTODBA_TARGET_DB=postgresql://autodba_db_user:autodba_db_pass@localhost:5432/autodba_db
 
 # run entrypoint.sh
 CMD ["./entrypoint.sh"]
