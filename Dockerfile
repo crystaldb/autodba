@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+
 FROM postgres:16.3 as base
 
 RUN addgroup --system autodba && adduser --system --group autodba --home /home/autodba --shell /bin/bash
