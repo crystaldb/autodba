@@ -30,7 +30,7 @@ The AutoDBA agent monitors and optimizes the database.
     ```bash
     cd pgAutoDBA
     docker build . -t autodba
-    docker run --name pgautodba -e AUTODBA_TARGET_DB="<CONNECTION_STRING_TO_YOUR_TARGET_DB>" -p 8081:8080 autodba
+    docker run --name pgautodba -e AUTODBA_TARGET_DB="<CONNECTION_STRING_TO_YOUR_TARGET_DB>" -p 8081:8080 -p 3001:3000 autodba
     ```
 
     The `AUTODBA_TARGET_DB` environment variable is necessary to connect AutoDBA to your target
@@ -39,8 +39,7 @@ The AutoDBA agent monitors and optimizes the database.
     
     The `--name` option is optional.  For multi-user docker environments, make sure it's unique.
     
-    Similarly, replace `8081` with whatever port number should be bound on the
-    docker host.
+    Similarly, replace `8081` and `3001` with whatever port numbers should be bound on the Docker host for the AutoDBA Agent UI and the Grafana interface, respectively.
 
     Note: The agent's ephemeral private database is automatically created at startup.
 

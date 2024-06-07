@@ -88,5 +88,39 @@ ENV POSTGRES_PASSWORD=autodba_db_pass
 ENV POSTGRES_HOST=localhost
 ENV POSTGRES_PORT=5432
 
+# Install Prometheus
+RUN apt-get install -y --no-install-recommends \
+    prometheus
+EXPOSE 9090
+
+# Install Grafana
+RUN apt-get install -y --no-install-recommends \
+    apt-transport-https \
+    software-properties-common \
+    wget \
+    sqlite3
+RUN mkdir -p /etc/apt/keyrings/
+RUN wget -q -O - https://apt.grafana.com/gpg.key | gpg --dearmor > /etc/apt/keyrings/grafana.gpg
+RUN echo "deb [signed-by=/etc/apt/keyrings/grafana.gpg] https://apt.grafana.com stable main" > /etc/apt/sources.list.d/grafana.list
+RUN apt-get update
+RUN apt-get install -y grafana
+RUN mkdir -p /usr/share/grafana/data
+COPY monitor/grafana/grafana.ini /etc/grafana/grafana.ini
+COPY monitor/grafana/grafana.db.sql /tmp/grafana.db.sql
+RUN sqlite3 /usr/share/grafana/data/grafana.db < /tmp/grafana.db.sql && rm /tmp/grafana.db.sql
+EXPOSE 3000
+
+# Install Prometheus exporters
+RUN mkdir -p /usr/lib/prometheus_sql_exporter && \
+    wget -qO- https://github.com/burningalchemist/sql_exporter/releases/download/0.14.3/sql_exporter-0.14.3.linux-amd64.tar.gz | tar -xzf - -C /usr/lib/prometheus_sql_exporter --strip-components=1
+RUN rm /usr/lib/prometheus_sql_exporter/mssql_standard.collector.yml
+COPY monitor/prometheus/sql_exporter.yml /usr/lib/prometheus_sql_exporter/sql_exporter.yml
+COPY monitor/prometheus/*_collector.yml /usr/lib/prometheus_sql_exporter/
+
+RUN mkdir -p /usr/lib/prometheus_postgres_exporter && \
+    wget -qO- https://github.com/prometheus-community/postgres_exporter/releases/download/v0.15.0/postgres_exporter-0.15.0.linux-amd64.tar.gz | tar -xzf - -C /usr/lib/prometheus_postgres_exporter --strip-components=1
+
+COPY monitor/prometheus/prometheus.yml /etc/prometheus/prometheus.yml
+
 # run entrypoint.sh
 CMD ["./entrypoint.sh"]
