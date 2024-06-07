@@ -1,0 +1,13 @@
+global:
+  scrape_interval:      5s
+  evaluation_interval:  5s
+  # scrape_timeout is set to the global default (10s).
+
+scrape_configs:
+  # The job name is added as a label `job=<job_name>` to any timeseries scraped from this config.
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
+  - job_name: "postgres"
+    static_configs:
+      - targets: ["localhost:9187","localhost:9399"]
