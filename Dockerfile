@@ -70,7 +70,7 @@ FROM base as autodba
 
 USER root
 COPY --from=builder /home/autodba/src /home/autodba/src
-COPY --from=builder /home/autodba/elm/dist_prod /home/autodba/elm/dist_prod
+COPY --from=builder /home/autodba/elm/dist_prod /home/autodba/src/api/static
 
 WORKDIR /home/autodba/src
 
