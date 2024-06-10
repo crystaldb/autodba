@@ -10,6 +10,7 @@ IMAGE_NAME="pgautodba-image"
 DOCKERFILE="Dockerfile"
 AUTODBA_TARGET_DB='postgresql://autodba_db_user:autodba_db_pass@localhost:5432/autodba_db'
 INSTANCE_ID=0  # Default value for instance_id
+DEFAULT_METRIC_COLLECTION_PERIOD=5
 
 # Function to display usage information
 usage() {
@@ -128,6 +129,7 @@ docker run --name "$CONTAINER_NAME" \
     -p "$PROMETHEUS_PORT":9090 \
     -p "$GRAFANA_PORT":3000 \
     -e AUTODBA_TARGET_DB="$AUTODBA_TARGET_DB" \
+    -e DEFAULT_METRIC_COLLECTION_PERIOD=$DEFAULT_METRIC_COLLECTION_PERIOD \
     "$IMAGE_NAME"
     # -v "$VOLUME_NAME":/var/lib/postgresql/data \
     # --env-file "$ENV_FILE" \
