@@ -6,16 +6,14 @@ set -e -u -o pipefail
 
 # Initialize variables
 # VOLUME_NAME="autodba_postgres_data"
-CONTAINER_NAME="pgautodba-$USER"
 IMAGE_NAME="pgautodba-image"
-HOST_PORT=$(($UID + 8000))
-POSTGRES_HOST_PORT=$((UID + 9000))
 DOCKERFILE="Dockerfile"
 AUTODBA_TARGET_DB='postgresql://autodba_db_user:autodba_db_pass@localhost:5432/autodba_db'
+INSTANCE_ID=0  # Default value for instance_id
 
 # Function to display usage information
 usage() {
-    echo "Usage: $0 [--db-url <TARGET_DATABASE_URL>]"
+    echo "Usage: $0 [--db-url <TARGET_DATABASE_URL>] [--instance_id <INSTANCE_ID>]"
     # echo "  --recreate      Recreate Docker volume even if it exists"
     # echo "  --env           Specify the environment ('dev' for development or 'prod' for production)"
     exit 1
@@ -27,6 +25,15 @@ while [[ "$#" -gt 0 ]]; do
         --db-url)
             if [[ -n "$2" ]] && [[ ${2:0:1} != "-" ]]; then
                 AUTODBA_TARGET_DB="$2"
+                shift 2
+            else
+                echo "Error: Argument for $1 is missing" >&2
+                exit 1
+            fi
+            ;;
+        --instance_id)
+            if [[ -n "$2" ]] && [[ ${2:0:1} != "-" ]]; then
+                INSTANCE_ID="$2"
                 shift 2
             else
                 echo "Error: Argument for $1 is missing" >&2
@@ -52,6 +59,13 @@ while [[ "$#" -gt 0 ]]; do
             ;;
     esac
 done
+
+# Adjust port numbers based on INSTANCE_ID
+PROMETHEUS_PORT=$((UID + 6000 + INSTANCE_ID))
+GRAFANA_PORT=$((UID + 7000 + INSTANCE_ID))
+HOST_PORT=$((UID + 8000 + INSTANCE_ID))
+POSTGRES_HOST_PORT=$((UID + 9000 + INSTANCE_ID))
+CONTAINER_NAME="pgautodba-$USER-$INSTANCE_ID"
 
 # TODO -- logic to handle customer db w/ retries, etc.  Then pass these through, probably as
 #         a postgres URL
@@ -101,14 +115,18 @@ echo "=============================================================="
 echo ""
 echo "Running Docker container: $CONTAINER_NAME"
 echo ""
-echo "   flask port: $HOST_PORT"
-echo "      pg port: $POSTGRES_HOST_PORT"
+echo " prometheus port: $PROMETHEUS_PORT"
+echo "    grafana port: $GRAFANA_PORT"
+echo "      flask port: $HOST_PORT"
+echo "         pg port: $POSTGRES_HOST_PORT"
 echo ""
 echo "=============================================================="
 
 docker run --name "$CONTAINER_NAME" \
     -p "$HOST_PORT":8080 \
     -p "$POSTGRES_HOST_PORT":5432 \
+    -p "$PROMETHEUS_PORT":9090 \
+    -p "$GRAFANA_PORT":3000 \
     -e AUTODBA_TARGET_DB="$AUTODBA_TARGET_DB" \
     "$IMAGE_NAME"
     # -v "$VOLUME_NAME":/var/lib/postgresql/data \

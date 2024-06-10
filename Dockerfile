@@ -26,6 +26,7 @@ RUN python3 -m venv /home/autodba/venv
 
 # Activate virtual environment
 ENV PATH="/home/autodba/venv/bin:$PATH"
+ENV PGSSLCERT /tmp/postgresql.crt
 
 # install + cache python dependencies
 WORKDIR /home/autodba/src

@@ -43,6 +43,11 @@ The AutoDBA agent monitors and optimizes the database.
 
     Note: The agent's ephemeral private database is automatically created at startup.
 
+    Note: You need to make sure that `pg_stat_statements` is installed on your target Postgres database:
+    ```
+    psql -c 'create extension if not exists pg_stat_statements;' '<CONNECTION_STRING_TO_YOUR_TARGET_DB>'
+    ```
+
 3. Run the unit tests + linter:
 
     ```bash
