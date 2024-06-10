@@ -4,6 +4,9 @@
 
 set -e -u -o pipefail
 
+# Get the directory of the currently executing script
+SOURCE_DIR=$(dirname "$(readlink -f "$0")")
+
 # Initialize variables
 # VOLUME_NAME="autodba_postgres_data"
 IMAGE_NAME="pgautodba-image"
@@ -110,6 +113,14 @@ echo "Stopping and removing existing container '$CONTAINER_NAME'..."
 docker stop "$CONTAINER_NAME" > /dev/null 2>/dev/null || true
 docker rm "$CONTAINER_NAME" > /dev/null 2>/dev/null || true
 
+GENERATED_MODELS_BINDING=""
+GENERATED_MODELS_DIR="$SOURCE_DIR/models/instance-$INSTANCE_ID"
+# Check if the models directory exists and bind it to the container
+if [ -d "$GENERATED_MODELS_DIR" ]; then
+  echo "The models directory exists: $GENERATED_MODELS_DIR"
+  GENERATED_MODELS_BINDING="--mount type=bind,source=$GENERATED_MODELS_DIR,target=/home/autodba/src/target-models,readonly"
+fi
+
 # Run the container
 echo "=============================================================="
 echo ""
@@ -128,6 +139,6 @@ docker run --name "$CONTAINER_NAME" \
     -p "$PROMETHEUS_PORT":9090 \
     -p "$GRAFANA_PORT":3000 \
     -e AUTODBA_TARGET_DB="$AUTODBA_TARGET_DB" \
-    "$IMAGE_NAME"
+    $GENERATED_MODELS_BINDING "$IMAGE_NAME"
     # -v "$VOLUME_NAME":/var/lib/postgresql/data \
     # --env-file "$ENV_FILE" \
