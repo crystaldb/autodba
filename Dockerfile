@@ -124,6 +124,11 @@ COPY monitor/grafana/grafana.ini /etc/grafana/grafana.ini
 COPY monitor/grafana/grafana.db.sql /tmp/grafana.db.sql
 RUN sqlite3 /usr/share/grafana/data/grafana.db < /tmp/grafana.db.sql && rm /tmp/grafana.db.sql
 
+RUN mkdir -p /usr/share/grafana/provisioning/dashboards
+COPY monitor/grafana/provisioning/dashboards/* /usr/share/grafana/conf/provisioning/dashboards/
+RUN mkdir -p /var/lib/grafana/dashboards
+COPY monitor/grafana/dashboards/* /var/lib/grafana/dashboards/
+
 COPY monitor/prometheus/sql_exporter.yml /usr/lib/prometheus_sql_exporter/sql_exporter.yml
 COPY monitor/prometheus/*_collector.yml /usr/lib/prometheus_sql_exporter/
 COPY monitor/prometheus/prometheus.yml /etc/prometheus/prometheus.yml
