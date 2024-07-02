@@ -17,7 +17,7 @@ target:
   # the `target` label that are always returned on a scrape.
   name: "postgres"
   data_source_name: "PROVIDE_VIA_ARG"
-  collectors: [postgres_vacuum]
+  collectors: [postgres_vacuum, lock_contention]
 
 # Collector files specifies a list of globs. One collector definition is read from each matching file.
 collector_files: 
