@@ -103,6 +103,9 @@ RUN rm /usr/lib/prometheus_sql_exporter/mssql_standard.collector.yml
 RUN mkdir -p /usr/lib/prometheus_postgres_exporter && \
     wget -qO- https://github.com/prometheus-community/postgres_exporter/releases/download/v0.15.0/postgres_exporter-0.15.0.linux-amd64.tar.gz | tar -xzf - -C /usr/lib/prometheus_postgres_exporter --strip-components=1
 
+RUN mkdir -p /usr/lib/prometheus_rds_exporter && \
+    wget -qO- https://github.com/qonto/prometheus-rds-exporter/releases/download/0.10.0/prometheus-rds-exporter_Linux_x86_64.tar.gz | tar -xzf - -C /usr/lib/prometheus_rds_exporter
+
 COPY --from=builder /home/autodba/src /home/autodba/src
 COPY --from=builder /home/autodba/elm/dist_prod /home/autodba/src/api/static
 
@@ -124,13 +127,13 @@ COPY monitor/grafana/grafana.ini /etc/grafana/grafana.ini
 COPY monitor/grafana/grafana.db.sql /tmp/grafana.db.sql
 RUN sqlite3 /usr/share/grafana/data/grafana.db < /tmp/grafana.db.sql && rm /tmp/grafana.db.sql
 
-RUN mkdir -p /usr/share/grafana/provisioning/dashboards
 COPY monitor/grafana/provisioning/dashboards/* /usr/share/grafana/conf/provisioning/dashboards/
-RUN mkdir -p /var/lib/grafana/dashboards
-COPY monitor/grafana/dashboards/* /var/lib/grafana/dashboards/
+# Add dashboards, and, because we rewrite the dashboards in entrypoint.sh, keep "unmodified" versions that we can copy.
+COPY monitor/grafana/dashboards/* /var/lib/grafana/dashboards.unmodified/
+RUN mkdir /var/lib/grafana/dashboards
 
-COPY monitor/prometheus/sql_exporter.yml /usr/lib/prometheus_sql_exporter/sql_exporter.yml
-COPY monitor/prometheus/*_collector.yml /usr/lib/prometheus_sql_exporter/
+COPY monitor/prometheus/sql_exporter/ /usr/lib/prometheus_sql_exporter
+COPY monitor/prometheus/rds_exporter/ /usr/lib/prometheus_rds_exporter
 COPY monitor/prometheus/prometheus.yml /etc/prometheus/prometheus.yml
 
 # run entrypoint.sh

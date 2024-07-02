@@ -30,15 +30,20 @@ The AutoDBA agent monitors and optimizes the database.
     ```bash
     cd pgAutoDBA
     docker build . -t autodba
-    docker run --name pgautodba -e AUTODBA_TARGET_DB="<CONNECTION_STRING_TO_YOUR_TARGET_DB>" -p 8081:8080 -p 3001:3000 autodba
+    docker run --name pgautodba -e AUTODBA_TARGET_DB="<CONNECTION_STRING_TO_YOUR_TARGET_DB>" -e AWS_RDS_INSTANCE=<YOUR AWS DATABASE NAME> -e AWS_ACCESS_KEY_ID=<YOUR_AWS_ACCESS_KEY_ID> -e AWS_SECRET_ACCESS_KEY=<YOUR_AWS_SECRET_ACCESS_KEY> -e AWS_REGION=<YOUR_AWS_REGION> -p 8081:8080 -p 3001:3000 autodba
     ```
 
     The `AUTODBA_TARGET_DB` environment variable is necessary to connect AutoDBA to your target
     PostgreSQL database that is being managed by AutoDBA. You should assign the connection string
     to this environment variable, e.g., `postgresql://my_user:my_pass@localhost:5432/my_db`.
-    
+
+    If you include the `AWS_RDS_INSTANCE` argument, then the
+    `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` and `AWS_REGION` environment
+    variables are all necessary to connect to the AWS RDS Instance target that
+    is being monitored by AutoDBA.
+
     The `--name` option is optional.  For multi-user docker environments, make sure it's unique.
-    
+
     Similarly, replace `8081` and `3001` with whatever port numbers should be bound on the Docker host for the AutoDBA Agent UI and the Grafana interface, respectively.
 
     Note: The agent's ephemeral private database is automatically created at startup.
