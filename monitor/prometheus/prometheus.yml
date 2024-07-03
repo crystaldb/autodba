@@ -1,6 +1,6 @@
 global:
   scrape_interval:      1m
-  evaluation_interval:  5s
+  evaluation_interval:  1m
   # scrape_timeout is set to the global default (10s).
 
 scrape_configs:
@@ -8,12 +8,16 @@ scrape_configs:
   - job_name: "prometheus"
     static_configs:
       - targets: ["localhost:9090"]
-  - job_name: "postgres"
+  - job_name: "pgexport"
     scrape_interval: 10s
+    scrape_timeout: 10s
     static_configs:
-      - targets: ["localhost:9187","localhost:9399"]
-        # :9187 postgres exporter
-        # :9399 sql exporter
+      - targets: ["localhost:9187"]
+  - job_name: "sqlexport"
+    scrape_interval: 60s
+    scrape_timeout: 60s
+    static_configs:
+      - targets: ["localhost:9399"]
   - job_name: "rds"
     scrape_interval: 30s
     static_configs:
