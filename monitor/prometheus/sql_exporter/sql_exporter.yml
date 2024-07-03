@@ -13,9 +13,10 @@ global:
 
 # The target to monitor and the list of collectors to execute on it.
 target:
-  # Target name (optional). Setting this field enables extra metrics e.g. `up` and `scrape_duration` with
-  # the `target` label that are always returned on a scrape.
-  name: "postgres"
+  # Target name (optional). Setting this field enables extra metrics e.g. `up`
+  # and `scrape_duration` with the `target` label that are always returned on a
+  # scrape.
+  name: "sqlexport"
   data_source_name: "PROVIDE_VIA_ARG"
   collectors: [postgres_vacuum, lock_contention]
 
