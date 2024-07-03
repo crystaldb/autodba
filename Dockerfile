@@ -1,15 +1,17 @@
 # SPDX-License-Identifier: Apache-2.0
 
-FROM postgres:16.3 as base
+FROM postgres:16.3 AS base
 
 RUN addgroup --system autodba && adduser --system --group autodba --home /home/autodba --shell /bin/bash
 
 # set environment variables
-ENV PYTHONDONTWRITEBYTECODE 1
+ENV PYTHONDONTWRITEBYTECODE=1
 #ENV PYTHONUNBUFFERED 1  # this works around setups where line buffering is disabled; it should not be needed here
 
 RUN apt-get update
 RUN apt-get install -y --no-install-recommends \
+    curl            \
+    jq              \
     nodejs          \
     npm             \
     procps          \
@@ -28,14 +30,14 @@ RUN python3 -m venv /home/autodba/venv
 
 # Activate virtual environment
 ENV PATH="/home/autodba/venv/bin:$PATH"
-ENV PGSSLCERT /tmp/postgresql.crt
+ENV PGSSLCERT=/tmp/postgresql.crt
 
 # install + cache python dependencies
 WORKDIR /home/autodba/src
 COPY src/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-FROM base as builder
+FROM base AS builder
 
 # install + cache npm dependencies
 WORKDIR /home/autodba/elm
@@ -70,9 +72,9 @@ ENV PATH="/usr/lib/go/bin:${PATH}" \
     GOROOT="/usr/lib/go"
 
 RUN mkdir -p /usr/lib/prometheus_rds_exporter && \
-     git clone https://github.com/crystalcld/prometheus-rds-exporter.git /usr/lib/prometheus_rds_exporter && \
-     cd /usr/lib/prometheus_rds_exporter && \
-     make build
+    git clone https://github.com/crystalcld/prometheus-rds-exporter.git /usr/lib/prometheus_rds_exporter && \
+    cd /usr/lib/prometheus_rds_exporter && \
+    make build
 
 FROM builder as lint
 WORKDIR /home/autodba/src
@@ -81,7 +83,7 @@ RUN flake8 --ignore=E501,F401,E302,E305 .
 WORKDIR /home/autodba/elm
 RUN npm run check-format
 
-FROM builder as test
+FROM builder AS test
 
 WORKDIR /home/autodba/elm
 RUN npm run format # todo...
@@ -92,7 +94,7 @@ RUN npm run format # todo...
 WORKDIR /home/autodba/src
 RUN POSTGRES_DB=phony_db AUTODBA_TARGET_DB=postgresql://phony_db_user:phony_db_pass@localhost:5432/phony_db python -m pytest
 
-FROM base as autodba
+FROM base AS autodba
 
 USER root
 
@@ -157,6 +159,12 @@ RUN mkdir /var/lib/grafana/dashboards
 COPY monitor/prometheus/sql_exporter/ /usr/lib/prometheus_sql_exporter
 COPY monitor/prometheus/rds_exporter/ /usr/lib/prometheus_rds_exporter
 COPY monitor/prometheus/prometheus.yml /etc/prometheus/prometheus.yml
+
+# Add backup script
+COPY backup.sh /home/autodba/backup.sh
+RUN chmod +x /home/autodba/backup.sh
+# Ensure backup directory exists
+RUN mkdir -p /home/autodba/backups
 
 # run entrypoint.sh
 CMD ["./entrypoint.sh"]
