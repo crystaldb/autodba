@@ -15,7 +15,9 @@ RUN apt-get install -y --no-install-recommends \
     procps          \
     python3         \
     python3-venv    \
-    python3-pip
+    python3-pip     \
+    wget
+
 
 USER autodba
 WORKDIR /home/autodba
@@ -49,6 +51,29 @@ WORKDIR /home/autodba/src
 COPY --chown=autodba:autodba src .
 # If we decide to ship compiled python, the command that does it belongs here.
 
+FROM base as rdsexporter_builder
+
+USER root
+
+RUN apt-get install -y --no-install-recommends \
+    git             \
+    make
+
+# Install golang
+ENV GOLANG_VERSION 1.22.1
+RUN wget -O go.tgz "https://golang.org/dl/go${GOLANG_VERSION}.linux-amd64.tar.gz" \
+    && tar -C /usr/lib -xzf go.tgz \
+    && rm go.tgz
+
+# Set golang env vars
+ENV PATH="/usr/lib/go/bin:${PATH}" \
+    GOROOT="/usr/lib/go"
+
+RUN mkdir -p /usr/lib/prometheus_rds_exporter && \
+     git clone https://github.com/crystalcld/prometheus-rds-exporter.git /usr/lib/prometheus_rds_exporter && \
+     cd /usr/lib/prometheus_rds_exporter && \
+     make build
+
 FROM builder as lint
 WORKDIR /home/autodba/src
 RUN flake8 --ignore=E501,F401,E302,E305 .
@@ -76,7 +101,6 @@ RUN apt-get install -y --no-install-recommends \
     apt-transport-https \
     prometheus \
     software-properties-common \
-    wget \
     sqlite3
 
 
@@ -103,11 +127,9 @@ RUN rm /usr/lib/prometheus_sql_exporter/mssql_standard.collector.yml
 RUN mkdir -p /usr/lib/prometheus_postgres_exporter && \
     wget -qO- https://github.com/prometheus-community/postgres_exporter/releases/download/v0.15.0/postgres_exporter-0.15.0.linux-amd64.tar.gz | tar -xzf - -C /usr/lib/prometheus_postgres_exporter --strip-components=1
 
-RUN mkdir -p /usr/lib/prometheus_rds_exporter && \
-    wget -qO- https://github.com/qonto/prometheus-rds-exporter/releases/download/0.10.0/prometheus-rds-exporter_Linux_x86_64.tar.gz | tar -xzf - -C /usr/lib/prometheus_rds_exporter
-
 COPY --from=builder /home/autodba/src /home/autodba/src
 COPY --from=builder /home/autodba/elm/dist_prod /home/autodba/src/api/static
+COPY --from=rdsexporter_builder /usr/lib/prometheus_rds_exporter /usr/lib/prometheus_rds_exporter
 
 WORKDIR /home/autodba/src
 
