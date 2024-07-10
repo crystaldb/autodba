@@ -1,0 +1,98 @@
+collector_name: crystal_pg_stat_io
+# Minimum interval between collector runs: by default (0s) collectors are executed on every scrape.
+min_interval: 0s
+
+metrics:
+  - metric_name: crystal_pg_stat_io_overview
+    type: gauge
+    help: 'Overview from pg_stat_io'
+    key_labels:
+      - backend_type
+      - context
+    value_label: metric
+    values:
+      - total_reads
+      - total_read_bytes
+      - total_writes
+      - total_write_bytes
+      - total_writebacks
+      - total_writeback_bytes
+      - total_evictions
+      - total_eviction_bytes
+      - total_reuses
+      - total_reuse_bytes
+    query_ref: query_stat_io
+
+  - metric_name: crystal_pg_stat_io_activity_overview
+    type: gauge
+    help: 'Overview from pg_stat_io joined with pg_stat_activity'
+    key_labels:
+      - query
+      - username
+      - backend_type
+      - object
+      - context
+    value_label: metric
+    values:
+      - pid
+      - reads
+      - writes
+      - extends
+      - evictions
+      - reuses
+    query_ref: query_stat_io_join_activity
+
+queries:
+  - query_name: query_stat_io
+    query: |
+      SELECT
+        backend_type,
+        context,
+        SUM(reads) AS total_reads,
+        SUM(reads * op_bytes) AS total_read_bytes,
+        SUM(writes) AS total_writes,
+        SUM(writes * op_bytes) AS total_write_bytes,
+        SUM(writebacks) AS total_writebacks,
+        SUM(writebacks * op_bytes) AS total_writeback_bytes,
+        SUM(evictions) AS total_evictions,
+        SUM(evictions * op_bytes) AS total_eviction_bytes,
+        SUM(reuses) AS total_reuses,
+        SUM(reuses * op_bytes) AS total_reuse_bytes
+      FROM
+        pg_stat_io
+      GROUP BY
+        backend_type, context
+      ORDER BY
+        (SUM(reads * op_bytes) + SUM(writes * op_bytes) +
+         SUM(writebacks * op_bytes) + SUM(evictions * op_bytes) +
+         SUM(reuses * op_bytes)
+        ) DESC
+
+  - query_name: query_stat_io_join_activity
+    query: |
+      SELECT
+        A.query,
+        a.pid,
+        a.usename as username,
+        i.backend_type,
+        i.object,
+        i.context,
+        i.reads,
+        i.writes,
+        i.extends,
+        i.evictions,
+        i.reuses
+      FROM
+        pg_stat_activity a
+      JOIN
+        pg_stat_io i ON i.backend_type =
+            CASE
+                WHEN a.backend_type = 'client backend' THEN 'client backend'
+                WHEN a.backend_type = 'autovacuum worker' THEN 'autovacuum worker'
+                ELSE 'background worker'
+            END
+      WHERE
+        a.state != 'idle'
+      ORDER BY
+        i.reads + i.writes DESC
+
