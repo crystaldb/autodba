@@ -1,7 +1,9 @@
-collector_name: lock_contention
+collector_name: crystal_pg_lock_contention
+# Minimum interval between collector runs: by default (0s) collectors are executed on every scrape.
+min_interval: 0s
 
 metrics:
-  - metric_name: pg_lock_contention
+  - metric_name: crystal_pg_lock_contention
     type: gauge
     help: 'Lock contetion counters.'
     key_labels:

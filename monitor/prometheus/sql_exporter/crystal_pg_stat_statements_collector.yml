@@ -1,0 +1,35 @@
+collector_name: crystal_pg_stat_statements
+# Minimum interval between collector runs: by default (0s) collectors are executed on every scrape.
+min_interval: 0s
+
+metrics:
+  - metric_name: crystal_pg_stat_statements_top_queries
+    type: gauge
+    help: 'Top most-expensive queries'
+    key_labels:
+      - query
+    value_label: metric
+    values:
+      - calls
+      - min_exec_time
+      - max_exec_time
+      - mean_exec_time
+      - stddev_exec_time
+      - coeff_of_variance
+    query_ref: query_stat_statements
+
+queries:
+  - query_name: query_stat_statements
+    query: |
+      SELECT
+        queryid,
+        calls,
+        min_exec_time,
+        max_exec_time,
+        mean_exec_time,
+        stddev_exec_time,
+        (stddev_exec_time/mean_exec_time) AS coeff_of_variance,
+        query
+      FROM pg_stat_statements
+      ORDER BY mean_exec_time DESC
+      LIMIT 5

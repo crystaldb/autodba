@@ -14,8 +14,8 @@ scrape_configs:
     static_configs:
       - targets: ["localhost:9187"]
   - job_name: "sqlexport"
-    scrape_interval: 60s
-    scrape_timeout: 60s
+    scrape_interval: 10s
+    scrape_timeout: 10s
     static_configs:
       - targets: ["localhost:9399"]
   - job_name: "rds"

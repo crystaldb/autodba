@@ -1,4 +1,6 @@
 collector_name: postgres_vacuum
+# Minimum interval between collector runs: by default (0s) collectors are executed on every scrape.
+min_interval: 0s
 
 metrics:
   - metric_name: pg_vacuum_process_count
