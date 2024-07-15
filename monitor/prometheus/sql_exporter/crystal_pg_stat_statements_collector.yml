@@ -8,7 +8,7 @@ metrics:
     help: 'Top most-expensive queries'
     key_labels:
       - query
-    value_label: metric
+    value_label: crystal_metric
     values:
       - calls
       - min_exec_time
