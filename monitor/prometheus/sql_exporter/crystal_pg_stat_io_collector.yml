@@ -9,7 +9,7 @@ metrics:
     key_labels:
       - backend_type
       - context
-    value_label: metric
+    value_label: crystal_metric
     values:
       - total_reads
       - total_read_bytes
@@ -32,7 +32,7 @@ metrics:
       - backend_type
       - object
       - context
-    value_label: metric
+    value_label: crystal_metric
     values:
       - pid
       - reads
