@@ -1,12 +1,16 @@
 #!/bin/bash
 
-cd ~/pgAutoDBA && ./run.sh --db-url 'postgres://postgres:masterKey5@moe-autodba-experiments-2.cvirkksghnig.us-west-2.rds.amazonaws.com:5432/test?sslmode=require' --instance-id 1 2>&1 &
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd $SCRIPT_DIR
+
+# instance 1: more aggressive vaccum (rds default)
+./run.sh --db-url 'postgres://postgres:masterKey5@moe-autodba-experiments-2.cvirkksghnig.us-west-2.rds.amazonaws.com:5432/test?sslmode=require' --instance-id 1 2>&1 &
 
 # instance 2: too little vacuum with recommendation to do more frequent vacuum.
-cd ~/pgAutoDBA && ./run.sh --db-url 'postgres://postgres:masterKey5@moe-autodba-experiments-5.cvirkksghnig.us-west-2.rds.amazonaws.com:5432/test?sslmode=require' --instance-id 2 2>&1 &
+./run.sh --db-url 'postgres://postgres:masterKey5@moe-autodba-experiments-5.cvirkksghnig.us-west-2.rds.amazonaws.com:5432/test?sslmode=require' --instance-id 2 2>&1 &
 
-# instance 3: too much vacuum with recommendation to do less frequent vacuum.
-cd ~/pgAutoDBA && ./run.sh --db-url 'postgres://postgres:masterKey5@moe-autodba-experiments-4.cvirkksghnig.us-west-2.rds.amazonaws.com:5432/test?sslmode=require' --instance-id 3 2>&1 &
+# instance 3: tuned: even more vacuum: good state, no recommendation
+./run.sh --db-url 'postgres://postgres:masterKey5@moe-autodba-experiments-4.cvirkksghnig.us-west-2.rds.amazonaws.com:5432/test?sslmode=require' --instance-id 3 2>&1 &
 
 # instance-4 - johann-rds-5 - small DB, base instance (starting point)
 # >instance-5 - johann-rds-6 - large DB, base instance (starting poing)
