@@ -1,0 +1,185 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    /* @apply scroll-smooth; */
+  }
+  body {
+    /* @apply bg-black; */
+    @apply bg-neutral-100 text-black dark:bg-neutral-900 dark:text-white;
+    /* @apply bg-neutral-100; */
+  }
+}
+
+@layer components {
+  a.active {
+    @apply underline underline-offset-8;
+  }
+  .btn {
+    @apply font-bold;
+    @apply dark:font-normal;
+    @apply px-4;
+    @apply py-2;
+    @apply rounded;
+  }
+  .btn-thin {
+    @apply font-normal;
+    @apply text-sm;
+    @apply px-2;
+    @apply py-1;
+    @apply rounded;
+  }
+  .btn-thinner {
+    @apply font-normal;
+    @apply text-xs;
+    @apply px-1;
+    @apply pt-px;
+    @apply rounded;
+  }
+  .btn-big1 {
+    @apply font-bold;
+    @apply dark:font-normal;
+    @apply px-6;
+    @apply py-4;
+    @apply rounded;
+  }
+  .btn-disabled {
+    @apply cursor-not-allowed bg-neutral-400 text-neutral-200 dark:bg-neutral-800 dark:text-neutral-600;
+  }
+  .btn-neutral-outline {
+    @apply border;
+    @apply border-neutral-300;
+    @apply dark:border-neutral-700;
+    @apply text-neutral-500;
+  }
+  .btn-neutral-outline:hover {
+    @apply border-neutral-500;
+  }
+  .btn-blue-outline {
+    @apply border;
+    @apply border-blue-300;
+    @apply dark:border-blue-700;
+    @apply text-blue-500;
+  }
+  .btn-blue-outline:hover {
+    @apply border-blue-500;
+  }
+  .btn-blue-outline-2 {
+    @apply border;
+    @apply border-blue-300;
+    @apply dark:border-blue-900;
+    @apply text-blue-500;
+  }
+  .btn-blue-outline-2:hover {
+    @apply border-blue-500;
+  }
+  .btn-blue-outline-bright {
+    @apply border;
+    @apply border-blue-700;
+    @apply dark:border-blue-300;
+    @apply text-blue-300;
+  }
+  .btn-blue-outline-bright:hover {
+    @apply border-blue-500;
+  }
+  .btn-blue {
+    @apply bg-blue-500;
+    @apply text-white;
+  }
+  .btn-blue:hover {
+    @apply bg-blue-600;
+  }
+  .btn-blue-pale {
+    @apply bg-blue-300;
+    @apply text-white;
+    @apply dark:text-black;
+  }
+  .btn-blue-pale:hover {
+    @apply bg-blue-400;
+  }
+  .btn-indigo {
+    @apply bg-indigo-600;
+    @apply text-white;
+    /* @apply dark:text-black; */
+  }
+  .btn-indigo:hover {
+    @apply bg-indigo-700;
+  }
+  .btn-green {
+    @apply bg-green-300;
+    @apply text-green-800;
+  }
+  .btn-green:hover {
+    @apply bg-green-400;
+    @apply text-green-800;
+  }
+  .btn-red {
+    @apply bg-red-300;
+    @apply text-red-800;
+  }
+  .btn-red:hover {
+    @apply bg-red-400;
+    @apply text-red-800;
+  }
+  .btn-red-900 {
+    @apply bg-red-900;
+    @apply text-red-100;
+  }
+  .btn-red-900:hover {
+    @apply bg-red-700;
+    @apply text-red-100;
+  }
+  .btn-yellow {
+    @apply bg-yellow-300;
+    @apply text-yellow-800;
+  }
+  .btn-yellow:hover {
+    @apply bg-yellow-400;
+    @apply text-yellow-800;
+  }
+
+  .tooltip {
+    @apply invisible absolute;
+  }
+
+  .has-tooltip:hover .tooltip {
+    @apply visible z-10;
+  }
+
+  .for-td td {
+    border: 1px solid neutral;
+  }
+  .touchaction-none-for-td td {
+    @apply touch-pinch-zoom;
+  }
+  .touchaction-none-for-td tr:nth-child(-n + 6) th {
+    padding: 0rem 0;
+  }
+  .touchaction-none-for-td tr:nth-child(n + 7):nth-child(-n + 10) th {
+    padding: 0.1rem 0;
+  }
+  .touchaction-none-for-td tr:nth-child(n + 11):nth-child(-n + 14) th {
+    padding: 0.2rem 0;
+  }
+  .touchaction-none-for-td tr:nth-child(n + 15):nth-child(-n + 17) th {
+    padding: 0.05rem 0;
+  }
+  .touchaction-none-for-td tr:nth-child(n + 18):nth-child(-n + 22) th {
+    padding: 0.3rem 0;
+  }
+  .touchaction-none-for-td tr:nth-child(n + 23) th {
+    padding: 0.01rem 0;
+  }
+
+  .no-tap-highlight {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /*
+  details[open] summary.brighter_image img {
+    filter: brightness(1.25);
+  }
+  */
+}

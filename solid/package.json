@@ -1,0 +1,40 @@
+{
+  "name": "crystal_observability",
+  "version": "0.0.0",
+  "description": "",
+  "scripts": {
+    "check-types": "tsc --project ./tsconfig.json",
+    "start": "vite --port 1239 --host",
+    "dev": "vite --port 1239 --host",
+    "test": "vitest",
+    "build": "vite build",
+    "serve": "vite preview"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@playwright/test": "^1.45.3",
+    "@solid-devtools/overlay": "^0.30.1",
+    "@solidjs/testing-library": "^0.8.9",
+    "@tailwindcss/typography": "^0.5.13",
+    "@testing-library/jest-dom": "^6.4.8",
+    "@testing-library/user-event": "^14.5.2",
+    "@types/node": "^20.14.12",
+    "autoprefixer": "^10.4.17",
+    "jsdom": "^24.1.1",
+    "postcss": "^8.4.33",
+    "solid-markdown": "^2.0.13",
+    "tailwindcss": "^3.4.1",
+    "tailwindcss-rtl": "^0.9.0",
+    "typescript": "^5.5.4",
+    "vite": "^5.0.11",
+    "vite-plugin-solid": "^2.8.2",
+    "vitest": "^2.0.4"
+  },
+  "dependencies": {
+    "@solidjs/router": "^0.13.6",
+    "echarts": "^5.5.1",
+    "echarts-solid": "^0.1.0",
+    "solid-icons": "^1.1.0",
+    "solid-js": "^1.8.11"
+  }
+}

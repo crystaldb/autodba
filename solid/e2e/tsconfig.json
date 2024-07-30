@@ -1,0 +1,8 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".", // This must be specified if "paths" is.
+    "paths": {
+      "@myhelper/*": ["packages/myhelper/*"] // This mapping is relative to "baseUrl".
+    }
+  }
+}
