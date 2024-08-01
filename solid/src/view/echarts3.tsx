@@ -49,9 +49,6 @@ export function Echarts3(this: any) {
 
   return (
     <>
-      <p class="text-black">
-        Focus on range: {state.range_start} - {state.range_end}
-      </p>
       <EChartsAutoSize
         // @ts-expect-error
         option={option()()}

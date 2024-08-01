@@ -11,7 +11,12 @@ import { HiSolidChevronLeft, HiSolidChevronRight } from "solid-icons/hi";
 
 export default function App(): JSX.Element {
   const { setState } = useState();
-  createResource(getData.bind(null, setState));
+  const getDataFn = getData.bind(null, setState);
+  function queryData() {
+    createResource(getDataFn);
+    setTimeout(queryData, 5 * 1000);
+  }
+  queryData();
 
   return (
     <div class="max-w-screen-sm mx-auto">
