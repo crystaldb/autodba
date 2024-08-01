@@ -3,7 +3,7 @@ import { batch } from "solid-js";
 export const datazoom = (
   setState: (arg0: string, arg1: any) => void,
   stateFn: any,
-  event: any
+  event: any,
 ) => {
   console.log("Chart2 Data Zoom", event);
   batch(() => {

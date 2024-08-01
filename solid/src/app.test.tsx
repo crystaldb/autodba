@@ -8,6 +8,6 @@ test_setup();
 test("it will render", async () => {
   const { getByText } = render(() => <App />);
   expect(
-    getByText("[Crystal Observability homepage stuff here]")
+    getByText("[Crystal Observability homepage stuff here]"),
   ).toBeInTheDocument();
 });
