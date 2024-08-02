@@ -1,6 +1,5 @@
 import { createContext, JSX, useContext } from "solid-js";
 import { useState, State } from "./state";
-import { createStore } from "solid-js/store";
 
 const StateContext = createContext(useState());
 
