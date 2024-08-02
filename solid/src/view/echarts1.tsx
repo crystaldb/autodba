@@ -54,7 +54,7 @@ export function Echarts1(props: { data: number[][] }) {
           // Math.round(params.value * 1000) / 10 + "%",
         },
         data: rawData[sid].map(
-          (d, did) => (totalData[did] <= 0 ? 0 : d),
+          (d, did) => (totalData[did] <= 0 ? 0 : d)
           // totalData[did] <= 0 ? 0 : d / totalData[did]
         ),
       };
@@ -91,7 +91,7 @@ export function Echarts1(props: { data: number[][] }) {
         option={option()()}
         eventHandlers={eventHandlers}
         ref={ref}
-        class="bg-white dark:bg-gray-400"
+        class="dark:bg-gray-400"
       />
     </>
   );
