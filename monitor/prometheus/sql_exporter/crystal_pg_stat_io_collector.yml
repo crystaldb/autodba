@@ -3,6 +3,20 @@ collector_name: crystal_pg_stat_io
 min_interval: 0s
 
 metrics:
+  - metric_name: crystal_pg_stat_io
+    type: gauge
+    help: 'Snapshots from pg_stat_io'
+    key_labels:
+      - backend_type
+      - object
+      - context
+    value_label: crystal_metric
+    values:
+      - reads
+      - writes
+      - op_bytes
+    query_ref: query_stat_io
+
   - metric_name: crystal_pg_stat_io_overview
     type: gauge
     help: 'Overview from pg_stat_io'
@@ -21,12 +35,14 @@ metrics:
       - total_eviction_bytes
       - total_reuses
       - total_reuse_bytes
-    query_ref: query_stat_io
+    query_ref: query_stat_io_aggregated
 
   - metric_name: crystal_pg_stat_io_activity_overview
     type: gauge
     help: 'Overview from pg_stat_io joined with pg_stat_activity'
     key_labels:
+      - pid
+      - query_id
       - query
       - username
       - backend_type
@@ -34,7 +50,6 @@ metrics:
       - context
     value_label: crystal_metric
     values:
-      - pid
       - reads
       - writes
       - extends
@@ -45,7 +60,18 @@ metrics:
 queries:
   - query_name: query_stat_io
     query: |
-      SELECT
+      /* crystal-query */ SELECT
+        backend_type,
+        object,
+        context,
+        reads,
+        writes,
+        op_bytes
+      FROM
+        pg_stat_io
+  - query_name: query_stat_io_aggregated
+    query: |
+      /* crystal-query */ SELECT
         backend_type,
         context,
         SUM(reads) AS total_reads,
@@ -70,7 +96,8 @@ queries:
 
   - query_name: query_stat_io_join_activity
     query: |
-      SELECT
+      /* crystal-query */ SELECT
+        A.query_id,
         A.query,
         a.pid,
         a.usename as username,

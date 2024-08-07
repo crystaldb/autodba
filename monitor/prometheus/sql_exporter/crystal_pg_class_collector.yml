@@ -1,0 +1,27 @@
+collector_name: crystal_pg_class
+# Minimum interval between collector runs: by default (0s) collectors are executed on every scrape.
+min_interval: 0s
+
+metrics:
+  - metric_name: crystal_pg_class
+    type: gauge
+    help: 'pg_class counters.'
+    key_labels:
+      - oid
+      - relname
+    value_label: crystal_metric
+    values:
+      - relpages
+      - reltuples
+    query_ref: query_pg_class
+
+queries:
+  - query_name: query_pg_class
+    query: |
+      /* crystal-query */ SELECT
+        oid,
+        relname,
+        relpages,
+        reltuples
+      FROM
+        pg_class;
