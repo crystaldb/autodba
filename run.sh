@@ -1,7 +1,6 @@
 #!/bin/bash
 
 # SPDX-License-Identifier: Apache-2.0
-
 set -e -u -o pipefail
 
 # Get the directory of the currently executing script
@@ -17,7 +16,9 @@ INSTANCE_ID=0  # Default value for instance-id
 DEFAULT_METRIC_COLLECTION_PERIOD_SECONDS=5 # Default value for metric collection period (in seconds)
 WARM_UP_TIME_SECONDS=60  # Default value for warm-up time (in seconds)
 BACKUP_FILE=""  # Path to the backup file
+BACKUP_DIR="$SOURCE_DIR/autodba_backups_dir"
 DISABLE_DATA_COLLECTION=false  # Flag to disable data collection
+CONTINUE=false  # Flag to continue from existing agent data
 
 command_exists() {
     command -v "$1" >/dev/null 2>&1
@@ -25,12 +26,13 @@ command_exists() {
 
 # Function to display usage information
 usage() {
-    echo "Usage: $0 --db-url <TARGET_DATABASE_URL> [--instance-id <INSTANCE_ID>] [--rds-instance <RDS_INSTANCE_NAME>] [--backup-file <BACKUP_FILE>] [--disable-data-collection]"
+    echo "Usage: $0 --db-url <TARGET_DATABASE_URL> [--instance-id <INSTANCE_ID>] [--rds-instance <RDS_INSTANCE_NAME>] [--backup-file <BACKUP_FILE>] [--disable-data-collection] [--continue]"
     echo "Options:"
     echo "--instance-id               <INSTANCE_ID> if you are running multiple instances of the agent, specify a unique number for each"
     echo "--rds-instance              <RDS_INSTANCE_NAME> collect metrics from an AWS RDS instance"
     echo "--restore-backup            <BACKUP_FILE> the path to the backup file to be restored into the agent's Prometheus and PostgreSQL databases"
     echo "--disable-data-collection   to disable the agent collectors from collecting data from the target database"
+    echo "--continue                  continue from existing agent data, taking a backup before stopping the previous container, and then restoring it into the new container"
     exit 1
 }
 
@@ -89,6 +91,10 @@ while [[ "$#" -gt 0 ]]; do
             ;;
         --disable-data-collection)
             DISABLE_DATA_COLLECTION=true
+            shift
+            ;;
+        --continue)
+            CONTINUE=true
             shift
             ;;
         # --recreate)
@@ -171,6 +177,13 @@ CONTAINER_NAME="pgautodba-$USER-$INSTANCE_ID"
 #     fi
 # fi
 
+# Check if we need to continue from existing agent data
+if [[ "$CONTINUE" = true ]]; then
+    $SOURCE_DIR/scripts/docker/agent-docker-backup.sh --instance-id $INSTANCE_ID
+    BACKUP_FILE="${BACKUP_DIR}/backup.tar.gz"
+fi
+
+# Build Docker image
 echo "Running tests + lint ..."
 docker build -f "$DOCKERFILE" . --target lint
 docker build -f "$DOCKERFILE" . --target test
@@ -191,12 +204,24 @@ if [ -d "$GENERATED_MODELS_DIR" ]; then
   GENERATED_MODELS_BINDING="--mount type=bind,source=$GENERATED_MODELS_DIR,target=/home/autodba/src/target-models,readonly"
 fi
 
-BACKUP_FILE_BINDING=""
+BACKUP_DIR_BINDING=""
 BACKUP_FILE_ENV=""
+mkdir -p ${BACKUP_DIR}
+BACKUP_DIR_BINDING="--mount type=bind,source=${BACKUP_DIR},target=/home/autodba/ext-backups"
 # Check if the backup file is provided and bind it to the container
 if [ -n "$BACKUP_FILE" ]; then
-    BACKUP_FILE_BINDING="--mount type=bind,source=${BACKUP_FILE},target=/backup.tar.gz,readonly"
-    BACKUP_FILE_ENV="-e BACKUP_FILE=\"/backup.tar.gz\""
+    # Get the absolute path of the backup directory
+    BACKUP_DIR_ABS=$(cd "$BACKUP_DIR"; pwd)
+
+    # Check if the backup file is not already in the backup directory
+    if [[ "$BACKUP_FILE" != "${BACKUP_DIR_ABS}/backup.tar.gz" ]]; then
+        # Copy the backup file to the backup directory
+        cp "$BACKUP_FILE" "${BACKUP_DIR}/backup.tar.gz"
+        BACKUP_FILE="${BACKUP_DIR}/backup.tar.gz"
+    fi
+
+
+    BACKUP_FILE_ENV="-e BACKUP_FILE=/home/autodba/ext-backups/backup.tar.gz"
 fi
 
 # Run the container
@@ -225,8 +250,14 @@ docker run --name "$CONTAINER_NAME" \
     -e AWS_REGION="${AWS_REGION:-""}" \
     -e DISABLE_DATA_COLLECTION="$DISABLE_DATA_COLLECTION" \
     $BACKUP_FILE_ENV \
-    $BACKUP_FILE_BINDING \
+    $BACKUP_DIR_BINDING \
     $GENERATED_MODELS_BINDING \
     "$IMAGE_NAME"
     # -v "$VOLUME_NAME":/var/lib/postgresql/data \
     # --env-file "$ENV_FILE" \
+
+# Clean up temporary backup directory if created
+if [[ "$CONTINUE" = true ]]; then
+    echo "Cleaning up temporary backup directory..."
+    rm -f ${BACKUP_FILE}
+fi
