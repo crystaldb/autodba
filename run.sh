@@ -16,6 +16,8 @@ AWS_RDS_INSTANCE="" # 'YOURNAME-rds-EXAMPLE'
 INSTANCE_ID=0  # Default value for instance-id
 DEFAULT_METRIC_COLLECTION_PERIOD_SECONDS=5 # Default value for metric collection period (in seconds)
 WARM_UP_TIME_SECONDS=60  # Default value for warm-up time (in seconds)
+BACKUP_FILE=""  # Path to the backup file
+DISABLE_DATA_COLLECTION=false  # Flag to disable data collection
 
 command_exists() {
     command -v "$1" >/dev/null 2>&1
@@ -23,12 +25,12 @@ command_exists() {
 
 # Function to display usage information
 usage() {
-    echo "Usage: $0 --db-url <TARGET_DATABASE_URL> [--instance-id <INSTANCE_ID>] [--rds-instance <RDS_INSTANCE_NAME>]"
+    echo "Usage: $0 --db-url <TARGET_DATABASE_URL> [--instance-id <INSTANCE_ID>] [--rds-instance <RDS_INSTANCE_NAME>] [--backup-file <BACKUP_FILE>] [--disable-data-collection]"
     echo "Options:"
-    echo "--instance-id  <INSTANCE_ID> if you are running multiple instances of the agent, specify a unique number for each"
-    echo "--rds-instance <RDS_INSTANCE_NAME> collect metrics from an AWS RDS instance"
-    # echo "  --recreate      Recreate Docker volume even if it exists"
-    # echo "  --env           Specify the environment ('dev' for development or 'prod' for production)"
+    echo "--instance-id               <INSTANCE_ID> if you are running multiple instances of the agent, specify a unique number for each"
+    echo "--rds-instance              <RDS_INSTANCE_NAME> collect metrics from an AWS RDS instance"
+    echo "--restore-backup            <BACKUP_FILE> the path to the backup file to be restored into the agent's Prometheus and PostgreSQL databases"
+    echo "--disable-data-collection   to disable the agent collectors from collecting data from the target database"
     exit 1
 }
 
@@ -71,6 +73,23 @@ while [[ "$#" -gt 0 ]]; do
                 echo "Error: Argument for $1 is missing" >&2
                 exit 1
             fi
+            ;;
+        --restore-backup)
+            if [[ -n "$2" ]] && [[ ${2:0:1} != "-" ]]; then
+                BACKUP_FILE="$2"
+                if [[ ! -f "$BACKUP_FILE" ]]; then
+                    echo "Error: Backup file $BACKUP_FILE does not exist" >&2
+                    exit 1
+                fi
+                shift 2
+            else
+                echo "Error: Argument for $1 is missing" >&2
+                exit 1
+            fi
+            ;;
+        --disable-data-collection)
+            DISABLE_DATA_COLLECTION=true
+            shift
             ;;
         # --recreate)
         #     RECREATE_VOLUME=true
@@ -172,6 +191,14 @@ if [ -d "$GENERATED_MODELS_DIR" ]; then
   GENERATED_MODELS_BINDING="--mount type=bind,source=$GENERATED_MODELS_DIR,target=/home/autodba/src/target-models,readonly"
 fi
 
+BACKUP_FILE_BINDING=""
+BACKUP_FILE_ENV=""
+# Check if the backup file is provided and bind it to the container
+if [ -n "$BACKUP_FILE" ]; then
+    BACKUP_FILE_BINDING="--mount type=bind,source=${BACKUP_FILE},target=/backup.tar.gz,readonly"
+    BACKUP_FILE_ENV="-e BACKUP_FILE=\"/backup.tar.gz\""
+fi
+
 # Run the container
 echo "=============================================================="
 echo ""
@@ -196,6 +223,10 @@ docker run --name "$CONTAINER_NAME" \
     -e AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID:-""}" \
     -e AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY:-""}" \
     -e AWS_REGION="${AWS_REGION:-""}" \
-    $GENERATED_MODELS_BINDING "$IMAGE_NAME"
+    -e DISABLE_DATA_COLLECTION="$DISABLE_DATA_COLLECTION" \
+    $BACKUP_FILE_ENV \
+    $BACKUP_FILE_BINDING \
+    $GENERATED_MODELS_BINDING \
+    "$IMAGE_NAME"
     # -v "$VOLUME_NAME":/var/lib/postgresql/data \
     # --env-file "$ENV_FILE" \

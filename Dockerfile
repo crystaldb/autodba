@@ -161,7 +161,7 @@ COPY monitor/prometheus/rds_exporter/ /usr/lib/prometheus_rds_exporter
 COPY monitor/prometheus/prometheus.yml /etc/prometheus/prometheus.yml
 
 # Add backup script
-COPY backup.sh /home/autodba/backup.sh
+COPY scripts/agent/backup.sh /home/autodba/backup.sh
 RUN chmod +x /home/autodba/backup.sh
 # Ensure backup directory exists
 RUN mkdir -p /home/autodba/backups

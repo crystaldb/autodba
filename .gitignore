@@ -172,3 +172,4 @@ devenv.local.nix
 
 # pre-commit
 .pre-commit-config.yaml
+autodba_backups_dir
