@@ -1,31 +1,37 @@
+# AutoDBA Project Private Repository
 
-# AutoDBA Project
-This is an automated Database Administrator system for PostgreSQL databases.
-The AutoDBA agent monitors and optimizes the database.
+AutoDBA is the AI-powered PostgreSQL management agent developed at CrystalDB.
+This repository contains the internal and proprietary codebase.
 
 ## Prerequisites
-- Docker for agent development
-- The gym requires Kubernetes (see the `gym` directory for more information)
+
+Your development environment should have:
+- python 3.9+
+- Docker
+- Access to a Kubernetes cluster
 
 ## Structure
-- `src/agent/`: Handles the main agent tasks like metrics collection, recommendations, and configuration.
-- `src/api/`: Defines the API endpoints and services.
+- *moving to public repo* `src/agent/`: Handles the main agent tasks like metrics collection, recommendations, and configuration.
+- *moving to public repo* `src/api/`: Defines the API endpoints and services.
 - `src/training/`: Handles machine learning models training.
 - `gym/`: Includes simulation and benchmarking logic.
 
 ## Deployment
-- `src/Dockerfile`: Defines the Docker setup for the agent.
+- *moving to public repo* `src/Dockerfile`: Defines the Docker setup for the agent.
 
 ## Setup Instructions
 
-1. Clone the repository:
+### Clone the repository:
 
     ```bash
     git clone git@github.com:crystalcld/pgAutoDBA.git
-    cd pgAutoDBA
     ```
 
-2. Build and run the project:
+### Build and run the Gym
+
+See [Gym documentation](gym/v2/README.md).
+
+### Build and run the AutoDBA agent:
 
     ```bash
     cd pgAutoDBA
