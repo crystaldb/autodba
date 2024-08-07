@@ -21,7 +21,7 @@ metrics:
 queries:
   - query_name: query_stat_statements
     query: |
-      SELECT
+      /* crystal-query */ SELECT
         queryid,
         calls,
         min_exec_time,

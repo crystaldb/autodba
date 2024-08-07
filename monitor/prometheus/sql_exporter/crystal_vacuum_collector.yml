@@ -1,0 +1,80 @@
+collector_name: crystal_vacuum
+# Minimum interval between collector runs: by default (0s) collectors are executed on every scrape.
+min_interval: 0s
+
+metrics:
+  - metric_name: pg_vacuum_process_count
+    type: gauge
+    help: 'Count of the number of active vacuum processes.'
+    values: [vacuum_count]
+    query: |
+      SELECT COUNT(*) vacuum_count
+      FROM pg_stat_activity
+      WHERE (query ILIKE 'vacuum%' or query ilike 'autovacuum%')
+      AND state = 'active';
+#   - metric_name: crystal_vacuum_progress
+#     type: gauge
+#     help: 'Vacuum progress'
+#     key_labels:
+#       - vacuum_pid
+#       - backend_pid
+#       - datname
+#       - nspname
+#       - relname
+#       - usename
+#       - started_time
+#       - is_autovacuum
+#       - phase
+#       - heap_blks_total
+#       - heap_blks_scanned
+#       - heap_blks_vacuumed
+#       - index_vacuum_count
+#       - max_dead_tuples
+#       - num_dead_tuples
+#     value_label: crystal_metric
+#     values:
+#       - calls
+#       - min_exec_time
+#       - max_exec_time
+#       - mean_exec_time
+#       - stddev_exec_time
+#       - coeff_of_variance
+#     query_ref: crystal_vacuum_progress
+
+# queries:
+#   - query_name: crystal_vacuum_progress
+#     query: |
+#       /* crystal-query */ WITH activity_subq AS (
+#         SELECT pg_catalog.to_char(pid, 'FM0000000') AS extended_pid,
+#               EXTRACT(epoch FROM t.query_start)::int::text AS query_start_time,
+#               EXTRACT(epoch FROM COALESCE(backend_start, pg_catalog.pg_postmaster_start_time()))::int::text AS backend_start_time,
+#               t.datname,
+#               (SELECT pg_catalog.regexp_matches(query, 'autovacuum: VACUUM (ANALYZE )?([^\.]+).([^\(]+)( \(to prevent wraparound\))?'))[2] AS nspname,
+#               (SELECT pg_catalog.regexp_matches(query, 'autovacuum: VACUUM (ANALYZE )?([^\.]+).([^\(]+)( \(to prevent wraparound\))?'))[3] AS relname,
+#               COALESCE(t.usename, '') AS usename,
+#               t.query_start,
+#               t.query LIKE 'autovacuum: VACUUM%%' AS is_autovacuum,
+#               t.query,
+#               t.pid
+#         FROM pg_catalog.pg_stat_activity t
+#       )
+#       SELECT (query_start_time || extended_pid)::bigint AS vacuum_pid,
+#             (backend_start_time || extended_pid)::bigint AS backend_pid,
+#             a.datname,
+#             COALESCE(n.nspname, a.nspname) AS nspname,
+#             COALESCE(c.relname, a.relname) AS relname,
+#             a.usename,
+#             a.query_start AS started_time,
+#             a.is_autovacuum,
+#             COALESCE(v.phase, '') AS phase,
+#             COALESCE(v.heap_blks_total, 0) AS heap_blks_total,
+#             COALESCE(v.heap_blks_scanned, 0) AS heap_blks_scanned,
+#             COALESCE(v.heap_blks_vacuumed, 0) AS heap_blks_vacuumed,
+#             COALESCE(v.index_vacuum_count, 0) AS index_vacuum_count,
+#             COALESCE(v.max_dead_tuples, 0) AS max_dead_tuples,
+#             COALESCE(v.num_dead_tuples, 0) AS num_dead_tuples
+#       FROM pg_catalog.pg_stat_progress_vacuum v
+#           JOIN activity_subq a USING (pid)
+#           LEFT JOIN pg_catalog.pg_class c ON (c.oid = v.relid)
+#           LEFT JOIN pg_catalog.pg_namespace n ON (n.oid = c.relnamespace)
+#       WHERE c.oid IS NOT NULL OR (a.query <> '<insufficient privilege>' AND a.nspname IS NOT NULL AND a.relname IS NOT NULL)
