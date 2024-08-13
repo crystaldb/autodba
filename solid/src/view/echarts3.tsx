@@ -54,7 +54,7 @@ export function Echarts3(this: any) {
         option={option()()}
         eventHandlers={eventHandlers}
         ref={ref}
-        class="bg-white dark:bg-black"
+        class=""
       />
     </>
   );

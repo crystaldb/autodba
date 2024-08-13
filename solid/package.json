@@ -32,11 +32,13 @@
     "vitest": "^2.0.4"
   },
   "dependencies": {
+    "@floating-ui/dom": "^1.6.9",
     "@solidjs/router": "^0.13.6",
     "@tanstack/solid-table": "^8.19.3",
     "echarts": "^5.5.1",
     "echarts-solid": "^0.1.0",
     "solid-icons": "^1.1.0",
-    "solid-js": "^1.8.11"
+    "solid-js": "^1.8.11",
+    "solid-simple-popover": "^2.0.0"
   }
 }

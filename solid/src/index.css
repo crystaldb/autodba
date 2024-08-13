@@ -11,9 +11,25 @@
     @apply bg-neutral-100 text-black dark:bg-neutral-900 dark:text-white;
     /* @apply bg-neutral-100; */
   }
+  [popover] {
+    margin: 0;
+    background-color: transparent;
+    padding: 0;
+    border: none;
+  }
 }
 
 @layer components {
+  .floating {
+    position: absolute;
+    width: max-content;
+    top: 0;
+    left: 0;
+  }
+  .floating.width60 {
+    @apply max-w-60;
+    @apply bg-neutral-100 text-black dark:bg-neutral-700 dark:text-white px-2.5 py-1.5 rounded;
+  }
   a.active {
     @apply underline underline-offset-8;
   }
