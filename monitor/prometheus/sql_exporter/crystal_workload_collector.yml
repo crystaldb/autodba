@@ -99,6 +99,16 @@ metrics:
       - toast_size
     query_ref: crystal_table_disk_usage_query
 
+  - metric_name: crystal_max_transaction_age
+    type: gauge
+    help: 'Age of the oldest transaction ID (datfrozenxid) across all databases.'
+    key_labels:
+      - datname
+    value_label: transaction_age
+    values:
+      - age
+    query_ref: crystal_max_transaction_age_query
+
 queries:
   - query_name: crystal_pg_stat_activity_query
     query: |
@@ -200,3 +210,11 @@ queries:
       WHERE
           relkind = 'r'
           AND nspname NOT IN ('pg_catalog', 'information_schema', 'pg_toast', 'pg_temp_1', 'pg_toast_temp_1');
+
+  - query_name: crystal_max_transaction_age_query
+    query: |
+      /* crystal-query */ SELECT
+        datname,
+        age(datfrozenxid) as age
+      FROM
+        pg_database
