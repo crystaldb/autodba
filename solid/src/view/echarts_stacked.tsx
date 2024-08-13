@@ -4,24 +4,24 @@ import { createSignal } from "solid-js";
 import { datazoom } from "../event_echarts";
 import { State } from "../state";
 
-export function Echarts1(props: { data: number[][] }) {
+export function EchartsStacked(props: { class?: string; data: number[][] }) {
   let ref: import("@solid-primitives/refs").Ref<HTMLDivElement>;
   const { state, setState } = contextState();
 
   const grid = {
-    left: 100,
-    right: 100,
-    top: 50,
-    bottom: 50,
+    left: 40,
+    right: 180,
+    top: 10,
+    bottom: 20,
   };
 
   const eventHandlers = {
     click: (event: any) => {
       console.log("Chart is clicked!", event);
     },
-    highlight: (event: any) => {
-      // console.log("Chart Highlight", event);
-    },
+    // highlight: (event: any) => {
+    //   console.log("Chart Highlight", event);
+    // },
     datazoom: datazoom.bind(null, setState, state),
   };
 
@@ -37,11 +37,11 @@ export function Echarts1(props: { data: number[][] }) {
       totalData.push(sum);
     }
     const series = [
-      "Direct",
-      "Mail Ad",
-      "Affiliate Ad",
-      "Video Ad",
-      "Search Engine",
+      "CPU",
+      "Client:ClientRead",
+      "Lock:tuple",
+      "LWLock:WALWrite",
+      "Lock:transactionid",
     ].map((name, sid) => {
       return {
         name,
@@ -59,10 +59,26 @@ export function Echarts1(props: { data: number[][] }) {
         ),
       };
     });
+    series.push({
+      name: "vCPUs",
+      type: "line",
+      data: [20, 20, 20, 20, 20],
+      // @ts-expect-error markLine is not defined for some reason
+      markLine: {
+        data: [{ type: "average", name: "Avg" }],
+      },
+    });
 
     return {
       legend: {
-        selectedMode: false,
+        selectedMode: true,
+        orient: "vertical",
+        right: 30,
+        top: 70,
+        bottom: 20,
+        textStyle: {
+          color: true,
+        },
       },
       grid,
       yAxis: {
@@ -80,19 +96,25 @@ export function Echarts1(props: { data: number[][] }) {
           start: state.range_start,
           end: state.range_end,
         },
+        {
+          type: "inside",
+          show: true,
+          realtime: true,
+          start: state.range_start,
+          end: state.range_end,
+        },
       ],
     };
   });
 
   return (
-    <>
+    <div class={`${props.class}`}>
       <EChartsAutoSize
         // @ts-expect-error
         option={option()()}
         eventHandlers={eventHandlers}
         ref={ref}
-        class="dark:bg-gray-400"
       />
-    </>
+    </div>
   );
 }

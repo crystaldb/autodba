@@ -4,7 +4,13 @@ import { contextState } from "../context_state";
 import { batch, createSignal, onMount } from "solid-js";
 import { datazoom } from "../event_echarts";
 
-export function Echarts2(props: { dataA: any; dataB: any; dataC: any }) {
+export function Echarts2(props: {
+  title: string;
+  class?: string;
+  dataA: any;
+  dataB: any;
+  dataC: any;
+}) {
   const { state, setState } = contextState();
 
   const [option] = createSignal(() => {
@@ -15,21 +21,24 @@ export function Echarts2(props: { dataA: any; dataB: any; dataC: any }) {
     // END NOTE
     return {
       title: {
-        text: "Rainfall and Flow Relationship",
-        left: "center",
-      },
-      grid: {
-        bottom: 80,
-      },
-      toolbox: {
-        feature: {
-          dataZoom: {
-            yAxisIndex: "none",
-          },
-          restore: {},
-          saveAsImage: {},
+        text: props.title,
+        left: -5,
+        textStyle: {
+          fontSize: 14,
         },
       },
+      grid: {
+        bottom: 100,
+      },
+      // toolbox: {
+      //   feature: {
+      //     dataZoom: {
+      //       yAxisIndex: "none",
+      //     },
+      //     restore: {},
+      //     saveAsImage: {},
+      //   },
+      // },
       tooltip: {
         trigger: "axis",
         axisPointer: {
@@ -41,15 +50,31 @@ export function Echarts2(props: { dataA: any; dataB: any; dataC: any }) {
         },
       },
       legend: {
-        data: ["Flow", "Rainfall"],
-        left: 10,
+        data: ["Requests", "Requests 2"],
+        left: 0,
+        bottom: 40,
       },
+      xAxis: [
+        {
+          type: "category",
+          boundaryGap: false,
+          // axisLine: { onZero: false },
+          data: props.dataA,
+        },
+      ],
+      yAxis: [
+        {
+          name: "    Requests/sec",
+          type: "value",
+        },
+      ],
       dataZoom: [
         {
           show: true,
           realtime: true,
           start: state.range_start,
           end: state.range_end,
+          bottom: 10,
         },
         {
           type: "inside",
@@ -58,32 +83,11 @@ export function Echarts2(props: { dataA: any; dataB: any; dataC: any }) {
           end: state.range_end,
         },
       ],
-      xAxis: [
-        {
-          type: "category",
-          boundaryGap: false,
-          axisLine: { onZero: false },
-          data: props.dataA,
-        },
-      ],
-      yAxis: [
-        {
-          name: "Flow(m³/s)",
-          type: "value",
-        },
-        {
-          name: "Rainfall(mm)",
-          nameLocation: "start",
-          alignTicks: true,
-          type: "value",
-          inverse: true,
-        },
-      ],
       series: [
         {
-          name: "Flow",
+          name: "Requests",
           type: "line",
-          areaStyle: {},
+          // areaStyle: {},
           lineStyle: {
             width: 1,
           },
@@ -109,10 +113,9 @@ export function Echarts2(props: { dataA: any; dataB: any; dataC: any }) {
           data: props.dataB,
         },
         {
-          name: "Rainfall",
+          name: "Requests 2",
           type: "line",
-          yAxisIndex: 1,
-          areaStyle: {},
+          // areaStyle: {},
           lineStyle: {
             width: 1,
           },
@@ -127,10 +130,10 @@ export function Echarts2(props: { dataA: any; dataB: any; dataC: any }) {
             data: [
               [
                 {
-                  xAxis: "2009/9/10\n7:00",
+                  xAxis: "2009/9/12\n7:00",
                 },
                 {
-                  xAxis: "2009/9/20\n7:00",
+                  xAxis: "2009/9/22\n7:00",
                 },
               ],
             ],
@@ -168,13 +171,13 @@ export function Echarts2(props: { dataA: any; dataB: any; dataC: any }) {
   // });
 
   return (
-    <>
+    <div class={props.class}>
       <EChartsAutoSize
         // @ts-expect-error
         option={option()()}
         eventHandlers={eventHandlers}
-        class="bg-white dark:bg-black"
+        class=""
       />
-    </>
+    </div>
   );
 }
