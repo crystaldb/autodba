@@ -1,0 +1,18 @@
+{
+    "port": "4000",
+    "prometheus_server": "http://localhost:7001",
+    "routes_config": {
+        "/v1/health": {
+            "params": ["database_id","start","step"],
+            "options" : {
+                "start": "$start",
+                "step": "$step"
+            },
+            "metrics": {
+                "connections_percent": "sum(pg_stat_database_numbackends{database_id=~\"$database_id\"})/sum(pg_settings_max_connections)",
+                "cpu": "sum(rds_cpu_usage_percent_average{dbidentifier=~\"$database_id\"})",
+                "disk_usage": "1-(sum(rds_free_storage_bytes{dbidentifier=\"$database_id\"})/sum(rds_allocated_storage_bytes{dbidentifier=\"$database_id\"}))"
+            }
+        }
+    }
+}
