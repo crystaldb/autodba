@@ -80,7 +80,7 @@ export function EchartsGauge1(props: IProps) {
           offsetCenter: [0, "-7%"],
           fontSize: 23,
           fontWeight: "bolder",
-          formatter: "{value} %",
+          formatter: (value: number) => `${value.toFixed(1)} %`,
           color: "inherit",
         },
       },
@@ -141,7 +141,7 @@ export function EchartsGauge1(props: IProps) {
   return (
     <>
       <EChartsAutoSize
-        // @ts-expect-error
+        // @ts-expect-error suppress complaint about `type: "gauge"`
         option={mergeProps(base, {
           dataset: {
             source: [[props.data[props.data.length - 1]]],
