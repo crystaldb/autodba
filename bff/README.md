@@ -7,6 +7,11 @@ config_all.json is an example that contains all the queries we might utilize
 
 NOTE: There is a limit of 11 thousand samples per query. Meaning if you want data at a 5 second sample rate, you can only request a time span of 11000*5 seconds, about 15hours, in a single query. If you want data at a 30s sample rate, you can query up a 91 hour time range in a single query
 
+## Testing
+
+Run unit tests with: go test ./...
+Run formatting with: go fmt ./...
+
 ## Setup Instructions
 To run the project locally:
 

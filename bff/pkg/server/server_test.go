@@ -13,9 +13,9 @@ type MockMetricsService struct {
 	mock.Mock
 }
 
-func (m *MockMetricsService) Execute(metrics map[string]string, options map[string]string) (map[int64]map[string]float64, map[string]error) {
+func (m *MockMetricsService) Execute(metrics map[string]string, options map[string]string) (map[int64]map[string]float64, error) {
 	args := m.Called(metrics, options)
-	return args.Get(0).(map[int64]map[string]float64), args.Get(1).(map[string]error)
+	return args.Get(0).(map[int64]map[string]float64), args.Error(1)
 }
 
 func TestEndpointsGeneration(t *testing.T) {
@@ -24,7 +24,7 @@ func TestEndpointsGeneration(t *testing.T) {
 		map[int64]map[string]float64{
 			1620000000000: {"connections": 12.0},
 		},
-		map[string]error{},
+		nil,
 	)
 
 	route := "/v1/health"
@@ -90,13 +90,13 @@ func TestParamsPopulation(t *testing.T) {
 	}), mock.MatchedBy(func(options map[string]string) bool {
 		assert.Equal(t, expectedOptions, options, "Options should be populated with params")
 		return true
-	})).Return(map[int64]map[string]float64{}, map[string]error{})
+	})).Return(map[int64]map[string]float64{}, nil)
 
 	handler := metrics_handler(routesConfig, mockMetricsService)
 
 	// TEST params population
 	record := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/health?database_id=test_db&start=0000", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/health?database_id=test_db&start=0000&end=1111", nil)
 	handler.ServeHTTP(record, req)
 	assert.Equal(t, http.StatusOK, record.Code)
 
@@ -125,7 +125,7 @@ func TestMissingParams(t *testing.T) {
 
 	mockMetricsService := new(MockMetricsService)
 
-	mockMetricsService.On("Execute", mock.Anything, mock.Anything).Return(map[string]string{"connections": "12"}, map[string]error{})
+	mockMetricsService.On("Execute", mock.Anything, mock.Anything).Return(map[string]string{"connections": "12"}, nil)
 	handler := metrics_handler(routesConfig, mockMetricsService)
 
 	record := httptest.NewRecorder()
@@ -145,7 +145,7 @@ func TestMetricsHandlerJSONFormat(t *testing.T) {
 			1627845600000: map[string]float64{"cpu": 0.75, "disk": 0.65},
 			1627845660000: map[string]float64{"cpu": 0.80, "disk": 0.60},
 		},
-		map[string]error{},
+		nil,
 	)
 
 	routesConfig := map[string]RouteConfig{
