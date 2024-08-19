@@ -13,13 +13,13 @@ export default defineConfig({
   ],
   server: {
     port: 3000,
-    // proxy: {
-    //   "/api": {
-    //     target: "http://localhost:1238/",
-    //     secure: false,
-    //     //"pathRewrite": { "^/api": "" }
-    //   },
-    // },
+    proxy: {
+      "/api": {
+        target: "http://localhost:4000/",
+        secure: false,
+        //"pathRewrite": { "^/api": "" }
+      },
+    },
   },
   build: {
     target: "esnext",

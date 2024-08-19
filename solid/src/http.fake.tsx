@@ -1,3 +1,6 @@
+import { createFakeCubeActivityArrays } from "./fake.cubeactivity";
+import { ArraysCubeActivity } from "./http";
+
 let timeB = 0;
 let dateTimeDay = "2009/10/18";
 let dateTimeHour = 8;
@@ -22,6 +25,15 @@ export function httpFakeDatabase(): {
       kind: "Instance",
     },
   };
+}
+
+export function httpFakeCubeActivity(): ArraysCubeActivity {
+  if (timeB === 0) {
+    timeB = Date.now();
+    return createFakeCubeActivityArrays(1);
+  } else {
+    return createFakeCubeActivityArrays(2);
+  }
 }
 
 export function httpFake(): {

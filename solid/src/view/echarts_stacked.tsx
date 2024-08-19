@@ -9,8 +9,8 @@ export function EchartsStacked(props: { class?: string; data: number[][] }) {
   const { state, setState } = contextState();
 
   const grid = {
-    left: 40,
-    right: 180,
+    left: 180,
+    right: 0,
     top: 10,
     bottom: 20,
   };
@@ -54,7 +54,7 @@ export function EchartsStacked(props: { class?: string; data: number[][] }) {
           // Math.round(params.value * 1000) / 10 + "%",
         },
         data: rawData[sid].map(
-          (d, did) => (totalData[did] <= 0 ? 0 : d)
+          (d, did) => (totalData[did] <= 0 ? 0 : d),
           // totalData[did] <= 0 ? 0 : d / totalData[did]
         ),
       };
@@ -73,7 +73,7 @@ export function EchartsStacked(props: { class?: string; data: number[][] }) {
       legend: {
         selectedMode: true,
         orient: "vertical",
-        right: 30,
+        left: 0,
         top: 70,
         bottom: 20,
         textStyle: {

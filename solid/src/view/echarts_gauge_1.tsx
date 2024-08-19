@@ -80,7 +80,7 @@ export function EchartsGauge1(props: IProps) {
           offsetCenter: [0, "-7%"],
           fontSize: 23,
           fontWeight: "bolder",
-          formatter: (value: number) => `${value.toFixed(1)} %`,
+          formatter: (value: number) => (value ? `${value.toFixed(1)} %` : ""),
           color: "inherit",
         },
       },
