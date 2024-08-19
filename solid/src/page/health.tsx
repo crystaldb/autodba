@@ -14,7 +14,11 @@ export function PageHealth(props: any) {
     <>
       <section class="grid gap-4 grid-cols-1 xs:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
         <MetricColumn>
-          {header("info-Connections", "Connections")}
+          {header(
+            "info-Connections",
+            "Connections",
+            `TODO ${state.data.cpu.length}`,
+          )}
           <div class="flex flex-col h-28">
             <EchartsGauge1 data={state.data.cpu} />
           </div>
@@ -86,7 +90,7 @@ function MetricColumn(props: {
 function header(
   id: string,
   text: string,
-  info: string = "TODO replace with helpful info"
+  info: string = "TODO replace with helpful info",
 ) {
   return (
     <div class="flex justify-between relative">

@@ -1,4 +1,4 @@
-import NavTop from "./NavTop";
+import { NavTop } from "./NavTop";
 import { A, Navigate } from "@solidjs/router";
 import { ContextState, contextState } from "./context_state";
 import { useState } from "./state";
@@ -16,7 +16,7 @@ import {
   onMount,
   Show,
 } from "solid-js";
-import { getData, getDatabaseInfo } from "./http";
+import { getEndpointData, getDatabaseInfo } from "./http";
 import { Dynamic } from "solid-js/web";
 import { DarkmodeSelector } from "./view/darkmode";
 import {
@@ -28,20 +28,21 @@ import {
 export default function App(): JSX.Element {
   const { setState } = useState();
   const getDataFn = getDatabaseInfo.bind(null, setState);
-  createResource(getDataFn);
+  const databaseIsReady = createResource(getDataFn);
 
   return (
     <div class="max-w-screen-xl mx-auto">
       <ContextState>
         <Router>
-          <Route path="/" component={() => <Navigate href="/health" />} />
+          <Route path="/" component={() => <Navigate href="/activity" />} />
           <Route
             path="/health"
             component={PageWrapper.bind(
               null,
               "health",
               "pageHealth",
-              PageHealth
+              PageHealth,
+              databaseIsReady,
             )}
           />
           <Route
@@ -50,7 +51,8 @@ export default function App(): JSX.Element {
               null,
               "activity",
               "pageActivity",
-              PageActivity
+              PageActivity,
+              databaseIsReady,
             )}
           />
           <Route
@@ -59,7 +61,8 @@ export default function App(): JSX.Element {
               null,
               "metric",
               "pageMetric",
-              PageMetric
+              PageMetric,
+              databaseIsReady,
             )}
           />
           <Route
@@ -68,7 +71,8 @@ export default function App(): JSX.Element {
               null,
               "explorer",
               "pageExplorer",
-              PageExplorer
+              PageExplorer,
+              databaseIsReady,
             )}
           />
           <Route path={"**"} component={() => <h1>404. Page not found.</h1>} />
@@ -78,20 +82,29 @@ export default function App(): JSX.Element {
   );
 }
 
-function PageWrapper(apiEndpoint: string, testid: string, page: any) {
+function PageWrapper(
+  apiEndpoint: string,
+  testid: string,
+  page: any,
+  readyToMakeTheQuery: any,
+) {
   const { state, setState } = contextState();
-  const getDataFn = getData.bind(null, apiEndpoint, setState);
+  const getDataFn = getEndpointData.bind(null, apiEndpoint, state, setState);
   let timeout: any;
   let destroyed = false;
 
   onMount(() => {
     function queryData() {
-      createResource(getDataFn);
+      createResource(readyToMakeTheQuery, getDataFn);
       if (!destroyed) {
         timeout = setTimeout(queryData, state.interval_ms);
       }
     }
     queryData();
+    setTimeout(() => {
+      //TODO remove this hack. Fix the "readyToMakeTheQuery" issue to trigger this resource creation
+      createResource(readyToMakeTheQuery, getDataFn);
+    }, 100);
   });
 
   onCleanup(() => {
@@ -105,8 +118,10 @@ function PageWrapper(apiEndpoint: string, testid: string, page: any) {
   return (
     <section data-testid={testid} class="flex flex-col mx-1 xs:mx-8">
       <NavTopConfig1 />
-      <DatabaseHeader class="mb-4" />
-      <IntervalSelector class="self-start my-4" />
+      <section class="flex flex-wrap justify-between gap-4 mb-8">
+        <DatabaseHeader />
+        <IntervalSelector class="self-start" />
+      </section>
       <Dynamic component={page} />
       <DarkmodeSelector class="mt-16 mb-4" />
     </section>
@@ -117,8 +132,8 @@ function DatabaseHeader(props: { class?: any }) {
   const { state } = contextState();
   return (
     <section class={`flex flex-col gap-y-1 ${props.class}`}>
-      <h1 class="text-2xl font-semibold">{state.database.name}</h1>
-      <p class="text-neutral-500 flex flex-wrap gap-x-4 text-neutral-600 dark:text-neutral-400 text-sm">
+      <h1 class="text-lg xs:text-2xl font-semibold">{state.database.name}</h1>
+      <p class="text-neutral-500 flex flex-wrap gap-x-4 dark:text-neutral-400 text-xs sm:text-sm">
         <span>{state.database.engine}</span>
         <span>{state.database.version}</span>
         <span>{state.database.size}</span>
@@ -147,7 +162,7 @@ function IntervalSelector(props: { class?: string }) {
   return (
     <>
       <div class={`flex items-center gap-x-3 text-sm ${props.class}`}>
-        <label>Interval:</label>
+        <label>Interval</label>
         <select
           onChange={(e) => setState({ interval_ms: +e.currentTarget.value })}
           class="bg-transparent rounded border border-neutral-200 dark:border-neutral-700 text-fuchsia-500 ps-2 pe-8 py-1.5 hover:border-gray-400 focus:outline-none"
@@ -192,14 +207,6 @@ function NavTopConfig1() {
     <NavTop class="mb-8">
       <A
         activeClass="active"
-        href="/health"
-        class="flex items-center justify-center h-full"
-        end
-      >
-        Health
-      </A>
-      <A
-        activeClass="active"
         href="/activity"
         class="flex items-center justify-center h-full"
         end
@@ -213,6 +220,15 @@ function NavTopConfig1() {
         end
       >
         Metrics
+      </A>
+      <div class="h-5 border-s w-1 border-neutral-200 dark:border-neutral-700"></div>
+      <A
+        activeClass="active"
+        href="/health"
+        class="flex items-center justify-center h-full"
+        end
+      >
+        Health
       </A>
       <A
         activeClass="active"

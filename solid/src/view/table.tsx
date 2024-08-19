@@ -69,12 +69,12 @@ const columns: ColumnDef<Person>[] = [
 export function ViewTable() {
   const [data, setData] = createSignal(makeData(50000));
   const [columnFilters, setColumnFilters] = createSignal<ColumnFiltersState>(
-    []
+    [],
   );
   const [globalFilter, setGlobalFilter] = createSignal("");
   const debounceSetGlobalFilter = debounce(
     (value: string) => setGlobalFilter(value),
-    500
+    500,
   );
   const refreshData = () => setData(makeData(50000));
 
@@ -125,7 +125,7 @@ export function ViewTable() {
                         <>
                           {flexRender(
                             header.column.columnDef.header,
-                            header.getContext()
+                            header.getContext(),
                           )}
                           {header.column.getCanFilter() ? (
                             <div>
@@ -153,7 +153,7 @@ export function ViewTable() {
                     <td>
                       {flexRender(
                         cell.column.columnDef.cell,
-                        cell.getContext()
+                        cell.getContext(),
                       )}
                     </td>
                   )}
