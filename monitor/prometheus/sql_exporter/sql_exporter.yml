@@ -21,9 +21,6 @@ target:
   collectors:
     - crystal_pg_lock_contention
     - crystal_pg_stat_io
-    - crystal_pg_stat_statements
-    - crystal_pg_class
-    - crystal_vacuum
     - crystal_workload
 
 # Collector files specifies a list of globs. One collector definition is read from each matching file.
