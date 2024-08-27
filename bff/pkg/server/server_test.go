@@ -2,11 +2,12 @@ package server
 
 import (
 	"encoding/json"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 type MockMetricsService struct {
@@ -30,7 +31,7 @@ func TestEndpointsGeneration(t *testing.T) {
 	route := "/v1/health"
 	routesConfig := map[string]RouteConfig{
 		route: {
-			Params: []string{"database_id", "start", "end"},
+			Params: []string{"datname", "dbindentifier", "start", "end"},
 			Options: map[string]string{
 				"start": "$start",
 				"end":   "$end",
@@ -62,13 +63,13 @@ func TestParamsPopulation(t *testing.T) {
 	route := "/v1/health"
 	routesConfig := map[string]RouteConfig{
 		route: {
-			Params: []string{"database_id", "start", "end"},
+			Params: []string{"datname", "dbidentifier", "start", "end"},
 			Options: map[string]string{
 				"start": "$start",
 				"end":   "$end",
 			},
 			Metrics: map[string]string{
-				"connections": "sum(pg_stat_database_numbackends{datname=~\"$database_id\"})/sum(pg_settings_max_connections)",
+				"connections": "sum(pg_stat_database_numbackends{datname=~\"$datname\"})/sum(pg_settings_max_connections)",
 			},
 		},
 	}
@@ -96,13 +97,13 @@ func TestParamsPopulation(t *testing.T) {
 
 	// TEST params population
 	record := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/health?database_id=test_db&start=0000&end=1111", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/health?datname=test_db&start=0000&end=1111", nil)
 	handler.ServeHTTP(record, req)
 	assert.Equal(t, http.StatusOK, record.Code)
 
 	// Arbitrary param order
 	record = httptest.NewRecorder()
-	req = httptest.NewRequest(http.MethodGet, "/api/v1/health?end=1111&start=0000&database_id=test_db", nil)
+	req = httptest.NewRequest(http.MethodGet, "/api/v1/health?end=1111&start=0000&datname=test_db", nil)
 	handler.ServeHTTP(record, req)
 	assert.Equal(t, http.StatusOK, record.Code)
 
@@ -112,13 +113,13 @@ func TestMissingParams(t *testing.T) {
 	route := "/v1/health"
 	routesConfig := map[string]RouteConfig{
 		route: {
-			Params: []string{"database_id", "start", "end"},
+			Params: []string{"datname", "dbidentifier", "start", "end"},
 			Options: map[string]string{
 				"start": "$start",
 				"end":   "$end",
 			},
 			Metrics: map[string]string{
-				"connections": "sum(pg_stat_database_numbackends{datname=~\"$database_id\"})/sum(pg_settings_max_connections)",
+				"connections": "sum(pg_stat_database_numbackends{datname=~\"$datname\"})/sum(pg_settings_max_connections)",
 			},
 		},
 	}
@@ -131,7 +132,7 @@ func TestMissingParams(t *testing.T) {
 	record := httptest.NewRecorder()
 
 	// end time missing, but specified in options, expect bad request
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/health?database_id=test_db&start=0000", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/health?datname=test_db&start=0000", nil)
 	handler.ServeHTTP(record, req)
 	assert.Equal(t, http.StatusBadRequest, record.Code)
 
