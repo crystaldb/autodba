@@ -10,11 +10,13 @@ import (
 // AggregatedMetrics == map[int64]map[string]float64
 
 type Repository interface {
-	Execute(query string, options map[string]string) (*map[int64]float64, error)
+	Execute(query string, options map[string]string) (*map[int64]map[string]float64, error)
+	ExecuteRaw(query string, options map[string]string) ([]map[string]interface{}, error)
 }
 
 type Service interface {
 	Execute(metrics map[string]string, options map[string]string) (map[int64]map[string]float64, error)
+	ExecuteRaw(query string, options map[string]string) ([]map[string]interface{}, error)
 }
 
 type service_imp struct {
@@ -40,13 +42,42 @@ func (s service_imp) Execute(metrics map[string]string, options map[string]strin
 			return aggregate, err
 		}
 
-		for time, value := range *timeSeries {
+		var isSingleSeries bool
+
+		for _, value := range *timeSeries {
+			// if the record object returned at each time only contains one string float pair, ie 1 value per time
+			if len(value) == 1 {
+				isSingleSeries = true
+			}
+			break
+		}
+
+		for time, record := range *timeSeries {
 			if _, ok := aggregate[time]; !ok {
 				aggregate[time] = make(map[string]float64)
 			}
-			aggregate[time][metric] = value
+
+			for label, value := range record {
+				if isSingleSeries {
+					aggregate[time][metric] = value
+				} else {
+					aggregate[time][label] = value
+				}
+			}
 		}
+
 	}
 
 	return aggregate, nil
+}
+
+func (s service_imp) ExecuteRaw(query string, options map[string]string) ([]map[string]interface{}, error) {
+
+	result, err := s.repo.ExecuteRaw(query, options)
+	if err != nil {
+		fmt.Printf("Error executing query %s\n", err)
+		return nil, err
+	}
+
+	return result, nil
 }

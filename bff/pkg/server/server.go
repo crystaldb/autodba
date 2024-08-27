@@ -3,11 +3,12 @@ package server
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/go-chi/chi/v5"
 	"local/bff/pkg/metrics"
 	"net/http"
 	"sort"
 	"strings"
+
+	"github.com/go-chi/chi/v5"
 )
 
 type Server interface {
@@ -51,6 +52,8 @@ func (s server_imp) Run() error {
 	r := chi.NewRouter()
 
 	r.Use(CORS)
+
+	r.Get("/api/v1/activity", activity_handler(s.metrics_service))
 
 	r.Route(api_prefix, func(r chi.Router) {
 		r.Mount("/", metrics_handler(s.routes_config, s.metrics_service))
@@ -164,5 +167,84 @@ func metrics_handler(route_configs map[string]RouteConfig, metrics_service metri
 		} else {
 			http.Error(w, "No matching route found", http.StatusNotFound)
 		}
+	})
+}
+
+func activity_handler(metrics_service metrics.Service) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Println("Handling activity request")
+
+		database_list := r.URL.Query().Get("database_list")
+		start := r.URL.Query().Get("start")
+		end := r.URL.Query().Get("end")
+		step := r.URL.Query().Get("step")
+		legend := r.URL.Query().Get("legend")
+		dim := r.URL.Query().Get("dim")
+		filterdim := r.URL.Query().Get("filterdim")
+		filterdimselected := r.URL.Query().Get("filterdimselected")
+		limit := r.URL.Query().Get("limit")
+
+		// Map of parameter names to their values
+		requiredParamMap := map[string]string{
+			"database_list": database_list,
+			"start":         start,
+			"end":           end,
+			"step":          step,
+			"legend":        legend,
+			"dim":           dim,
+		}
+
+		// Iterate over the map and check for missing values
+		for paramName, paramValue := range requiredParamMap {
+			if paramValue == "" {
+				http.Error(w, fmt.Sprintf("Missing param/value: %s", paramName), http.StatusBadRequest)
+				return
+			}
+		}
+
+		promQLInput := PromQLInput{
+			DatabaseList:      database_list,
+			Start:             start,
+			End:               end,
+			Step:              step,
+			Legend:            legend,
+			Dim:               dim,
+			FilterDim:         filterdim,
+			FilterDimSelected: filterdimselected,
+			Limit:             limit,
+			Offset:            "", // TODO not in query
+		}
+
+		fmt.Println("PromQLInput: ", promQLInput)
+
+		query, err := GenerateActivityCubePromQLQuery(promQLInput)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		fmt.Println("query: ", query)
+
+		options := map[string]string{
+			"start": start,
+			"end":   end,
+			"step":  step,
+			"dim":   dim,
+		}
+
+		results, err := metrics_service.ExecuteRaw(query, options)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		js, err := json.Marshal(results)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		w.Write(js)
+
 	})
 }
