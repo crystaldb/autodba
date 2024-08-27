@@ -35,6 +35,7 @@
     "@floating-ui/dom": "^1.6.9",
     "@solidjs/router": "^0.13.6",
     "@tanstack/solid-table": "^8.19.3",
+    "@tidyjs/tidy": "^2.5.2",
     "echarts": "^5.5.1",
     "echarts-solid": "^0.1.0",
     "solid-icons": "^1.1.0",

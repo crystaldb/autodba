@@ -1,28 +1,12 @@
 import { produce } from "solid-js/store";
-import type { State } from "./state";
-import { httpFake, httpFakeCubeActivity, httpFakeDatabase } from "./http.fake";
-
-export interface ArraysCubeActivity {
-  arrActiveSessionCount: number[];
-  arrTime: number[];
-  arrSql: string[];
-  arrWaits: string[];
-  arrHosts: string[];
-  arrUsers: string[];
-  arrSession_types: string[];
-  arrApplications: string[];
-  arrDatabases: string[];
-}
+import { DimensionName, type State } from "./state";
+import { httpFakeDatabase } from "./fake.http";
 
 export async function getDatabaseInfo(
   setState: (arg0: string, arg1: any, arg2?: any) => void,
-) {
-  const response = await fetch("/api/query/database", {
-    method: "GET",
-  });
+): Promise<boolean> {
+  // const response = await fetch("/api/query/database", { method: "GET", });
 
-  // const jsonIGNORED = await response.json();
-  // if (!response.ok || response.ok) { }
   const json = httpFakeDatabase();
 
   setState("database", json.database);
@@ -33,18 +17,20 @@ export async function getEndpointData(
   apiEndpoint: string,
   state: State,
   setState: (arg0: string, arg1: any, arg2?: any) => void,
-) {
+): Promise<boolean> {
+  console.log("getEndpointData");
   if (apiEndpoint === "health") {
-    if (!state.database.name) return;
+    if (!state.database.name) return false;
 
-    const step_s = Math.floor(state.interval_ms / 1000);
     const safe_prometheus_11kSampleLimit_ms = 10950 * state.interval_ms;
     const time_start = Math.max(
-      state.interval_request_ms,
-      +new Date() - safe_prometheus_11kSampleLimit_ms,
+      state.timeframe_start_ms,
+      +new Date() - 15 * 60 * 1000, // query 15 minutes of data
+      +new Date() - safe_prometheus_11kSampleLimit_ms, // ensure we do not query too much data.
     );
     const response = await fetch(
-      `/api/v1/health?database_id=${state.database.name}&start=${time_start}&step=${step_s}s`,
+      `/api/v1/health?datname=${"(postgres|rdsadmin|template0|template1)" || state.database.name
+      }&start=${time_start}&step=${state.interval_ms}ms`,
       {
         method: "GET",
       },
@@ -58,13 +44,7 @@ export async function getEndpointData(
           max_time = json[i].time_ms;
         }
       }
-      setState("interval_request_ms", Math.max(time_start, max_time));
-      // console.log(
-      //   "Prometheus json : ",
-      //   state.interval_request_ms,
-      //   json.length,
-      //   json
-      // );
+      setState("timeframe_start_ms", Math.max(time_start, max_time));
     }
 
     const cpu = json.map((item: { cpu: number }) => item.cpu);
@@ -72,89 +52,71 @@ export async function getEndpointData(
       (item: { time_ms: number }) => +new Date(item.time_ms),
     );
 
-    const jsonFake = httpFake();
-
     setState(
       "data",
       produce((data: State["data"]) => {
         data.time.push(...time);
         data.cpu.push(...cpu);
-
-        data.echart2a.push(...jsonFake.echart2a);
-        data.echart2b.push(...jsonFake.echart2b);
-        data.echart2c.push(...jsonFake.echart2c);
-        data.echart1[0].pop();
-        data.echart1[1].pop();
-        data.echart1[2].pop();
-        data.echart1[3].pop();
-        data.echart1[4].pop();
-        data.echart1[0].push(...jsonFake.echart1[0]);
-        data.echart1[1].push(...jsonFake.echart1[1]);
-        data.echart1[2].push(...jsonFake.echart1[2]);
-        data.echart1[3].push(...jsonFake.echart1[4]);
-        data.echart1[4].push(...jsonFake.echart1[0]);
       }),
     );
   } else if (apiEndpoint === "activity") {
-    if (!state.database.name) return;
+    if (!state.database.name) return false;
+    queryCube(state, setState);
+  }
+  return true;
+}
 
-    const step_s = Math.floor(state.interval_ms / 1000);
-    const safe_prometheus_11kSampleLimit_ms = 10950 * state.interval_ms;
-    const time_start = Math.max(
-      state.interval_request_ms,
-      +new Date() - safe_prometheus_11kSampleLimit_ms,
-    );
-    const response = await fetch(
-      `/api/v1/activity?database_id=${state.database.name}&start=${
-        state.interval_request_ms
-      }&step=${Math.floor(state.interval_ms / 1000)}s&legend=${
-        state.cubeActivity.uiDimension1
-      }&dim=${state.cubeActivity.uiDimension2}&filterdim=${
-        state.cubeActivity.uiDimension3
-      }&filterdimselected=${encodeURIComponent(state.cubeActivity.uiFilter3)}`,
-      {
-        method: "GET",
-      },
-    );
+let queryCubeBusy = false;
+export async function queryCube(
+  state: State,
+  setState: (arg0: string, arg1: any, arg2?: any) => void,
+): Promise<boolean> {
+  if (!state.database.name) return false;
+  if (queryCubeBusy) return false;
 
-    // const json = await response.json();
+  console.log("queryCube");
+  const safe_prometheus_11kSampleLimit_ms = 10950 * state.interval_ms;
+  const time_start = Math.max(
+    state.cubeActivity.uiDimension1 === DimensionName.time
+      ? state.timeframe_start_ms
+      : 0,
+    +new Date() - 15 * 60 * 1000, // query 15 minutes of data
+    +new Date() - safe_prometheus_11kSampleLimit_ms, // ensure we do not query too much data.
+  );
 
-    const json = httpFakeCubeActivity();
+  queryCubeBusy = true;
+  const response = await fetch(
+    `/api/v1/activity?database_list=${"(postgres|rdsadmin|template0|template1)" || state.database.name
+    }&start=${time_start}&end=${state.timeframe_end_ms || +new Date()}&step=${state.interval_ms
+    }ms&limit=${state.cubeActivity.limit}&legend=${state.cubeActivity.uiLegend
+    }&dim=${state.cubeActivity.uiDimension1}&filterdim=${state.cubeActivity.uiFilter1 !== DimensionName.none
+      ? state.cubeActivity.uiFilter1
+      : ""
+    }&filterdimselected=${encodeURIComponent(
+      state.cubeActivity.uiFilter1 !== DimensionName.none
+        ? state.cubeActivity.uiFilter1Value || ""
+        : "",
+    )}`,
+    {
+      method: "GET",
+    },
+  );
+  queryCubeBusy = false;
+
+  const json = await response.json();
+
+  if (response.ok) {
+    let values = json[json.length - 1].values;
+    let max_time = values[values.length - 1].timestamp;
+    console.log("time delta", +new Date() - max_time);
+    setState("timeframe_start_ms", Math.max(time_start, max_time));
+
     setState(
       "cubeActivity",
-      produce((cubeActivity: ArraysCubeActivity) => {
-        cubeActivity.arrActiveSessionCount.push(...json.arrActiveSessionCount);
-        cubeActivity.arrTime.push(...json.arrTime);
-        cubeActivity.arrSql.push(...json.arrSql);
-        cubeActivity.arrWaits.push(...json.arrWaits);
-        cubeActivity.arrHosts.push(...json.arrHosts);
-        cubeActivity.arrUsers.push(...json.arrUsers);
-        cubeActivity.arrSession_types.push(...json.arrSession_types);
-        cubeActivity.arrApplications.push(...json.arrApplications);
-        cubeActivity.arrDatabases.push(...json.arrDatabases);
-      }),
-    );
-  } else {
-    let json = httpFake();
-    setState(
-      "data",
-      produce((data: State["data"]) => {
-        data.time.push(...json.time);
-        data.cpu.push(...json.cpu);
-        data.echart2a.push(...json.echart2a);
-        data.echart2b.push(...json.echart2b);
-        data.echart2c.push(...json.echart2c);
-        data.echart1[0].pop();
-        data.echart1[1].pop();
-        data.echart1[2].pop();
-        data.echart1[3].pop();
-        data.echart1[4].pop();
-        data.echart1[0].push(...json.echart1[0]);
-        data.echart1[1].push(...json.echart1[1]);
-        data.echart1[2].push(...json.echart1[2]);
-        data.echart1[3].push(...json.echart1[4]);
-        data.echart1[4].push(...json.echart1[0]);
+      produce((cubeActivity: State["cubeActivity"]) => {
+        cubeActivity.cubeData = json;
       }),
     );
   }
+  return true;
 }

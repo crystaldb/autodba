@@ -1,6 +1,4 @@
-import { SolidMarkdown } from "solid-markdown";
-import { HiOutlineEyeSlash, HiOutlineQuestionMarkCircle } from "solid-icons/hi";
-import { JSX, Show } from "solid-js";
+import { JSX } from "solid-js";
 
 export function ViewTitle(props: {
   title:

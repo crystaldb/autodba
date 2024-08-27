@@ -1,8 +1,8 @@
 import type { ECharts } from "echarts-solid";
 import { EChartsAutoSize } from "echarts-solid";
 import { contextState } from "../context_state";
-import { batch, createSignal, onMount } from "solid-js";
-import { datazoom } from "../event_echarts";
+import { createSignal } from "solid-js";
+import { datazoom } from "../state";
 
 export function Echarts2(props: {
   title: string;
