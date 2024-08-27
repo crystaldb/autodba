@@ -144,6 +144,8 @@ PROMETHEUS_PORT=$((UID + 6000 + INSTANCE_ID))
 GRAFANA_PORT=$((UID + 7000 + INSTANCE_ID))
 HOST_PORT=$((UID + 8000 + INSTANCE_ID))
 POSTGRES_HOST_PORT=$((UID + 9000 + INSTANCE_ID))
+WEBAPP_PORT=$((UID + 5000 + INSTANCE_ID))
+BFF_PORT=$((UID + 4000 + INSTANCE_ID))
 CONTAINER_NAME="pgautodba-$USER-$INSTANCE_ID"
 
 # TODO -- logic to handle customer db w/ retries, etc.  Then pass these through, probably as
@@ -231,7 +233,9 @@ echo "Running Docker container: $CONTAINER_NAME"
 echo ""
 echo " prometheus port: $PROMETHEUS_PORT"
 echo "    grafana port: $GRAFANA_PORT"
+echo "     webapp port: $WEBAPP_PORT"
 echo "      flask port: $HOST_PORT"
+echo "        bff port: $BFF_PORT"
 echo "         pg port: $POSTGRES_HOST_PORT"
 echo ""
 echo "=============================================================="
@@ -241,6 +245,8 @@ docker run --name "$CONTAINER_NAME" \
     -p "$POSTGRES_HOST_PORT":5432 \
     -p "$PROMETHEUS_PORT":9090 \
     -p "$GRAFANA_PORT":3000 \
+    -p "$WEBAPP_PORT":5000 \
+    -p "$BFF_PORT":4000 \
     -e AUTODBA_TARGET_DB="$AUTODBA_TARGET_DB" \
     -e AWS_RDS_INSTANCE="$AWS_RDS_INSTANCE" \
     -e DEFAULT_METRIC_COLLECTION_PERIOD_SECONDS=$DEFAULT_METRIC_COLLECTION_PERIOD_SECONDS \

@@ -23,7 +23,7 @@ RUN apt-get install -y --no-install-recommends \
 
 USER autodba
 WORKDIR /home/autodba
-RUN mkdir src elm
+#RUN mkdir src elm
 
 # Create a Python virtual environment
 RUN python3 -m venv /home/autodba/venv
@@ -40,18 +40,28 @@ RUN pip install --no-cache-dir -r requirements.txt
 FROM base AS builder
 
 # install + cache npm dependencies
-WORKDIR /home/autodba/elm
-COPY --chown=autodba:autodba elm/package.json .
-RUN npm install
+#WORKDIR /home/autodba/elm
+#COPY --chown=autodba:autodba elm/package.json .
+#RUN npm install
 
 # install + cache python dependencies
-WORKDIR /home/autodba/elm
-COPY --chown=autodba:autodba elm .
-RUN npm run build  # creates /home/autodba/elm/dist_prod
+#WORKDIR /home/autodba/elm
+#COPY --chown=autodba:autodba elm .
+#RUN npm run build  # creates /home/autodba/elm/dist_prod
 
 WORKDIR /home/autodba/src
 COPY --chown=autodba:autodba src .
 # If we decide to ship compiled python, the command that does it belongs here.
+
+FROM base AS solid_builder
+# Build the solid project
+WORKDIR /home/autodba/solid
+USER root
+COPY --chown=autodba:autodba solid/package.json solid/package-lock.json ./
+RUN npm install
+COPY --chown=autodba:autodba solid ./
+RUN npm run build
+
 
 FROM base as rdsexporter_builder
 
@@ -76,17 +86,26 @@ RUN mkdir -p /usr/lib/prometheus_rds_exporter && \
     cd /usr/lib/prometheus_rds_exporter && \
     make build
 
+# Build bff
+WORKDIR /home/autodba/bff
+COPY bff/go.mod bff/go.sum ./
+RUN go mod download
+COPY bff/ ./
+RUN go build -o main ./cmd/main.go
+RUN mkdir -p /usr/lib/bff
+
+
 FROM builder as lint
 WORKDIR /home/autodba/src
 RUN flake8 --ignore=E501,F401,E302,E305 .
 
-WORKDIR /home/autodba/elm
-RUN npm run check-format
+#WORKDIR /home/autodba/elm
+#RUN npm run check-format
 
 FROM builder AS test
 
-WORKDIR /home/autodba/elm
-RUN npm run format # todo...
+#WORKDIR /home/autodba/elm
+#RUN npm run format # todo...
 
 # TODO: pytest generates a covearge report that we lose.  Write documentation
 #       (or a script) that bind mounts the source checkout on top of . and runs
@@ -106,6 +125,8 @@ RUN apt-get install -y --no-install-recommends \
     sqlite3
 
 
+RUN npm install -g serve
+
 # Expose port 8080 for HTTP traffic
 EXPOSE 8080
 
@@ -114,6 +135,12 @@ EXPOSE 3000
 
 # Prometheus port
 EXPOSE 9090
+
+# Bff port
+EXPOSE 4000
+
+# Webapp port
+EXPOSE 5000
 
 RUN mkdir -p /etc/apt/keyrings/
 RUN wget -q -O - https://apt.grafana.com/gpg.key | gpg --dearmor > /etc/apt/keyrings/grafana.gpg
@@ -129,9 +156,13 @@ RUN rm /usr/lib/prometheus_sql_exporter/mssql_standard.collector.yml
 RUN mkdir -p /usr/lib/prometheus_postgres_exporter && \
     wget -qO- https://github.com/prometheus-community/postgres_exporter/releases/download/v0.15.0/postgres_exporter-0.15.0.linux-amd64.tar.gz | tar -xzf - -C /usr/lib/prometheus_postgres_exporter --strip-components=1
 
+
 COPY --from=builder /home/autodba/src /home/autodba/src
-COPY --from=builder /home/autodba/elm/dist_prod /home/autodba/src/api/static
+#COPY --from=builder /home/autodba/elm/dist_prod /home/autodba/src/api/static
+COPY --from=solid_builder /home/autodba/solid/dist /home/autodba/src/webapp
 COPY --from=rdsexporter_builder /usr/lib/prometheus_rds_exporter /usr/lib/prometheus_rds_exporter
+COPY --from=rdsexporter_builder /home/autodba/bff/main /usr/lib/bff/main
+COPY --from=rdsexporter_builder /home/autodba/bff/config.json /home/autodba/src/config.json
 
 WORKDIR /home/autodba/src
 
