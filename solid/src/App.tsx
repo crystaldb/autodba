@@ -8,27 +8,23 @@ import { PageMetric } from "./page/metric";
 import { PageExplorer } from "./page/explorer";
 import { Router, Route } from "@solidjs/router";
 import {
+  createEffect,
   createResource,
-  createSignal,
   For,
+  getOwner,
   JSX,
   onCleanup,
   onMount,
-  Show,
+  runWithOwner,
 } from "solid-js";
 import { getEndpointData, getDatabaseInfo } from "./http";
 import { Dynamic } from "solid-js/web";
 import { DarkmodeSelector } from "./view/darkmode";
-import {
-  HiOutlineChevronDown,
-  HiOutlineChevronLeft,
-  HiSolidArrowDown,
-} from "solid-icons/hi";
+import { EchartsTimebar } from "./view/echarts_timebar";
 
 export default function App(): JSX.Element {
   const { setState } = useState();
-  const getDataFn = getDatabaseInfo.bind(null, setState);
-  const databaseIsReady = createResource(getDataFn);
+  const [databaseIsReady] = createResource(() => getDatabaseInfo(setState));
 
   return (
     <div class="max-w-screen-xl mx-auto">
@@ -86,25 +82,30 @@ function PageWrapper(
   apiEndpoint: string,
   testid: string,
   page: any,
-  readyToMakeTheQuery: any,
+  databaseIsReady: any,
 ) {
+  const owner = getOwner();
   const { state, setState } = contextState();
-  const getDataFn = getEndpointData.bind(null, apiEndpoint, state, setState);
   let timeout: any;
   let destroyed = false;
 
-  onMount(() => {
-    function queryData() {
-      createResource(readyToMakeTheQuery, getDataFn);
-      if (!destroyed) {
-        timeout = setTimeout(queryData, state.interval_ms);
-      }
+  function queryData() {
+    console.log("queryData");
+    runWithOwner(owner, () => {
+      createResource(databaseIsReady, () =>
+        getEndpointData(apiEndpoint, state, setState),
+      );
+    });
+    if (!destroyed) {
+      timeout = setTimeout(queryData, state.interval_ms);
     }
+  }
+
+  createEffect(() => {
+    console.log("EFFECT interval", state.interval_ms);
+    state.interval_ms;
+    if (timeout) clearTimeout(timeout);
     queryData();
-    setTimeout(() => {
-      //TODO remove this hack. Fix the "readyToMakeTheQuery" issue to trigger this resource creation
-      createResource(readyToMakeTheQuery, getDataFn);
-    }, 100);
   });
 
   onCleanup(() => {
@@ -122,6 +123,7 @@ function PageWrapper(
         <DatabaseHeader />
         <IntervalSelector class="self-start" />
       </section>
+      <EchartsTimebar class="h-12 w-full mb-3" />
       <Dynamic component={page} />
       <DarkmodeSelector class="mt-16 mb-4" />
     </section>
@@ -131,7 +133,10 @@ function PageWrapper(
 function DatabaseHeader(props: { class?: any }) {
   const { state } = contextState();
   return (
-    <section class={`flex flex-col gap-y-1 ${props.class}`}>
+    <section
+      data-testid="db-header"
+      class={`flex flex-col gap-y-1 ${props.class}`}
+    >
       <h1 class="text-lg xs:text-2xl font-semibold">{state.database.name}</h1>
       <p class="text-neutral-500 flex flex-wrap gap-x-4 dark:text-neutral-400 text-xs sm:text-sm">
         <span>{state.database.engine}</span>
@@ -179,6 +184,7 @@ function IntervalSelector(props: { class?: string }) {
               [5000, "5s"],
               [10000, "10s"],
               [20000, "20s"],
+              [30000, "30s"],
               [60000, "60s"],
               [300000, "5m"],
               [900000, "15m"],
@@ -213,6 +219,7 @@ function NavTopConfig1() {
       >
         Activity
       </A>
+      <div class="h-5 border-s w-1 border-neutral-200 dark:border-neutral-700"></div>
       <A
         activeClass="active"
         href="/metric"
@@ -221,7 +228,6 @@ function NavTopConfig1() {
       >
         Metrics
       </A>
-      <div class="h-5 border-s w-1 border-neutral-200 dark:border-neutral-700"></div>
       <A
         activeClass="active"
         href="/health"

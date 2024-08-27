@@ -1,7 +1,7 @@
 import { EChartsAutoSize } from "echarts-solid";
 import { contextState } from "../context_state";
 import { createSignal } from "solid-js";
-import { datazoom } from "../event_echarts";
+import { datazoom } from "../state";
 import { State } from "../state";
 
 export function EchartsStacked(props: { class?: string; data: number[][] }) {

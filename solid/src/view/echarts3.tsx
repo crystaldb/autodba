@@ -1,7 +1,7 @@
 import { EChartsAutoSize } from "echarts-solid";
 import { contextState } from "../context_state";
 import { batch, createSignal } from "solid-js";
-import { datazoom } from "../event_echarts";
+import { datazoom } from "../state";
 
 export function Echarts3(this: any) {
   let ref: import("@solid-primitives/refs").Ref<HTMLDivElement>;

@@ -1,7 +1,7 @@
 import { EChartsAutoSize } from "echarts-solid";
 import { contextState } from "../context_state";
 import { mergeProps } from "solid-js";
-import { datazoom } from "../event_echarts";
+import { datazoom } from "../state";
 import { graphic } from "echarts";
 
 interface IProps {

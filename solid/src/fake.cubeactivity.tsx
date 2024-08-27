@@ -1,5 +1,4 @@
 import { faker } from "@faker-js/faker";
-import { ArraysCubeActivity } from "./http";
 import { Waits } from "./state";
 
 type SessionTypes = "client backend" | "autovacuum worker";
@@ -14,38 +13,6 @@ interface CubeActivity {
   valSession_types: SessionTypes;
   valApplications: string;
   valDatabases: string;
-}
-
-export function createFakeCubeActivityArrays(
-  count: number,
-): ArraysCubeActivity {
-  let arrays: ArraysCubeActivity = {
-    arrActiveSessionCount: [],
-    arrTime: [],
-    arrSql: [],
-    arrWaits: [],
-    arrHosts: [],
-    arrUsers: [],
-    arrSession_types: [],
-    arrApplications: [],
-    arrDatabases: [],
-  };
-  new Array(count)
-    .fill(undefined)
-    .map(() => createFakeCubeActivity())
-    .map((item) => {
-      arrays.arrActiveSessionCount.push(item.valActiveSessionCount);
-      arrays.arrTime.push(item.valTime);
-      arrays.arrSql.push(item.valSql);
-      arrays.arrWaits.push(item.valWaits);
-      arrays.arrHosts.push(item.valHosts);
-      arrays.arrUsers.push(item.valUsers);
-      arrays.arrSession_types.push(item.valSession_types);
-      arrays.arrApplications.push(item.valApplications);
-      arrays.arrDatabases.push(item.valDatabases);
-    });
-
-  return arrays;
 }
 
 function createFakeCubeActivity(): CubeActivity {
