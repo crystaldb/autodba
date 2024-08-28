@@ -1,12 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
-FROM postgres:16.3 AS base
+FROM debian:bookworm-slim AS base
 
 RUN addgroup --system autodba && adduser --system --group autodba --home /home/autodba --shell /bin/bash
-
-# set environment variables
-ENV PYTHONDONTWRITEBYTECODE=1
-#ENV PYTHONUNBUFFERED 1  # this works around setups where line buffering is disabled; it should not be needed here
 
 RUN apt-get update
 RUN apt-get install -y --no-install-recommends \
@@ -15,32 +11,12 @@ RUN apt-get install -y --no-install-recommends \
     nodejs          \
     npm             \
     procps          \
-    python3         \
-    python3-venv    \
-    python3-pip     \
     wget
 
 
 USER autodba
-WORKDIR /home/autodba
-
-# Create a Python virtual environment
-RUN python3 -m venv /home/autodba/venv
-
-# Activate virtual environment
-ENV PATH="/home/autodba/venv/bin:$PATH"
-ENV PGSSLCERT=/tmp/postgresql.crt
-
-# install + cache python dependencies
+RUN mkdir -p /home/autodba/src
 WORKDIR /home/autodba/src
-COPY src/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-FROM base AS builder
-
-WORKDIR /home/autodba/src
-COPY --chown=autodba:autodba src .
-# If we decide to ship compiled python, the command that does it belongs here.
 
 FROM base AS solid_builder
 # Build the solid project
@@ -52,7 +28,7 @@ COPY --chown=autodba:autodba solid ./
 RUN npm run build
 
 
-FROM base as rdsexporter_builder
+FROM base as go_builder
 
 USER root
 
@@ -70,11 +46,14 @@ RUN wget -O go.tgz "https://golang.org/dl/go${GOLANG_VERSION}.linux-amd64.tar.gz
 ENV PATH="/usr/lib/go/bin:${PATH}" \
     GOROOT="/usr/lib/go"
 
+
+FROM go_builder as rdsexporter_builder
 RUN mkdir -p /usr/lib/prometheus_rds_exporter && \
-    git clone https://github.com/crystalcld/prometheus-rds-exporter.git /usr/lib/prometheus_rds_exporter && \
+    git clone https://github.com/crystaldb/prometheus-rds-exporter.git /usr/lib/prometheus_rds_exporter && \
     cd /usr/lib/prometheus_rds_exporter && \
     make build
 
+FROM go_builder as bff_builder
 # Build bff
 WORKDIR /home/autodba/bff
 COPY bff/go.mod bff/go.sum ./
@@ -82,19 +61,6 @@ RUN go mod download
 COPY bff/ ./
 RUN go build -o main ./cmd/main.go
 RUN mkdir -p /usr/lib/bff
-
-
-FROM builder as lint
-WORKDIR /home/autodba/src
-RUN flake8 --ignore=E501,F401,E302,E305 .
-
-FROM builder AS test
-
-# TODO: pytest generates a covearge report that we lose.  Write documentation
-#       (or a script) that bind mounts the source checkout on top of . and runs
-#       `python -m pytest` in the builder container.
-WORKDIR /home/autodba/src
-RUN POSTGRES_DB=phony_db AUTODBA_TARGET_DB=postgresql://phony_db_user:phony_db_pass@localhost:5432/phony_db python -m pytest
 
 FROM base AS autodba
 
@@ -140,34 +106,13 @@ RUN mkdir -p /usr/lib/prometheus_postgres_exporter && \
     wget -qO- https://github.com/prometheus-community/postgres_exporter/releases/download/v0.15.0/postgres_exporter-0.15.0.linux-amd64.tar.gz | tar -xzf - -C /usr/lib/prometheus_postgres_exporter --strip-components=1
 
 
-COPY --from=builder /home/autodba/src /home/autodba/src
 COPY --from=solid_builder /home/autodba/solid/dist /home/autodba/src/webapp
 COPY --from=rdsexporter_builder /usr/lib/prometheus_rds_exporter /usr/lib/prometheus_rds_exporter
-COPY --from=rdsexporter_builder /home/autodba/bff/main /usr/lib/bff/main
-COPY --from=rdsexporter_builder /home/autodba/bff/config.json /home/autodba/src/config.json
+COPY --from=bff_builder /home/autodba/bff/main /usr/lib/bff/main
+COPY --from=bff_builder /home/autodba/bff/config.json /home/autodba/src/config.json
+COPY entrypoint.sh /home/autodba/src/entrypoint.sh
 
 WORKDIR /home/autodba/src
-
-# TODO: Later, when we support external agent DBs (maybe never?) set these using docker args.
-ENV FLASK_APP=api/endpoints.py
-# may as well hardcode this on until we have a runtime configuration that we're comfortable with.
-# Flask makes it clear that our current setup shouldn't be used in production.
-ENV FLASK_DEBUG=True
-ENV POSTGRES_DB=autodba_db
-ENV POSTGRES_USER=autodba_db_user
-ENV POSTGRES_PASSWORD=autodba_db_pass
-ENV POSTGRES_HOST=localhost
-ENV POSTGRES_PORT=5432
-
-RUN mkdir -p /usr/share/grafana/data
-COPY monitor/grafana/grafana.ini /etc/grafana/grafana.ini
-COPY monitor/grafana/grafana.db.sql /tmp/grafana.db.sql
-RUN sqlite3 /usr/share/grafana/data/grafana.db < /tmp/grafana.db.sql && rm /tmp/grafana.db.sql
-
-COPY monitor/grafana/provisioning/dashboards/* /usr/share/grafana/conf/provisioning/dashboards/
-# Add dashboards, and, because we rewrite the dashboards in entrypoint.sh, keep "unmodified" versions that we can copy.
-COPY monitor/grafana/dashboards/* /var/lib/grafana/dashboards.unmodified/
-RUN mkdir /var/lib/grafana/dashboards
 
 COPY monitor/prometheus/sql_exporter/ /usr/lib/prometheus_sql_exporter
 COPY monitor/prometheus/rds_exporter/ /usr/lib/prometheus_rds_exporter
