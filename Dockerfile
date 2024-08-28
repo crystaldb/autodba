@@ -23,7 +23,6 @@ RUN apt-get install -y --no-install-recommends \
 
 USER autodba
 WORKDIR /home/autodba
-#RUN mkdir src elm
 
 # Create a Python virtual environment
 RUN python3 -m venv /home/autodba/venv
@@ -38,16 +37,6 @@ COPY src/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 FROM base AS builder
-
-# install + cache npm dependencies
-#WORKDIR /home/autodba/elm
-#COPY --chown=autodba:autodba elm/package.json .
-#RUN npm install
-
-# install + cache python dependencies
-#WORKDIR /home/autodba/elm
-#COPY --chown=autodba:autodba elm .
-#RUN npm run build  # creates /home/autodba/elm/dist_prod
 
 WORKDIR /home/autodba/src
 COPY --chown=autodba:autodba src .
@@ -99,13 +88,7 @@ FROM builder as lint
 WORKDIR /home/autodba/src
 RUN flake8 --ignore=E501,F401,E302,E305 .
 
-#WORKDIR /home/autodba/elm
-#RUN npm run check-format
-
 FROM builder AS test
-
-#WORKDIR /home/autodba/elm
-#RUN npm run format # todo...
 
 # TODO: pytest generates a covearge report that we lose.  Write documentation
 #       (or a script) that bind mounts the source checkout on top of . and runs
@@ -158,7 +141,6 @@ RUN mkdir -p /usr/lib/prometheus_postgres_exporter && \
 
 
 COPY --from=builder /home/autodba/src /home/autodba/src
-#COPY --from=builder /home/autodba/elm/dist_prod /home/autodba/src/api/static
 COPY --from=solid_builder /home/autodba/solid/dist /home/autodba/src/webapp
 COPY --from=rdsexporter_builder /usr/lib/prometheus_rds_exporter /usr/lib/prometheus_rds_exporter
 COPY --from=rdsexporter_builder /home/autodba/bff/main /usr/lib/bff/main
