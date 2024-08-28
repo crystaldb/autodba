@@ -1,4 +1,4 @@
-name: pgAutoDBA application
+name: autodba application
 
 on:
   push:

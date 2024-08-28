@@ -24,11 +24,11 @@ while [[ "$#" -gt 0 ]]; do
 done
 
 # Get the Docker container ID based on the user and instance ID
-AUTO_DBA_DOCKER_CONTAINER=$(docker ps | grep pgautodba-${USER}-${INSTANCE_ID} | awk '{print $1}')
+AUTO_DBA_DOCKER_CONTAINER=$(docker ps | grep autodba-${USER}-${INSTANCE_ID} | awk '{print $1}')
 
 # Check if the Docker container ID was found
 if [ -z "$AUTO_DBA_DOCKER_CONTAINER" ]; then
-    echo "No Docker container found for pgautodba-${USER}-${INSTANCE_ID}"
+    echo "No Docker container found for autodba-${USER}-${INSTANCE_ID}"
     exit 1
 fi
 

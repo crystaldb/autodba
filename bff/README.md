@@ -15,7 +15,7 @@ Run formatting with: go fmt ./...
 ## Setup Instructions
 To run the project locally:
 
-- In the base pgautoDBA project run : ./run.sh --db-url 'postgres://postgres:lTEP7OzeXQr77Ldu@mohammad-dashti-rds-1.cvirkksghnig.us-west-2.rds.amazonaws.com:5432/postgres?sslmode=require' --instance_id 1 --rds-instance mohammad-dashti-rds-1
+- In the base autodba project run : ./run.sh --db-url 'postgres://postgres:lTEP7OzeXQr77Ldu@mohammad-dashti-rds-1.cvirkksghnig.us-west-2.rds.amazonaws.com:5432/postgres?sslmode=require' --instance_id 1 --rds-instance mohammad-dashti-rds-1
 - Use docker ps to check which port is being forwarded to 9090 (prometheus) and put that port in the config.json , eg "prometheus_server": "http://localhost:7001",
 - In the bff folder root, run go build ./cmd/main.go
 - in the bff folder root, run ./main, this will start up a server at the port in the config.json (default port 4000)

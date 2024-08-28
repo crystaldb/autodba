@@ -24,7 +24,7 @@ Your development environment should have:
 ### Clone the repository:
 
     ```bash
-    git clone git@github.com:crystalcld/pgAutoDBA.git
+    git clone git@github.com:crystaldb/autodba.git
     ```
 
 ### Build and run the Gym
@@ -34,9 +34,9 @@ See [Gym documentation](gym/v2/README.md).
 ### Build and run the AutoDBA agent:
 
     ```bash
-    cd pgAutoDBA
+    cd autodba
     docker build . -t autodba
-    docker run --name pgautodba -e AUTODBA_TARGET_DB="<CONNECTION_STRING_TO_YOUR_TARGET_DB>" -e AWS_RDS_INSTANCE=<YOUR AWS DATABASE NAME> -e AWS_ACCESS_KEY_ID=<YOUR_AWS_ACCESS_KEY_ID> -e AWS_SECRET_ACCESS_KEY=<YOUR_AWS_SECRET_ACCESS_KEY> -e AWS_REGION=<YOUR_AWS_REGION> -p 8081:8080 -p 3001:3000 autodba
+    docker run --name autodba -e AUTODBA_TARGET_DB="<CONNECTION_STRING_TO_YOUR_TARGET_DB>" -e AWS_RDS_INSTANCE=<YOUR AWS DATABASE NAME> -e AWS_ACCESS_KEY_ID=<YOUR_AWS_ACCESS_KEY_ID> -e AWS_SECRET_ACCESS_KEY=<YOUR_AWS_SECRET_ACCESS_KEY> -e AWS_REGION=<YOUR_AWS_REGION> -p 8081:8080 -p 3001:3000 autodba
     ```
 
     The `AUTODBA_TARGET_DB` environment variable is necessary to connect AutoDBA to your target
@@ -62,7 +62,7 @@ See [Gym documentation](gym/v2/README.md).
 3. Run the unit tests + linter:
 
     ```bash
-    cd pgAutoDBA
+    cd autodba
     docker build . --target test
     docker build . --target lint
     ```
@@ -70,7 +70,7 @@ See [Gym documentation](gym/v2/README.md).
 4. Access the Agent's local PostgreSQL database directly via `psql`:
 
     ```bash
-    docker exec -it pgautodba psql --username=autodba_db_user --dbname=autodba_db
+    docker exec -it autodba psql --username=autodba_db_user --dbname=autodba_db
     ```
     TODO: Setup environment variables so psql doesn't need those CLI arguments
 
