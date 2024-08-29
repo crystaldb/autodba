@@ -1,32 +1,39 @@
 # AutoDBA for PostgreSQL
 
 AutoDBA is an AI agent that helps manage PostgreSQL databases.
-The project aims to ensure that everyone who runs PostgreSQL can have a database expert at their side at all times.
+This project aims to ensure that everyone who runs PostgreSQL has access to a skilled virtual database administrator at all times.
 
 ## Motivation
 
 We all want our production PostgreSQL databases to run well—they should be reliable, performant, efficient, scalable, and secure.
-If your team is fully staffed with skilled database administrators, then you are in luck.
-If not, you may find yourself working reactively, dealing with problems as they arise and looking up whatever you need as you go.
-If you are a software engineer or a site reliability engineer who is responsible for your organization's databases, you probably have many other things to do that would be a better use of your time than solving database problems.
+If your team is fully staffed with database administrators, then you are in luck.
+If not, you may find yourself working reactively, dealing with problems as they arise and looking up what to do as you go.
+
+Oftentimes, operational responsibility for databases falls to software engineers site reliability engineers, who usually have many other things to do.
+They have better ways to spend their time than tuning or troubleshooting databases.
+
+Reliability and security are the top priorities for database operations, and our approach reflects that.
+The success of autonomous vehicles shows that with careful engineering, one can build systems that operate safely in complex environments.
+The time has come to do the same for similarly challenging IT operations—as AutoDBA does for databases.
+
 
 ## Project Status: Observability Only
 
-This project presently includes only the basic observability features of AutoDBA.
+As of today, this project includes only the basic observability features of AutoDBA.
 Building an AI agent requires quality data, so we first need to make sure that this foundation is solid.
 
-If it is not possible for a human expert to look at the data, understand what is going on, and make a good decision, then it is probably asking too much of the AI agent to expect it to do so.
+Why did we put effort into tools for visualizing and exploring data when we envision a future were only machines consume it?
+For one, we need to verify that the data is sufficient to support good decision making—if a human expert does not have enough information to make a good decision, then we are probably asking too much of the AI agent if we expect it to do so.
+Furthermore, AutoDBA's observability tools add value to the PostgreSQL ecosystem, even without an AI agent.
 
 The core AI agent is under development and will be released once it reaches a reasonable degree of accuracy and stability.
 
-Though this release is limited, the observability features provided here are a contribution beyond what is otherwise available as open source.
 
+## Temporary Limitations
 
-## Limitations
-
-This is an early release of AutoDBA so you will find many wished for features missing.
-
-Temporary limitations:
+This is an early release of AutoDBA's observability features.
+We are committed to supporting PostgreSQL in all environments and poplular major versions.
+However, the following *temporary limitations* are presently in place:
 
 - Only compatiable with PostgreSQL version 16.
 - Only works with AWS RDS PostgreSQL.
@@ -34,7 +41,7 @@ Temporary limitations:
 
 ## Roadmap
 
-Some of the near-term items on our roadmap include the following:
+Our near-term roadmap includes the following:
 
 - Observability
     - [x] Database and system metrics
@@ -55,10 +62,89 @@ We welcome contributions to AutoDBA! Contributor guidelines are under developmen
 
 ## About the Authors
 
-AutoDBA is developed the engineers and database experts at  [CrystalDB](https://www.crystaldb.cloud/).
+AutoDBA is developed by the engineers and database experts at  [CrystalDB](https://www.crystaldb.cloud/).
 Our mission is to make it easy for you to run your database well, so you can focus on building better software.
 CrystalDB also offers commercial support for AutoDBA and PostgreSQL.
 
+
+## Frequently Asked Questions
+
+### What is AutoDBA?
+
+AutoDBA is an AI agent for operating PostgreSQL databases.
+This means that it connects to an existing PostgreSQL database and takes actions, as necessary, to ensure that remains reliable, efficient, scalabe, and secure.
+
+
+### Will AutoDBA replace my DBA?
+
+Time will tell whether AI agents completely replace human database administrators (DBAs).
+Our work suggests that AI agents will do some tasks much better than humans.
+They can find patterns across large amounts of data, they are always available, and they respond instantly.
+They can also draw upon extensive knowledge bases and operational datasets, allowing them to proceed with less trial and error than people.
+
+On the other hand, people working in the team will have a more nuanced understanding of the needs of the business.
+They will be better able to make high-level design decisions and to analyze trade-offs that impact the development process.
+
+
+### Do I still need to hire a DBA if I use AutoDBA?
+
+If you do not already have a DBA on staff, then chances are good that AutoDBA can allow you postpone hiring one, particularly if you have platform engineers or site reliability engineers who are interested in applying its recommendations.
+CrystalDB and others also offer commercial support for PostgreSQL.
+
+
+### Which PostgreSQL versions are supported?
+
+Currently, AutoDBA is only compatible with PostgreSQL version 16.
+We are working on expanding support to other versions.
+Please share your thoughts on how far back we should go.
+
+
+### Can I use AutoDBA with my on-premises PostgreSQL installation?
+
+At present, AutoDBA only works with AWS RDS PostgreSQL.
+Support for on-premises installations, Google Cloud SQL, and Azure SQL is coming.
+We want AutoDBA to run anywhere that PostgreSQL runs.
+
+
+### Will AutoDBA support databases other than PostgreSQL?
+
+At present, we are fully focused on AutoDBA for PostgreSQL.
+We expect to maintain that focus for the forseeable future.
+
+
+### Is AutoDBA open source?
+
+We believe that every PostgreSQL database should be managed by an AI agent.
+In pursuit of this vision, we are releasing the core operational features of AutoDBA under the Apache 2.0 open source license.
+
+For avoidance of doubt, AutoDBA is commercial open source software.
+Certain enterprise features will be available only in commercial versions of the product.
+
+As of this writing (August 2024), there is active debate what the term “open source” means for AI models.
+Is a model open if the developer releases the weights but not the training data and methods?
+
+We are committed to providing open weights and some training data.
+However, we also expect to release models trained on proprietary data sets.
+
+
+### What happens to the data that AutoDBA collects?
+
+AutoDBA collects and stores operational metrics collected from your database.
+It does not transmit this data to anyone.
+You should keep the web interface secure to avoid exposing this data to others.
+
+
+### How can I get support for AutoDBA?
+
+CrystalDB offers commercial support for AutoDBA and PostgreSQL.
+For more information or to discuss your needs, please contact us at [support@crystal.cloud](mailto:support@crystal.cloud).
+
+
+### How can I support the AutoDBA project?
+
+Foremost, use AutoDBA and give us feedback!
+
+We also welcome feature suggestions, bug reports, or contributions to the codebase.
 
 
 # Installation
