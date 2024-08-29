@@ -32,10 +32,10 @@ The core AI agent is under development and will be released once it reaches a re
 ## Temporary Limitations
 
 This is an early release of AutoDBA's observability features.
-We are committed to supporting PostgreSQL in all environments and poplular major versions.
+We are committed to supporting PostgreSQL in all environments and popular major versions.
 However, the following *temporary limitations* are presently in place:
 
-- Only compatiable with PostgreSQL version 16.
+- Only compatible with PostgreSQL version 16.
 - Only works with AWS RDS PostgreSQL.
 
 
@@ -72,7 +72,7 @@ CrystalDB also offers commercial support for AutoDBA and PostgreSQL.
 ### What is AutoDBA?
 
 AutoDBA is an AI agent for operating PostgreSQL databases.
-This means that it connects to an existing PostgreSQL database and takes actions, as necessary, to ensure that remains reliable, efficient, scalabe, and secure.
+This means that it connects to an existing PostgreSQL database and takes actions, as necessary, to ensure that remains reliable, efficient, scalable, and secure.
 
 
 ### Will AutoDBA replace my DBA?
