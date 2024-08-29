@@ -108,6 +108,14 @@ metrics:
     values:
       - age
     query_ref: crystal_max_transaction_age_query
+  - metric_name: crystal_all_databases
+    type: gauge
+    help: 'List of non-template databases'
+    key_labels:
+      - datname
+    values:
+      - const_value
+    query_ref: crystal_all_databases_query
 
 queries:
   - query_name: crystal_pg_stat_activity_query
@@ -218,3 +226,11 @@ queries:
         age(datfrozenxid) as age
       FROM
         pg_database
+  - query_name: crystal_all_databases_query
+    query: |
+      /* crystal-query */ SELECT
+        datname, 1 as const_value
+      FROM
+        pg_database
+      WHERE
+        datistemplate = false;

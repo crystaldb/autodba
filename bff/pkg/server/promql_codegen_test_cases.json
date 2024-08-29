@@ -1,257 +1,257 @@
 [
-	{
-		"name": "Basic query with dim and legend",
-		"input": {
-			"database_list": "db1",
-			"start": "now-1h",
-			"end": "now",
-			"step": "",
-			"legend": "usename",
-			"dim": "datname",
-			"filterdim": "",
-			"filterdimselected": "",
-			"limit": "",
-			"offset": ""
-		},
-		"expected": "sort_desc(avg_over_time(count by(datname, usename) (label_replace(label_replace(crystal_pg_stat_activity{datname=~\"db1\"}, \"datname\", \"/*pg internal*/\", \"datname\", \"\"), \"usename\", \"/*pg internal*/\", \"usename\", \"\"))[3600s:]))",
-		"has_error": false
-	},
-	{
-		"name": "Query with filter",
-		"input": {
-			"database_list": "db1",
-			"start": "now-1h",
-			"end": "now",
-			"step": "",
-			"legend": "usename",
-			"dim": "datname",
-			"filterdim": "wait_event_name",
-			"filterdimselected": "Lock:transactionid",
-			"limit": "",
-			"offset": ""
-		},
-		"expected": "sort_desc(avg_over_time(count by(datname, usename) (label_replace(label_replace(crystal_pg_stat_activity{datname=~\"db1\",wait_event=~\"transactionid\",wait_event_type=~\"Lock\"}, \"datname\", \"/*pg internal*/\", \"datname\", \"\"), \"usename\", \"/*pg internal*/\", \"usename\", \"\"))[3600s:]))",
-		"has_error": false
-	},
-	{
-		"name": "Query with filter (that turns into an empty filter)",
-		"input": {
-			"database_list": "db1",
-			"start": "now-1h",
-			"end": "now",
-			"step": "",
-			"legend": "usename",
-			"dim": "datname",
-			"filterdim": "wait_event_name",
-			"filterdimselected": "CPU",
-			"limit": "",
-			"offset": ""
-		},
-		"expected": "sort_desc(avg_over_time(count by(datname, usename) (label_replace(label_replace(crystal_pg_stat_activity{datname=~\"db1\",wait_event=~\"\",wait_event_type=~\"\"}, \"datname\", \"/*pg internal*/\", \"datname\", \"\"), \"usename\", \"/*pg internal*/\", \"usename\", \"\"))[3600s:]))",
-		"has_error": false
-	},
-	{
-		"name": "Invalid dimension",
-		"input": {
-			"database_list": "db1",
-			"start": "now-1h",
-			"end": "now",
-			"step": "",
-			"legend": "usename",
-			"dim": "invalid_dim",
-			"filterdim": "",
-			"filterdimselected": "",
-			"limit": "",
-			"offset": ""
-		},
-		"expected": "",
-		"has_error": true
-	},
-	{
-		"name": "Empty database ID",
-		"input": {
-			"database_list": "",
-			"start": "now-1h",
-			"end": "now",
-			"step": "",
-			"legend": "usename",
-			"dim": "datname",
-			"filterdim": "",
-			"filterdimselected": "",
-			"limit": "",
-			"offset": ""
-		},
-		"expected": "",
-		"has_error": true
-	},
-	{
-		"name": "Query with topk and filter",
-		"input": {
-			"database_list": "db1",
-			"start": "now-1h",
-			"end": "now",
-			"step": "",
-			"legend": "client_addr",
-			"dim": "usename",
-			"filterdim": "",
-			"filterdimselected": "",
-			"limit": "3",
-			"offset": "2"
-		},
-		"expected": "sort_desc(avg_over_time(count by(usename, client_addr) (label_replace(label_replace(crystal_pg_stat_activity{datname=~\"db1\"}, \"usename\", \"/*pg internal*/\", \"usename\", \"\"), \"client_addr\", \"/*pg internal*/\", \"client_addr\", \"\") * on(usename) group_left() bottomk(3, topk(5, avg_over_time(count by(usename) (label_replace(label_replace(crystal_pg_stat_activity{datname=~\"db1\"}, \"usename\", \"/*pg internal*/\", \"usename\", \"\"), \"client_addr\", \"/*pg internal*/\", \"client_addr\", \"\"))[3600s:]))) \u003e bool 0)[3600s:]))",
-		"has_error": false
-	},
-	{
-		"name": "Query with complex filter (multiple selected values)",
-		"input": {
-			"database_list": "db1",
-			"start": "now-1h",
-			"end": "now",
-			"step": "",
-			"legend": "usename",
-			"dim": "datname",
-			"filterdim": "wait_event_name",
-			"filterdimselected": "Lock:transactionid,BufferPin:buffer_content",
-			"limit": "",
-			"offset": ""
-		},
-		"expected": "sort_desc(avg_over_time(count by(datname, usename) (label_replace(label_replace(crystal_pg_stat_activity{datname=~\"db1\",wait_event=~\"transactionid|buffer_content\",wait_event_type=~\"Lock|BufferPin\"}, \"datname\", \"/*pg internal*/\", \"datname\", \"\"), \"usename\", \"/*pg internal*/\", \"usename\", \"\"))[3600s:]))",
-		"has_error": false
-	},
-	{
-		"name": "Query with no end time specified",
-		"input": {
-			"database_list": "db1",
-			"start": "now-1h",
-			"end": "",
-			"step": "",
-			"legend": "usename",
-			"dim": "datname",
-			"filterdim": "",
-			"filterdimselected": "",
-			"limit": "",
-			"offset": ""
-		},
-		"expected": "sort_desc(avg_over_time(count by(datname, usename) (label_replace(label_replace(crystal_pg_stat_activity{datname=~\"db1\"}, \"datname\", \"/*pg internal*/\", \"datname\", \"\"), \"usename\", \"/*pg internal*/\", \"usename\", \"\"))[3600s:]))",
-		"has_error": false
-	},
-	{
-		"name": "Query with large limit and no offset",
-		"input": {
-			"database_list": "db1",
-			"start": "now-1h",
-			"end": "now",
-			"step": "",
-			"legend": "client_addr",
-			"dim": "usename",
-			"filterdim": "",
-			"filterdimselected": "",
-			"limit": "100",
-			"offset": ""
-		},
-		"expected": "sort_desc(avg_over_time(count by(usename, client_addr) (label_replace(label_replace(crystal_pg_stat_activity{datname=~\"db1\"}, \"usename\", \"/*pg internal*/\", \"usename\", \"\"), \"client_addr\", \"/*pg internal*/\", \"client_addr\", \"\") * on(usename) group_left() topk(100, avg_over_time(count by(usename) (label_replace(label_replace(crystal_pg_stat_activity{datname=~\"db1\"}, \"usename\", \"/*pg internal*/\", \"usename\", \"\"), \"client_addr\", \"/*pg internal*/\", \"client_addr\", \"\"))[3600s:])) \u003e bool 0)[3600s:]))",
-		"has_error": false
-	},
-	{
-		"name": "Query with only offset (and no limit) won't have a limit",
-		"input": {
-			"database_list": "db1",
-			"start": "now-1h",
-			"end": "now",
-			"step": "",
-			"legend": "client_addr",
-			"dim": "usename",
-			"filterdim": "",
-			"filterdimselected": "",
-			"limit": "",
-			"offset": "5"
-		},
-		"expected": "sort_desc(avg_over_time(count by(usename, client_addr) (label_replace(label_replace(crystal_pg_stat_activity{datname=~\"db1\"}, \"usename\", \"/*pg internal*/\", \"usename\", \"\"), \"client_addr\", \"/*pg internal*/\", \"client_addr\", \"\"))[3600s:]))",
-		"has_error": false
-	},
-	{
-		"name": "Query with missing start time",
-		"input": {
-			"database_list": "db1",
-			"start": "",
-			"end": "now",
-			"step": "",
-			"legend": "client_addr",
-			"dim": "usename",
-			"filterdim": "",
-			"filterdimselected": "",
-			"limit": "",
-			"offset": ""
-		},
-		"expected": "",
-		"has_error": true
-	},
-	{
-		"name": "Query with `time` as `dim` and `legend`",
-		"input": {
-			"database_list": "db1",
-			"start": "now-1h",
-			"end": "now",
-			"step": "",
-			"legend": "time",
-			"dim": "time",
-			"filterdim": "",
-			"filterdimselected": "",
-			"limit": "",
-			"offset": ""
-		},
-		"expected": "count by(time) (crystal_pg_stat_activity{datname=~\"db1\"})",
-		"has_error": false
-	},
-	{
-		"name": "Query with FilterDim 'wait_event_name' and empty FilterDimSelected",
-		"input": {
-			"database_list": "db1",
-			"start": "now-1h",
-			"end": "now",
-			"step": "",
-			"legend": "usename",
-			"dim": "datname",
-			"filterdim": "wait_event_name",
-			"filterdimselected": "",
-			"limit": "",
-			"offset": ""
-		},
-		"expected": "sort_desc(avg_over_time(count by(datname, usename) (label_replace(label_replace(crystal_pg_stat_activity{datname=~\"db1\",wait_event=~\"\",wait_event_type=~\"\"}, \"datname\", \"/*pg internal*/\", \"datname\", \"\"), \"usename\", \"/*pg internal*/\", \"usename\", \"\"))[3600s:]))",
-		"has_error": false
-	},
-	{
-		"name": "Query with FilterDim 'query' and empty FilterDimSelected",
-		"input": {
-			"database_list": "db1",
-			"start": "now-1h",
-			"end": "now",
-			"step": "",
-			"legend": "client_addr",
-			"dim": "datname",
-			"filterdim": "query",
-			"filterdimselected": "",
-			"limit": "",
-			"offset": ""
-		},
-		"expected": "sort_desc(avg_over_time(count by(datname, client_addr) (label_replace(label_replace(crystal_pg_stat_activity{datname=~\"db1\",query=~\"\"}, \"datname\", \"/*pg internal*/\", \"datname\", \"\"), \"client_addr\", \"/*pg internal*/\", \"client_addr\", \"\"))[3600s:]))",
-		"has_error": false
-	},
-	{
-		"name": "Query with 'query' as dim",
-		"input": {
-			"database_list": "db1",
-			"start": "now-1h",
-			"end": "now",
-			"step": "",
-			"legend": "usename",
-			"dim": "query",
-			"filterdim": "",
-			"filterdimselected": "",
-			"limit": "",
-			"offset": ""
-		},
-		"expected": "sort_desc(avg_over_time(count by(query, usename) (label_replace(label_replace(crystal_pg_stat_activity{datname=~\"db1\",query=~\"^.*\"}, \"query\", \"/*pg internal*/\", \"query\", \"\"), \"usename\", \"/*pg internal*/\", \"usename\", \"\"))[3600s:]))",
-		"has_error": false
-	}
+  {
+    "name": "Basic query with dim and legend",
+    "input": {
+      "database_list": "db1",
+      "start": "now-1h",
+      "end": "now",
+      "step": "",
+      "legend": "usename",
+      "dim": "datname",
+      "filterdim": "",
+      "filterdimselected": "",
+      "limit": "",
+      "offset": ""
+    },
+    "expected": "sort_desc(avg_over_time(count by(datname, usename) (label_replace(label_replace(crystal_pg_stat_activity{datname=~\"db1\"}, \"datname\", \"/*pg internal*/\", \"datname\", \"\"), \"usename\", \"/*pg internal*/\", \"usename\", \"\"))[3600s:]))",
+    "has_error": false
+  },
+  {
+    "name": "Query with filter",
+    "input": {
+      "database_list": "db1",
+      "start": "now-1h",
+      "end": "now",
+      "step": "",
+      "legend": "usename",
+      "dim": "datname",
+      "filterdim": "wait_event_name",
+      "filterdimselected": "Lock:transactionid",
+      "limit": "",
+      "offset": ""
+    },
+    "expected": "sort_desc(avg_over_time(count by(datname, usename) (label_replace(label_replace(crystal_pg_stat_activity{datname=~\"db1\",wait_event=~\"transactionid\",wait_event_type=~\"Lock\"}, \"datname\", \"/*pg internal*/\", \"datname\", \"\"), \"usename\", \"/*pg internal*/\", \"usename\", \"\"))[3600s:]))",
+    "has_error": false
+  },
+  {
+    "name": "Query with filter (that turns into an empty filter)",
+    "input": {
+      "database_list": "db1",
+      "start": "now-1h",
+      "end": "now",
+      "step": "",
+      "legend": "usename",
+      "dim": "datname",
+      "filterdim": "wait_event_name",
+      "filterdimselected": "CPU",
+      "limit": "",
+      "offset": ""
+    },
+    "expected": "sort_desc(avg_over_time(count by(datname, usename) (label_replace(label_replace(crystal_pg_stat_activity{datname=~\"db1\",wait_event=~\"\",wait_event_type=~\"\"}, \"datname\", \"/*pg internal*/\", \"datname\", \"\"), \"usename\", \"/*pg internal*/\", \"usename\", \"\"))[3600s:]))",
+    "has_error": false
+  },
+  {
+    "name": "Invalid dimension",
+    "input": {
+      "database_list": "db1",
+      "start": "now-1h",
+      "end": "now",
+      "step": "",
+      "legend": "usename",
+      "dim": "invalid_dim",
+      "filterdim": "",
+      "filterdimselected": "",
+      "limit": "",
+      "offset": ""
+    },
+    "expected": "",
+    "has_error": true
+  },
+  {
+    "name": "Empty database ID",
+    "input": {
+      "database_list": "",
+      "start": "now-1h",
+      "end": "now",
+      "step": "",
+      "legend": "usename",
+      "dim": "datname",
+      "filterdim": "",
+      "filterdimselected": "",
+      "limit": "",
+      "offset": ""
+    },
+    "expected": "",
+    "has_error": true
+  },
+  {
+    "name": "Query with topk and filter",
+    "input": {
+      "database_list": "db1",
+      "start": "now-1h",
+      "end": "now",
+      "step": "",
+      "legend": "client_addr",
+      "dim": "usename",
+      "filterdim": "",
+      "filterdimselected": "",
+      "limit": "3",
+      "offset": "2"
+    },
+    "expected": "sort_desc(avg_over_time(count by(usename, client_addr) (label_replace(label_replace(crystal_pg_stat_activity{datname=~\"db1\"}, \"usename\", \"/*pg internal*/\", \"usename\", \"\"), \"client_addr\", \"/*pg internal*/\", \"client_addr\", \"\") * on(usename) group_left() bottomk(3, topk(5, avg_over_time(count by(usename) (label_replace(label_replace(crystal_pg_stat_activity{datname=~\"db1\"}, \"usename\", \"/*pg internal*/\", \"usename\", \"\"), \"client_addr\", \"/*pg internal*/\", \"client_addr\", \"\"))[3600s:]))) \u003e bool 0)[3600s:]))",
+    "has_error": false
+  },
+  {
+    "name": "Query with complex filter (multiple selected values)",
+    "input": {
+      "database_list": "db1",
+      "start": "now-1h",
+      "end": "now",
+      "step": "",
+      "legend": "usename",
+      "dim": "datname",
+      "filterdim": "wait_event_name",
+      "filterdimselected": "Lock:transactionid,BufferPin:buffer_content",
+      "limit": "",
+      "offset": ""
+    },
+    "expected": "sort_desc(avg_over_time(count by(datname, usename) (label_replace(label_replace(crystal_pg_stat_activity{datname=~\"db1\",wait_event=~\"transactionid|buffer_content\",wait_event_type=~\"Lock|BufferPin\"}, \"datname\", \"/*pg internal*/\", \"datname\", \"\"), \"usename\", \"/*pg internal*/\", \"usename\", \"\"))[3600s:]))",
+    "has_error": false
+  },
+  {
+    "name": "Query with no end time specified",
+    "input": {
+      "database_list": "db1",
+      "start": "now-1h",
+      "end": "",
+      "step": "",
+      "legend": "usename",
+      "dim": "datname",
+      "filterdim": "",
+      "filterdimselected": "",
+      "limit": "",
+      "offset": ""
+    },
+    "expected": "sort_desc(avg_over_time(count by(datname, usename) (label_replace(label_replace(crystal_pg_stat_activity{datname=~\"db1\"}, \"datname\", \"/*pg internal*/\", \"datname\", \"\"), \"usename\", \"/*pg internal*/\", \"usename\", \"\"))[3600s:]))",
+    "has_error": false
+  },
+  {
+    "name": "Query with large limit and no offset",
+    "input": {
+      "database_list": "db1",
+      "start": "now-1h",
+      "end": "now",
+      "step": "",
+      "legend": "client_addr",
+      "dim": "usename",
+      "filterdim": "",
+      "filterdimselected": "",
+      "limit": "100",
+      "offset": ""
+    },
+    "expected": "sort_desc(avg_over_time(count by(usename, client_addr) (label_replace(label_replace(crystal_pg_stat_activity{datname=~\"db1\"}, \"usename\", \"/*pg internal*/\", \"usename\", \"\"), \"client_addr\", \"/*pg internal*/\", \"client_addr\", \"\") * on(usename) group_left() topk(100, avg_over_time(count by(usename) (label_replace(label_replace(crystal_pg_stat_activity{datname=~\"db1\"}, \"usename\", \"/*pg internal*/\", \"usename\", \"\"), \"client_addr\", \"/*pg internal*/\", \"client_addr\", \"\"))[3600s:])) \u003e bool 0)[3600s:]))",
+    "has_error": false
+  },
+  {
+    "name": "Query with only offset (and no limit) won't have a limit",
+    "input": {
+      "database_list": "db1",
+      "start": "now-1h",
+      "end": "now",
+      "step": "",
+      "legend": "client_addr",
+      "dim": "usename",
+      "filterdim": "",
+      "filterdimselected": "",
+      "limit": "",
+      "offset": "5"
+    },
+    "expected": "sort_desc(avg_over_time(count by(usename, client_addr) (label_replace(label_replace(crystal_pg_stat_activity{datname=~\"db1\"}, \"usename\", \"/*pg internal*/\", \"usename\", \"\"), \"client_addr\", \"/*pg internal*/\", \"client_addr\", \"\"))[3600s:]))",
+    "has_error": false
+  },
+  {
+    "name": "Query with missing start time",
+    "input": {
+      "database_list": "db1",
+      "start": "",
+      "end": "now",
+      "step": "",
+      "legend": "client_addr",
+      "dim": "usename",
+      "filterdim": "",
+      "filterdimselected": "",
+      "limit": "",
+      "offset": ""
+    },
+    "expected": "",
+    "has_error": true
+  },
+  {
+    "name": "Query with `time` as `dim` and `legend`",
+    "input": {
+      "database_list": "db1",
+      "start": "now-1h",
+      "end": "now",
+      "step": "",
+      "legend": "time",
+      "dim": "time",
+      "filterdim": "",
+      "filterdimselected": "",
+      "limit": "",
+      "offset": ""
+    },
+    "expected": "count by(time) (crystal_pg_stat_activity{datname=~\"db1\"})",
+    "has_error": false
+  },
+  {
+    "name": "Query with FilterDim 'wait_event_name' and empty FilterDimSelected",
+    "input": {
+      "database_list": "db1",
+      "start": "now-1h",
+      "end": "now",
+      "step": "",
+      "legend": "usename",
+      "dim": "datname",
+      "filterdim": "wait_event_name",
+      "filterdimselected": "",
+      "limit": "",
+      "offset": ""
+    },
+    "expected": "sort_desc(avg_over_time(count by(datname, usename) (label_replace(label_replace(crystal_pg_stat_activity{datname=~\"db1\",wait_event=~\"\",wait_event_type=~\"\"}, \"datname\", \"/*pg internal*/\", \"datname\", \"\"), \"usename\", \"/*pg internal*/\", \"usename\", \"\"))[3600s:]))",
+    "has_error": false
+  },
+  {
+    "name": "Query with FilterDim 'query' and empty FilterDimSelected",
+    "input": {
+      "database_list": "db1",
+      "start": "now-1h",
+      "end": "now",
+      "step": "",
+      "legend": "client_addr",
+      "dim": "datname",
+      "filterdim": "query",
+      "filterdimselected": "",
+      "limit": "",
+      "offset": ""
+    },
+    "expected": "sort_desc(avg_over_time(count by(datname, client_addr) (label_replace(label_replace(crystal_pg_stat_activity{datname=~\"db1\",query=~\"\"}, \"datname\", \"/*pg internal*/\", \"datname\", \"\"), \"client_addr\", \"/*pg internal*/\", \"client_addr\", \"\"))[3600s:]))",
+    "has_error": false
+  },
+  {
+    "name": "Query with 'query' as dim",
+    "input": {
+      "database_list": "db1",
+      "start": "now-1h",
+      "end": "now",
+      "step": "",
+      "legend": "usename",
+      "dim": "query",
+      "filterdim": "",
+      "filterdimselected": "",
+      "limit": "",
+      "offset": ""
+    },
+    "expected": "sort_desc(avg_over_time(count by(query, usename) (label_replace(label_replace(crystal_pg_stat_activity{datname=~\"db1\",query=~\"^.*\"}, \"query\", \"/*pg internal*/\", \"query\", \"\"), \"usename\", \"/*pg internal*/\", \"usename\", \"\"))[3600s:]))",
+    "has_error": false
+  }
 ]

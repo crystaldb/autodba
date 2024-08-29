@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"github.com/spf13/viper"
 	"local/bff/pkg/metrics"
@@ -13,18 +14,28 @@ type Config struct {
 	Port             string                        `json:"port"`
 	PrometheusServer string                        `json:"prometheus_server"`
 	RoutesConfig     map[string]server.RouteConfig `json:"routes_config"`
+	DBIdentifier     string                        `json:"dbidentifier"`
 }
 
 func main() {
 	fmt.Println("Starting metrics server")
+	var dbIdentifier string
 
-	if err := run(); err != nil {
+	flag.StringVar(&dbIdentifier, "dbidentifier", "", "Database identifier")
+	flag.Parse()
+
+	if dbIdentifier == "" {
+		fmt.Fprintf(os.Stderr, "Error: dbidentifier is required\n")
+		os.Exit(1)
+	}
+
+	if err := run(dbIdentifier); err != nil {
 		fmt.Fprintf(os.Stderr, "%s\n", err)
 		os.Exit(1)
 	}
 }
 
-func run() error {
+func run(dbIdentifier string) error {
 	viper.SetConfigName("config")
 	viper.SetConfigType("json")
 
@@ -41,6 +52,7 @@ func run() error {
 	}
 
 	var config Config
+	config.DBIdentifier = dbIdentifier
 	config.Port = rawConfig["port"].(string)
 	config.PrometheusServer = rawConfig["prometheus_server"].(string)
 
@@ -79,7 +91,7 @@ func run() error {
 	metrics_repo := prometheus.New(config.PrometheusServer)
 	metrics_service := metrics.CreateService(metrics_repo)
 
-	server := server.CreateServer(config.RoutesConfig, metrics_service, config.Port)
+	server := server.CreateServer(config.RoutesConfig, metrics_service, config.Port, config.DBIdentifier)
 
 	if err = server.Run(); err != nil {
 		return err

@@ -36,7 +36,7 @@ func loadTestCases(filePath string) ([]TestCase, error) {
 }
 
 func saveTestCases(filePath string, testCases []TestCase) error {
-	data, err := json.MarshalIndent(testCases, "", "\t")
+	data, err := json.MarshalIndent(testCases, "", "  ")
 	if err != nil {
 		return fmt.Errorf("failed to marshal test cases: %w", err)
 	}

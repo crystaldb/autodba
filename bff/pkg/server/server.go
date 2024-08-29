@@ -25,6 +25,7 @@ type server_imp struct {
 	routes_config   map[string]RouteConfig
 	metrics_service metrics.Service
 	port            string
+	dbIdentifier    string
 }
 
 const api_prefix = "/api"
@@ -44,8 +45,8 @@ func CORS(next http.Handler) http.Handler {
 	})
 }
 
-func CreateServer(r map[string]RouteConfig, m metrics.Service, port string) Server {
-	return server_imp{r, m, port}
+func CreateServer(r map[string]RouteConfig, m metrics.Service, port string, dbIdentifier string) Server {
+	return server_imp{r, m, port, dbIdentifier}
 }
 
 func (s server_imp) Run() error {
@@ -54,15 +55,17 @@ func (s server_imp) Run() error {
 	r.Use(CORS)
 
 	r.Get("/api/v1/activity", activity_handler(s.metrics_service))
+	r.Get("/api/v1/databases", databases_handler(s.metrics_service))
+	r.Get("/api/v1/info", info_handler(s.metrics_service))
 
 	r.Route(api_prefix, func(r chi.Router) {
-		r.Mount("/", metrics_handler(s.routes_config, s.metrics_service))
+		r.Mount("/", metrics_handler(s.routes_config, s.dbIdentifier, s.metrics_service))
 	})
 
 	return http.ListenAndServe(":"+s.port, r)
 }
 
-func metrics_handler(route_configs map[string]RouteConfig, metrics_service metrics.Service) http.Handler {
+func metrics_handler(route_configs map[string]RouteConfig, dbIdentifier string, metrics_service metrics.Service) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("Handling metrics request")
 
@@ -77,7 +80,22 @@ func metrics_handler(route_configs map[string]RouteConfig, metrics_service metri
 			for _, param := range route_config.Params {
 				value := r.URL.Query().Get(param)
 
-				if value != "" {
+				if param == "dbidentifier" && value == "" {
+					for metric, query := range route_config.Metrics {
+						var current_query string
+						if metrics[metric] == "" {
+							current_query = query
+						} else {
+							current_query = metrics[metric]
+						}
+
+						metrics[metric] = strings.ReplaceAll(current_query, replace_prefix+param, dbIdentifier)
+
+						fmt.Println("metric: ", metric)
+						fmt.Println("query: ", query)
+						fmt.Println("populated metric: ", metrics[metric])
+					}
+				} else if value != "" {
 					fmt.Println("-----param: ", param)
 					fmt.Println("value: ", value)
 					fmt.Println("==Populating Queries for : ", param)
@@ -239,6 +257,79 @@ func activity_handler(metrics_service metrics.Service) http.HandlerFunc {
 		}
 
 		js, err := json.Marshal(results)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		w.Write(js)
+
+	})
+}
+
+func databases_handler(metrics_service metrics.Service) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Println("Handling database list request")
+
+		query := "crystal_all_databases"
+		options := make(map[string]string)
+
+		results, err := metrics_service.ExecuteRaw(query, options)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		var dbNames []string
+
+		for _, result := range results {
+			metric, ok := result["metric"].(map[string]interface{})
+			if !ok {
+				continue
+			}
+			if datname, ok := metric["datname"].(string); ok {
+				dbNames = append(dbNames, datname)
+			}
+		}
+
+		js, err := json.Marshal(dbNames)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		w.Write(js)
+
+	})
+}
+
+func info_handler(metrics_service metrics.Service) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Println("Handling info request")
+
+		query := "rds_instance_info"
+		options := make(map[string]string)
+
+		results, err := metrics_service.ExecuteRaw(query, options)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		info := make(map[string]string)
+
+		for _, result := range results {
+			metric, ok := result["metric"].(map[string]interface{})
+			if !ok {
+				continue
+			}
+
+			for k, v := range metric {
+				info[k] = v.(string)
+			}
+		}
+
+		js, err := json.Marshal(info)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
