@@ -62,25 +62,30 @@ COPY bff/ ./
 RUN go build -o main ./cmd/main.go
 RUN mkdir -p /usr/lib/bff
 
-FROM base AS autodba
+FROM base AS builder
+COPY --from=solid_builder /home/autodba/solid/dist /home/autodba/src/webapp
+COPY --from=rdsexporter_builder /usr/lib/prometheus_rds_exporter /usr/lib/prometheus_rds_exporter
+COPY --from=bff_builder /home/autodba/bff/main /usr/lib/bff/main
+COPY --from=bff_builder /home/autodba/bff/config.json /home/autodba/src/config.json
+COPY entrypoint.sh /home/autodba/src/entrypoint.sh
 
+FROM builder as lint
+WORKDIR /home/autodba/src
+
+FROM builder AS test
+WORKDIR /home/autodba/src
+
+FROM base AS autodba
 USER root
 
-# Install Prometheus + Grafana
+# Install Prometheus
 RUN apt-get install -y --no-install-recommends \
     apt-transport-https \
     prometheus \
     software-properties-common \
     sqlite3
 
-
 RUN npm install -g serve
-
-# Expose port 8080 for HTTP traffic
-EXPOSE 8080
-
-# Grafana port
-EXPOSE 3000
 
 # Prometheus port
 EXPOSE 9090
@@ -91,12 +96,6 @@ EXPOSE 4000
 # Webapp port
 EXPOSE 5000
 
-RUN mkdir -p /etc/apt/keyrings/
-RUN wget -q -O - https://apt.grafana.com/gpg.key | gpg --dearmor > /etc/apt/keyrings/grafana.gpg
-RUN echo "deb [signed-by=/etc/apt/keyrings/grafana.gpg] https://apt.grafana.com stable main" > /etc/apt/sources.list.d/grafana.list
-RUN apt-get update
-RUN apt-get install -y grafana
-
 # Install Prometheus exporters
 RUN mkdir -p /usr/lib/prometheus_sql_exporter && \
     wget -qO- https://github.com/burningalchemist/sql_exporter/releases/download/0.14.3/sql_exporter-0.14.3.linux-amd64.tar.gz | tar -xzf - -C /usr/lib/prometheus_sql_exporter --strip-components=1
@@ -106,11 +105,9 @@ RUN mkdir -p /usr/lib/prometheus_postgres_exporter && \
     wget -qO- https://github.com/prometheus-community/postgres_exporter/releases/download/v0.15.0/postgres_exporter-0.15.0.linux-amd64.tar.gz | tar -xzf - -C /usr/lib/prometheus_postgres_exporter --strip-components=1
 
 
-COPY --from=solid_builder /home/autodba/solid/dist /home/autodba/src/webapp
-COPY --from=rdsexporter_builder /usr/lib/prometheus_rds_exporter /usr/lib/prometheus_rds_exporter
-COPY --from=bff_builder /home/autodba/bff/main /usr/lib/bff/main
-COPY --from=bff_builder /home/autodba/bff/config.json /home/autodba/src/config.json
-COPY entrypoint.sh /home/autodba/src/entrypoint.sh
+COPY --from=builder /home/autodba/src /home/autodba/src
+COPY --from=builder /usr/lib/prometheus_rds_exporter /usr/lib/prometheus_rds_exporter
+COPY --from=builder /usr/lib/bff/main /usr/lib/bff/main
 
 WORKDIR /home/autodba/src
 
