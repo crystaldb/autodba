@@ -28,4 +28,4 @@ This script is used to backup the Prometheus and PostgreSQL databases inside the
 ## Prerequisites
 
 - Docker must be installed and running.
-- The `pgautodba` Docker container should be running with the appropriate instance ID.
+- The `autodba` Docker container should be running with the appropriate instance ID.
