@@ -15,13 +15,16 @@ type Config struct {
 	PrometheusServer string                        `json:"prometheus_server"`
 	RoutesConfig     map[string]server.RouteConfig `json:"routes_config"`
 	DBIdentifier     string                        `json:"dbidentifier"`
+	WebappPath       string                        `json:"webapp_path"`
 }
 
 func main() {
 	fmt.Println("Starting metrics server")
 	var dbIdentifier string
+	var webappPath string
 
 	flag.StringVar(&dbIdentifier, "dbidentifier", "", "Database identifier")
+	flag.StringVar(&webappPath, "webappPath", "", "Webapp Path")
 	flag.Parse()
 
 	if dbIdentifier == "" {
@@ -29,13 +32,18 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := run(dbIdentifier); err != nil {
+	if webappPath == "" {
+		fmt.Fprintf(os.Stderr, "Error: webappPath is required\n")
+		os.Exit(1)
+	}
+
+	if err := run(dbIdentifier, webappPath); err != nil {
 		fmt.Fprintf(os.Stderr, "%s\n", err)
 		os.Exit(1)
 	}
 }
 
-func run(dbIdentifier string) error {
+func run(dbIdentifier, webappPath string) error {
 	viper.SetConfigName("config")
 	viper.SetConfigType("json")
 
@@ -53,6 +61,7 @@ func run(dbIdentifier string) error {
 
 	var config Config
 	config.DBIdentifier = dbIdentifier
+	config.WebappPath = webappPath
 	config.Port = rawConfig["port"].(string)
 	config.PrometheusServer = rawConfig["prometheus_server"].(string)
 
@@ -91,7 +100,7 @@ func run(dbIdentifier string) error {
 	metrics_repo := prometheus.New(config.PrometheusServer)
 	metrics_service := metrics.CreateService(metrics_repo)
 
-	server := server.CreateServer(config.RoutesConfig, metrics_service, config.Port, config.DBIdentifier)
+	server := server.CreateServer(config.RoutesConfig, metrics_service, config.Port, config.DBIdentifier, config.WebappPath)
 
 	if err = server.Run(); err != nil {
 		return err

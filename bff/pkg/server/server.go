@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"local/bff/pkg/metrics"
 	"net/http"
+	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 
@@ -26,6 +28,7 @@ type server_imp struct {
 	metrics_service metrics.Service
 	port            string
 	dbIdentifier    string
+	webappPath      string
 }
 
 const api_prefix = "/api"
@@ -45,8 +48,20 @@ func CORS(next http.Handler) http.Handler {
 	})
 }
 
-func CreateServer(r map[string]RouteConfig, m metrics.Service, port string, dbIdentifier string) Server {
-	return server_imp{r, m, port, dbIdentifier}
+func CreateServer(r map[string]RouteConfig, m metrics.Service, port string, dbIdentifier string, webappPath string) Server {
+	return server_imp{r, m, port, dbIdentifier, webappPath}
+}
+
+func fileExists(filePath string) bool {
+	_, err := os.Stat(filePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false
+		}
+		fmt.Printf("Error checking file existence: %v\n", err)
+		return false
+	}
+	return true
 }
 
 func (s server_imp) Run() error {
@@ -61,6 +76,17 @@ func (s server_imp) Run() error {
 	r.Route(api_prefix, func(r chi.Router) {
 		r.Mount("/", metrics_handler(s.routes_config, s.dbIdentifier, s.metrics_service))
 	})
+
+	fs := http.FileServer(http.Dir(s.webappPath))
+
+	r.Handle("/*", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		filePath := filepath.Join(s.webappPath, r.URL.Path[1:])
+		if fileExists(filePath) {
+			fs.ServeHTTP(w, r)
+		} else {
+			http.ServeFile(w, r, filepath.Join(s.webappPath, "index.html"))
+		}
+	}))
 
 	return http.ListenAndServe(":"+s.port, r)
 }
