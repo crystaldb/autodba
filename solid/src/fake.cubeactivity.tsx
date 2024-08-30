@@ -1,7 +1,17 @@
 import { faker } from "@faker-js/faker";
-import { Waits } from "./state";
 
 type SessionTypes = "client backend" | "autovacuum worker";
+export type Waits =
+  | "LWLock:BufferContent"
+  | "LWLock:WALInsert"
+  | "Timeout:VaccumDelay"
+  | "Timeout:VaccumTruncate"
+  | "Client:ClientRead"
+  | "IO:WALSync"
+  | "Lock:tuple"
+  | "LWLock:WALWrite"
+  | "Lock:transaactionid"
+  | "CPU";
 
 interface CubeActivity {
   valActiveSessionCount: number;

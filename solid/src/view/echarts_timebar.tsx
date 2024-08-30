@@ -1,7 +1,7 @@
-import { ECharts, EChartsAutoSize } from "echarts-solid";
+import { ECharts } from "echarts-solid";
 import { contextState } from "../context_state";
-import { mergeProps, Ref } from "solid-js";
-import { datazoom } from "../state";
+import { mergeProps } from "solid-js";
+import { datazoomEventHandler } from "../state";
 
 interface IEchartsTimebarProps {
   class?: string;
@@ -25,7 +25,7 @@ export function EchartsTimebar(props: IEchartsTimebarProps) {
   const eventHandlers = {
     // click: (event: any) => { console.log("Chart is clicked!", event); },
     // highlight: (event: any) => { console.log("Chart Highlight", event); },
-    datazoom: datazoom.bind(null, setState, state),
+    datazoom: datazoomEventHandler.bind(null, setState, state),
   };
 
   return (

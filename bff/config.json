@@ -15,7 +15,7 @@
         "disk_usage": "1-(sum(rds_free_storage_bytes{dbidentifier=\"$dbidentifier\"})/sum(rds_allocated_storage_bytes{dbidentifier=\"$dbidentifier\"}))"
       }
     },
-    "/v1/metrics": {
+    "/v1/metric": {
       "params": ["dbidentifier", "datname", "start", "end", "step"],
       "options": {
         "start": "$start",

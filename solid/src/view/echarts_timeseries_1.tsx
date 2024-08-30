@@ -1,7 +1,7 @@
 import { EChartsAutoSize } from "echarts-solid";
 import { contextState } from "../context_state";
 import { mergeProps } from "solid-js";
-import { datazoom } from "../state";
+import { datazoomEventHandler } from "../state";
 import { graphic } from "echarts";
 
 interface IProps {
@@ -88,7 +88,7 @@ export function EchartsTimeseries1(props: IProps) {
     highlight: (event: any) => {
       console.log("Chart Highlight", event);
     },
-    datazoom: datazoom.bind(null, setState, state),
+    datazoom: datazoomEventHandler.bind(null, setState, state),
   };
 
   return (

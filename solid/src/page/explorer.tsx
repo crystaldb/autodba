@@ -18,15 +18,6 @@ export function PageExplorer(props: any) {
           <ViewTable />
         </div>
         <div class="flex flex-col h-64">
-          <Echarts2
-            title="Sessions (sessions)"
-            class="h-64"
-            dataA={state.data.echart2a}
-            dataB={state.data.echart2b}
-            dataC={state.data.echart2c}
-          />
-        </div>
-        <div class="flex flex-col h-64">
           <Echarts3 />
         </div>
       </section>

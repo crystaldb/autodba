@@ -72,7 +72,9 @@ export type State = {
     version: string;
     size: string;
     kind: string;
+    datname: string;
   };
+  metricData: any[];
   interval_ms: number;
   timeframe_start_ms: number;
   timeframe_end_ms?: number;
@@ -81,7 +83,7 @@ export type State = {
   range_end: number;
 };
 
-export const datazoom = (
+export const datazoomEventHandler = (
   setState: (arg0: string, arg1: any) => void,
   stateFn: any,
   event: any,
@@ -92,31 +94,6 @@ export const datazoom = (
     setState("range_end", event.end || event.batch?.at(0)?.end);
   });
 };
-
-export type Waits =
-  | "LWLock:BufferContent"
-  | "LWLock:WALInsert"
-  | "Timeout:VaccumDelay"
-  | "Timeout:VaccumTruncate"
-  | "Client:ClientRead"
-  | "IO:WALSync"
-  | "Lock:tuple"
-  | "LWLock:WALWrite"
-  | "Lock:transaactionid"
-  | "CPU";
-
-export const listWaits = [
-  "LWLock:BufferContent",
-  "LWLock:WALInsert",
-  "Timeout:VaccumDelay",
-  "Timeout:VaccumTruncate",
-  "Client:ClientRead",
-  "IO:WALSync",
-  "Lock:tuple",
-  "LWLock:WALWrite",
-  "Lock:transaactionid",
-  "CPU",
-];
 
 export const listWaitsColorsText = [
   "text-blue-300 accent-blue-300",
@@ -144,12 +121,27 @@ export const listWaitsColorsBg = [
   "bg-green-500 accent-green-500",
 ];
 
+export const listColorsHex = [
+  "#93c5fd", // "bg-blue-300",
+  "#86efac", // "bg-green-300",
+  "#fde047", // "bg-yellow-300",
+  "#fca5a5", // "bg-red-400",
+  "#5eead4", // "bg-teal-500",
+  "#a855f7", // "bg-purple-500",
+  "#f97316", // "bg-orange-500",
+  "#6366f1", // "bg-indigo-500",
+  "#d946ef", // "bg-fuchsia-500",
+  "#14b8a6", // "bg-green-500",
+  // ... add a bunch of neutral colors for non differentiated colors
+];
+
 const [state, setState] = createStore({
   cubeActivity: {
     cubeData: [],
     limit: 15,
     uiLegend: DimensionName.wait_event_name,
-    uiDimension1: DimensionName.query,
+    uiDimension1: DimensionName.time,
+    // uiDimension1: DimensionName.query,
     uiFilter1: DimensionName.none,
     uiFilter1Value: undefined,
     arrActiveSessionCount: [],
@@ -162,6 +154,7 @@ const [state, setState] = createStore({
     arrApplications: [],
     arrDatabases: [],
   },
+  metricData: [],
   data: {
     echart1: [[], [], [], [], []],
     echart2a: [],
@@ -177,8 +170,9 @@ const [state, setState] = createStore({
     version: "",
     size: "",
     kind: "",
+    datname: "",
   },
-  interval_ms: 30 * 1000, // 30 seconds
+  interval_ms: 5 * 1000, // 5 seconds
   timeframe_start_ms: 0,
   str: "string",
   range_start: 25.0,

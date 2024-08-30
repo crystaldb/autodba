@@ -1,7 +1,7 @@
 import { EChartsAutoSize } from "echarts-solid";
 import { contextState } from "../context_state";
 import { createSignal } from "solid-js";
-import { datazoom } from "../state";
+import { datazoomEventHandler } from "../state";
 import { State } from "../state";
 
 export function EchartsStacked(props: { class?: string; data: number[][] }) {
@@ -22,7 +22,7 @@ export function EchartsStacked(props: { class?: string; data: number[][] }) {
     // highlight: (event: any) => {
     //   console.log("Chart Highlight", event);
     // },
-    datazoom: datazoom.bind(null, setState, state),
+    datazoom: datazoomEventHandler.bind(null, setState, state),
   };
 
   const [option] = createSignal(() => {

@@ -1,7 +1,7 @@
 import { EChartsAutoSize } from "echarts-solid";
 import { contextState } from "../context_state";
 import { batch, createSignal } from "solid-js";
-import { datazoom } from "../state";
+import { datazoomEventHandler } from "../state";
 
 export function Echarts3(this: any) {
   let ref: import("@solid-primitives/refs").Ref<HTMLDivElement>;
@@ -44,7 +44,7 @@ export function Echarts3(this: any) {
     highlight: (event: any) => {
       console.log("Chart Highlight", event);
     },
-    datazoom: datazoom.bind(null, setState, state),
+    datazoom: datazoomEventHandler.bind(null, setState, state),
   };
 
   return (

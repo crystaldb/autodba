@@ -5,6 +5,7 @@ export function httpFakeDatabase(): {
     version: string;
     size: string;
     kind: string;
+    datname: string;
   };
 } {
   return {
@@ -14,6 +15,7 @@ export function httpFakeDatabase(): {
       version: "16.3",
       size: "db.t4g.medium",
       kind: "Instance",
+      datname: "(postgres|rdsadmin|template0|template1)",
     },
   };
 }

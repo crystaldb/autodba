@@ -14,7 +14,6 @@ import {
   getOwner,
   JSX,
   onCleanup,
-  onMount,
   runWithOwner,
 } from "solid-js";
 import { getEndpointData, getDatabaseInfo } from "./http";
@@ -90,7 +89,6 @@ function PageWrapper(
   let destroyed = false;
 
   function queryData() {
-    console.log("queryData");
     runWithOwner(owner, () => {
       createResource(databaseIsReady, () =>
         getEndpointData(apiEndpoint, state, setState),
@@ -123,9 +121,9 @@ function PageWrapper(
         <DatabaseHeader />
         <IntervalSelector class="self-start" />
       </section>
-      <EchartsTimebar class="h-12 w-full mb-3" />
+      <EchartsTimebar class="h-12 mb-3" />
       <Dynamic component={page} />
-      <DarkmodeSelector class="mt-16 mb-4" />
+      <DarkmodeSelector class="mt-16 mb-4 self-start" />
     </section>
   );
 }
@@ -219,7 +217,6 @@ function NavTopConfig1() {
       >
         Activity
       </A>
-      <div class="h-5 border-s w-1 border-neutral-200 dark:border-neutral-700"></div>
       <A
         activeClass="active"
         href="/metric"
@@ -228,6 +225,7 @@ function NavTopConfig1() {
       >
         Metrics
       </A>
+      <div class="h-5 border-s w-1 border-neutral-200 dark:border-neutral-700"></div>
       <A
         activeClass="active"
         href="/health"
