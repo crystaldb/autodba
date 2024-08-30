@@ -35,9 +35,9 @@ export async function getEndpointData(
     const response = await fetch(
       `/api/v1/${apiEndpoint}?datname=${
         state.database.datname || state.database.name
-      }&start=${time_start}&step=${state.interval_ms}ms&dbidentifier=${
-        state.database.name
-      }`,
+      }&start=${time_start}&end=${+new Date()}&step=${
+        state.interval_ms
+      }ms&dbidentifier=${state.database.name}`,
       {
         method: "GET",
       },
