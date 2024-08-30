@@ -1,3 +1,5 @@
+![Build Status](https://github.com/crystaldb/autodba/actions/workflows/build.yml/badge.svg)
+
 # 🤖 AutoDBA for PostgreSQL 🐘
 
 AutoDBA is an AI agent that runs PostgreSQL databases.
