@@ -1,238 +1,119 @@
 #!/bin/bash
 
-# SPDX-Identifier: Apache-2.0
+# SPDX-License-Identifier: Apache-2.0
 
 set -e
 
-APP_NAME="autodba"
-DEB_PACKAGE_PATH=""
-RPM_PACKAGE_PATH=""
+# Define paths
 INSTALL_DIR="/usr/local/bin"
-WEBAPP_DIR="/usr/local/share/$APP_NAME/webapp"
-PROMETHEUS_DIR="/usr/local/share/$APP_NAME/prometheus"
-POSTGRES_EXPORTER_DIR="/usr/local/share/$APP_NAME/postgres_exporter"
-SQL_EXPORTER_DIR="/usr/local/share/$APP_NAME/sql_exporter"
-RDS_EXPORTER_DIR="/usr/local/share/$APP_NAME/rds_exporter"
+WEBAPP_DIR="/usr/local/share/autodba/webapp"
+PROM_DIR="/usr/local/share/prometheus"
+CONFIG_DIR="/etc/autodba"
 
-# Initialize environment variables with empty values
-AUTODBA_TARGET_DB=""
-AWS_RDS_INSTANCE=""
-AWS_ACCESS_KEY_ID=""
-AWS_SECRET_ACCESS_KEY=""
-AWS_REGION=""
-
-# Function to install the package
-install_package() {
-    if [ -n "$DEB_PACKAGE_PATH" ]; then
-        echo "Installing DEB package..."
-        sudo dpkg -i "$DEB_PACKAGE_PATH"
-    elif [ -n "$RPM_PACKAGE_PATH" ]; then
-        echo "Installing RPM package..."
-        sudo rpm -ivh "$RPM_PACKAGE_PATH"
-    else
-        echo "No package specified for installation."
+# Detect system architecture
+ARCH=$(uname -m)
+case "$ARCH" in
+    x86_64)
+        ARCH_SUFFIX="amd64"
+        ;;
+    aarch64)
+        ARCH_SUFFIX="arm64"
+        ;;
+    *)
+        echo "Unsupported architecture: $ARCH"
         exit 1
-    fi
+        ;;
+esac
+
+echo "Detected architecture: $ARCH_SUFFIX"
+
+# Function to install from .tar.gz
+install_tar_gz() {
+
+    # Ensure required directories exist
+    echo "Creating directories..."
+    sudo mkdir -p "${INSTALL_DIR}" "${WEBAPP_DIR}" "${PROM_DIR}" "${CONFIG_DIR}"
+    echo "Extracting .tar.gz package $1..."
+    tar -xzvf "$1" -C /tmp/
+    sudo cp /tmp/autodba-*/bin/autodba-bff-${ARCH_SUFFIX} "${INSTALL_DIR}/autodba-bff"
+    sudo cp -r /tmp/autodba-*/webapp/* "${WEBAPP_DIR}/"
+    sudo cp -r /tmp/autodba-*/prometheus/${ARCH_SUFFIX}/* "${PROM_DIR}/"
+    sudo cp /tmp/autodba-*/entrypoint.sh "${INSTALL_DIR}/autodba-entrypoint.sh"
+    sudo chmod +x "${INSTALL_DIR}/autodba-entrypoint.sh"
 }
 
-# Function to create systemd service files
-create_systemd_service_files() {
-    # AutoDBA main service
-    echo "Creating AutoDBA main service file..."
-    sudo tee /etc/systemd/system/$APP_NAME.service > /dev/null <<EOF
+# Function to install from .deb
+install_deb() {
+    echo "Installing .deb package $1..."
+    sudo dpkg -i "$1"
+}
+
+# Function to install from .rpm
+install_rpm() {
+    echo "Installing .rpm package $1..."
+    sudo rpm -i "$1"
+}
+
+# Check if package type is provided
+if [ -z "$1" ]; then
+    echo "Usage: $0 <package-file>"
+    exit 1
+fi
+
+# Determine package type and install accordingly
+case "$1" in
+    *.tar.gz)
+        install_tar_gz "$1"
+        ;;
+    *.deb)
+        install_deb "$1"
+        ;;
+    *.rpm)
+        install_rpm "$1"
+        ;;
+    *)
+        echo "Unsupported package format: $1"
+        exit 1
+        ;;
+esac
+
+# Set up the configuration (customize as needed)
+echo "Setting up configuration..."
+# Here you can add commands to set up your configuration files in CONFIG_DIR
+
+# Optionally customize Prometheus configuration
+if [ ! -f "${PROM_DIR}/prometheus.yml" ]; then
+    echo "No custom Prometheus configuration found, setting up a default one..."
+    cp /tmp/autodba-*/prometheus/prometheus.yml "${PROM_DIR}/prometheus.yml"
+fi
+
+# Install systemd service (optional)
+if [ "$(which systemctl)" ]; then
+    echo "Installing systemd service..."
+    cat << EOF | sudo tee /etc/systemd/system/autodba.service
 [Unit]
 Description=AutoDBA Service
 After=network.target
 
 [Service]
-ExecStart=$INSTALL_DIR/$APP_NAME --db-url $AUTODBA_TARGET_DB --webapp-dir $WEBAPP_DIR
-WorkingDirectory=$INSTALL_DIR
-Restart=always
-Environment="AUTODBA_TARGET_DB=$AUTODBA_TARGET_DB"
-Environment="AWS_RDS_INSTANCE=$AWS_RDS_INSTANCE"
-Environment="AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID"
-Environment="AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY"
-Environment="AWS_REGION=$AWS_REGION"
+Type=simple
+ExecStart=${INSTALL_DIR}/autodba-entrypoint.sh
+Restart=on-failure
+User=root
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
-    # Prometheus service
-    echo "Creating Prometheus service file..."
-    sudo tee /etc/systemd/system/prometheus.service > /dev/null <<EOF
-[Unit]
-Description=Prometheus Monitoring System
-After=network.target
-
-[Service]
-ExecStart=$PROMETHEUS_DIR/prometheus --config.file=$PROMETHEUS_DIR/prometheus.yml --storage.tsdb.path=/var/lib/prometheus
-WorkingDirectory=$PROMETHEUS_DIR
-Restart=always
-User=prometheus
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-    # Prometheus Postgres Exporter service
-    echo "Creating Prometheus Postgres Exporter service file..."
-    sudo tee /etc/systemd/system/postgres_exporter.service > /dev/null <<EOF
-[Unit]
-Description=Prometheus PostgreSQL Exporter
-After=network.target
-
-[Service]
-Environment="DATA_SOURCE_NAME=$AUTODBA_TARGET_DB"
-ExecStart=$POSTGRES_EXPORTER_DIR/postgres_exporter
-WorkingDirectory=$POSTGRES_EXPORTER_DIR
-Restart=always
-User=prometheus
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-    # Prometheus SQL Exporter service
-    echo "Creating Prometheus SQL Exporter service file..."
-    sudo tee /etc/systemd/system/sql_exporter.service > /dev/null <<EOF
-[Unit]
-Description=Prometheus SQL Exporter
-After=network.target
-
-[Service]
-ExecStart=$SQL_EXPORTER_DIR/sql_exporter --config.file=$SQL_EXPORTER_DIR/sql_exporter.yml
-WorkingDirectory=$SQL_EXPORTER_DIR
-Restart=always
-User=prometheus
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-    # Prometheus RDS Exporter service
-    echo "Creating Prometheus RDS Exporter service file..."
-    sudo tee /etc/systemd/system/rds_exporter.service > /dev/null <<EOF
-[Unit]
-Description=Prometheus RDS Exporter
-After=network.target
-
-[Service]
-Environment="AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID"
-Environment="AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY"
-Environment="AWS_REGION=$AWS_REGION"
-ExecStart=$RDS_EXPORTER_DIR/prometheus-rds-exporter -c $RDS_EXPORTER_DIR/prometheus-rds-exporter.yaml --filter-instances "$AWS_RDS_INSTANCE"
-WorkingDirectory=$RDS_EXPORTER_DIR
-Restart=always
-User=prometheus
-
-[Install]
-WantedBy=multi-user.target
-EOF
-}
-
-# Function to start all services
-start_services() {
-    echo "Starting all services..."
     sudo systemctl daemon-reload
-    sudo systemctl enable $APP_NAME prometheus postgres_exporter sql_exporter rds_exporter
-    sudo systemctl start $APP_NAME prometheus postgres_exporter sql_exporter rds_exporter
-}
-
-# Function to display usage information
-usage() {
-    echo "Usage: $0 --deb <path/to/autodba.deb> --rpm <path/to/autodba.rpm> --db-url <TARGET_DATABASE_URL> --rds-instance <AWS_RDS_INSTANCE> --aws-access-key <AWS_ACCESS_KEY_ID> --aws-secret-key <AWS_SECRET_ACCESS_KEY> --aws-region <AWS_REGION>"
-    exit 1
-}
-
-# Parse command-line arguments
-while [[ "$#" -gt 0 ]]; do
-    case $1 in
-        --deb)
-            if [[ -n "$2" ]] && [[ ${2:0:1} != "-" ]]; then
-                DEB_PACKAGE_PATH="$2"
-                shift 2
-            else
-                echo "Error: Argument for $1 is missing" >&2
-                usage
-            fi
-            ;;
-        --rpm)
-            if [[ -n "$2" ]] && [[ ${2:0:1} != "-" ]]; then
-                RPM_PACKAGE_PATH="$2"
-                shift 2
-            else
-                echo "Error: Argument for $1 is missing" >&2
-                usage
-            fi
-            ;;
-        --db-url)
-            if [[ -n "$2" ]] && [[ ${2:0:1} != "-" ]]; then
-                AUTODBA_TARGET_DB="$2"
-                shift 2
-            else
-                echo "Error: Argument for $1 is missing" >&2
-                usage
-            fi
-            ;;
-        --rds-instance)
-            if [[ -n "$2" ]] && [[ ${2:0:1} != "-" ]]; then
-                AWS_RDS_INSTANCE="$2"
-                shift 2
-            else
-                echo "Error: Argument for $1 is missing" >&2
-                usage
-            fi
-            ;;
-        --aws-access-key)
-            if [[ -n "$2" ]] && [[ ${2:0:1} != "-" ]]; then
-                AWS_ACCESS_KEY_ID="$2"
-                shift 2
-            else
-                echo "Error: Argument for $1 is missing" >&2
-                usage
-            fi
-            ;;
-        --aws-secret-key)
-            if [[ -n "$2" ]] && [[ ${2:0:1} != "-" ]]; then
-                AWS_SECRET_ACCESS_KEY="$2"
-                shift 2
-            else
-                echo "Error: Argument for $1 is missing" >&2
-                usage
-            fi
-            ;;
-        --aws-region)
-            if [[ -n "$2" ]] && [[ ${2:0:1} != "-" ]]; then
-                AWS_REGION="$2"
-                shift 2
-            else
-                echo "Error: Argument for $1 is missing" >&2
-                usage
-            fi
-            ;;
-        *)
-            echo "Invalid argument: $1" >&2
-            usage
-            ;;
-    esac
-done
-
-# Validate required arguments
-if [[ -z "$DEB_PACKAGE_PATH" && -z "$RPM_PACKAGE_PATH" ]]; then
-    echo "Error: No package specified."
-    usage
+    sudo systemctl enable autodba
+    sudo systemctl start autodba
 fi
 
-if [[ -z "$AUTODBA_TARGET_DB" ]]; then
-    echo "Error: --db-url is required."
-    usage
+# Run the application (if not using systemd)
+if [ ! "$(which systemctl)" ]; then
+    echo "Starting AutoDBA..."
+    "${INSTALL_DIR}/autodba-entrypoint.sh"
 fi
 
-# Execute functions
-install_package
-create_systemd_service_files
-start_services
-
-echo "Installation completed successfully."
-echo "Use 'sudo systemctl status $APP_NAME' to check the service status."
+echo "Installation complete."

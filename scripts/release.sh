@@ -1,165 +1,133 @@
 #!/bin/bash
 
-# SPDX-Identifier: Apache-2.0
+# SPDX-License-Identifier: Apache-2.0
 
 set -e
 
-APP_NAME="autodba"
-VERSION="1.0.0"
-BUILD_DIR="/tmp/$APP_NAME-build"
-DIST_DIR="$(pwd)/dist"
-BINARY_PATH="$BUILD_DIR/$APP_NAME"
-SOLID_DIR="/path/to/your/application/solid" # Adjust this path to the actual location of your solid directory
+# Get the directory of the currently executing script
+SOURCE_DIR=$(dirname "$(readlink -f "$0")")
 
-# URLs for the Prometheus and exporters
-PROMETHEUS_URL="https://github.com/prometheus/prometheus/releases/download/v2.37.1/prometheus-2.37.1.linux-amd64.tar.gz"
-POSTGRES_EXPORTER_URL="https://github.com/prometheus-community/postgres_exporter/releases/download/v0.15.0/postgres_exporter-0.15.0.linux-amd64.tar.gz"
-SQL_EXPORTER_URL="https://github.com/burningalchemist/sql_exporter/releases/download/0.14.3/sql_exporter-0.14.3.linux-amd64.tar.gz"
-RDS_EXPORTER_REPO="https://github.com/crystaldb/prometheus-rds-exporter.git"
+cd $SOURCE_DIR/..
 
-# Create directories
-mkdir -p $BUILD_DIR
-mkdir -p $DIST_DIR
+# Define version
+VERSION="0.1.0"
 
-# Cleanup any previous build artifacts
-rm -rf $BUILD_DIR/*
-rm -rf $DIST_DIR/*
+# Define output directories
+OUTPUT_DIR="$SOURCE_DIR/../release_output"
+TAR_GZ_DIR="${OUTPUT_DIR}/tar.gz"
+RPM_DIR="${OUTPUT_DIR}/rpm"
+DEB_DIR="${OUTPUT_DIR}/deb"
+SRC_DIR="${OUTPUT_DIR}/source"
 
-# Build the Go application
-echo "Building Go application..."
-cd /path/to/your/application/bff  # Replace with the correct path to your Go project
-go mod download
-go build -o $BINARY_PATH ./cmd/main.go
+# Cleanup previous builds
+rm -rf "${OUTPUT_DIR}"
+mkdir -p "${TAR_GZ_DIR}" "${RPM_DIR}" "${DEB_DIR}" "${SRC_DIR}"
 
-# Build the frontend (SolidJS)
-echo "Building frontend..."
-cd $SOLID_DIR
+# Build the binary for multiple architectures
+echo "Building the project for multiple architectures..."
+
+cd bff
+
+# Build for x86_64
+GOARCH=amd64 GOOS=linux go build -o ${OUTPUT_DIR}/autodba-bff-amd64 ./cmd/main.go
+
+# Build for ARM64
+GOARCH=arm64 GOOS=linux go build -o ${OUTPUT_DIR}/autodba-bff-arm64 ./cmd/main.go
+
+cd ..
+
+# Build the UI (Solid project)
+echo "Building the UI..."
+cd solid
 npm install
 npm run build
+cd ..
 
-# Copy the built frontend assets to the build directory
-mkdir -p $BUILD_DIR/webapp
-cp -r $SOLID_DIR/dist/* $BUILD_DIR/webapp/
+# Prepare Prometheus and Exporters
+echo "Including Prometheus and Exporters..."
 
-# Download and extract Prometheus
-echo "Downloading Prometheus..."
-mkdir -p $BUILD_DIR/prometheus
-wget -qO- $PROMETHEUS_URL | tar -xzf - -C $BUILD_DIR/prometheus --strip-components=1
+# Download and prepare Prometheus and exporters for both architectures
+PROM_VERSION="2.43.0"
+EXPORTER_VERSION="0.15.0"
+SQL_EXPORTER_VERSION="0.14.3"
+RDS_EXPORTER_REPO="https://github.com/crystaldb/prometheus-rds-exporter.git"
 
-# Download and extract Prometheus Postgres Exporter
-echo "Downloading Prometheus Postgres Exporter..."
-mkdir -p $BUILD_DIR/postgres_exporter
-wget -qO- $POSTGRES_EXPORTER_URL | tar -xzf - -C $BUILD_DIR/postgres_exporter --strip-components=1
+for arch in amd64 arm64; do
+    mkdir -p "${TAR_GZ_DIR}/autodba-${VERSION}/prometheus/${arch}"
+    mkdir -p "${TAR_GZ_DIR}/autodba-${VERSION}/prometheus/${arch}/exporters"
 
-# Download and extract Prometheus SQL Exporter
-echo "Downloading Prometheus SQL Exporter..."
-mkdir -p $BUILD_DIR/sql_exporter
-wget -qO- $SQL_EXPORTER_URL | tar -xzf - -C $BUILD_DIR/sql_exporter --strip-components=1
+    # Prometheus
+    wget -qO- https://github.com/prometheus/prometheus/releases/download/v${PROM_VERSION}/prometheus-${PROM_VERSION}.linux-${arch}.tar.gz | tar -xzf - -C "${TAR_GZ_DIR}/autodba-${VERSION}/prometheus/${arch}" --strip-components=1
 
-# Clone and build Prometheus RDS Exporter
-echo "Cloning Prometheus RDS Exporter..."
-mkdir -p $BUILD_DIR/rds_exporter
-git clone $RDS_EXPORTER_REPO $BUILD_DIR/rds_exporter
-cd $BUILD_DIR/rds_exporter
-make build
+    # Postgres Exporter
+    wget -qO- https://github.com/prometheus-community/postgres_exporter/releases/download/v${EXPORTER_VERSION}/postgres_exporter-${EXPORTER_VERSION}.linux-${arch}.tar.gz | tar -xzf - -C "${TAR_GZ_DIR}/autodba-${VERSION}/prometheus/${arch}/exporters" --strip-components=1
 
-# Create DEB package
-echo "Creating DEB package..."
-mkdir -p $BUILD_DIR/DEBIAN
-cat <<EOF > $BUILD_DIR/DEBIAN/control
-Package: $APP_NAME
-Version: $VERSION
-Section: base
-Priority: optional
-Architecture: amd64
-Maintainer: Your Name <your.email@example.com>
-Description: AutoDBA is an AI-powered PostgreSQL management agent.
-EOF
+    # SQL Exporter
+    wget -qO- https://github.com/burningalchemist/sql_exporter/releases/download/${SQL_EXPORTER_VERSION}/sql_exporter-${SQL_EXPORTER_VERSION}.linux-${arch}.tar.gz | tar -xzf - -C "${TAR_GZ_DIR}/autodba-${VERSION}/prometheus/${arch}/exporters" --strip-components=1
 
-# Prepare directories for DEB package
-mkdir -p $BUILD_DIR/usr/local/bin
-mkdir -p $BUILD_DIR/usr/local/share/$APP_NAME/webapp
-mkdir -p $BUILD_DIR/usr/local/share/$APP_NAME/prometheus
-mkdir -p $BUILD_DIR/usr/local/share/$APP_NAME/postgres_exporter
-mkdir -p $BUILD_DIR/usr/local/share/$APP_NAME/sql_exporter
-mkdir -p $BUILD_DIR/usr/local/share/$APP_NAME/rds_exporter
+    # RDS Exporter (Build from source)
+    rm -rf "/tmp/prometheus_rds_exporter_$arch"
+    git clone "${RDS_EXPORTER_REPO}" "/tmp/prometheus_rds_exporter_$arch"
+    cd /tmp/prometheus_rds_exporter_$arch
+    GOARCH=${arch} GOOS=linux go build -o "${TAR_GZ_DIR}/autodba-${VERSION}/prometheus/${arch}/exporters/prometheus-rds-exporter"
+    cd -
+done
 
-# Copy binaries and webapp
-cp $BINARY_PATH $BUILD_DIR/usr/local/bin/$APP_NAME
-cp -r $BUILD_DIR/webapp/* $BUILD_DIR/usr/local/share/$APP_NAME/webapp/
-cp -r $BUILD_DIR/prometheus/* $BUILD_DIR/usr/local/share/$APP_NAME/prometheus/
-cp -r $BUILD_DIR/postgres_exporter/* $BUILD_DIR/usr/local/share/$APP_NAME/postgres_exporter/
-cp -r $BUILD_DIR/sql_exporter/* $BUILD_DIR/usr/local/share/$APP_NAME/sql_exporter/
-cp -r $BUILD_DIR/rds_exporter/bin/prometheus-rds-exporter $BUILD_DIR/usr/local/share/$APP_NAME/rds_exporter/
+# Prepare for tar.gz package
+echo "Creating tar.gz package..."
+mkdir -p "${TAR_GZ_DIR}/autodba-${VERSION}/bin"
+mkdir -p "${TAR_GZ_DIR}/autodba-${VERSION}/webapp"
+cp -r ${OUTPUT_DIR}/autodba-bff-amd64 "${TAR_GZ_DIR}/autodba-${VERSION}/bin/autodba-bff-amd64"
+cp -r ${OUTPUT_DIR}/autodba-bff-arm64 "${TAR_GZ_DIR}/autodba-${VERSION}/bin/autodba-bff-arm64"
+cp -r solid/dist/* "${TAR_GZ_DIR}/autodba-${VERSION}/webapp/"
+cp entrypoint.sh "${TAR_GZ_DIR}/autodba-${VERSION}/"
 
-dpkg-deb --build $BUILD_DIR $DIST_DIR/${APP_NAME}_${VERSION}_amd64.deb
+tar -czvf "${TAR_GZ_DIR}/autodba-${VERSION}.tar.gz" -C "${TAR_GZ_DIR}" "autodba-${VERSION}"
 
-# Create RPM package
-echo "Creating RPM package..."
-mkdir -p $BUILD_DIR/RPMS
-cat <<EOF > $BUILD_DIR/$APP_NAME.spec
-Name: $APP_NAME
-Version: $VERSION
-Release: 1%{?dist}
-Summary: AutoDBA is an AI-powered PostgreSQL management agent.
+# Prepare RPM packages
+echo "Creating RPM packages..."
 
-License: Apache-2.0
-URL: http://example.com
-Packager: Your Name <your.email@example.com>
-Requires: curl, wget, jq, nodejs, npm, git, sqlite
-BuildArch: x86_64
+for arch in x86_64 aarch64; do
+    if [ "$arch" == "x86_64" ]; then
+        ARCH_SUFFIX="amd64"
+    else
+        ARCH_SUFFIX="arm64"
+    fi
 
-%description
-AutoDBA is an AI-powered PostgreSQL management agent.
+    fpm -s dir -t rpm -n autodba -v "${VERSION}" \
+        -a ${arch} \
+        --description "AutoDBA is an AI agent for operating PostgreSQL databases." \
+        --license "Apache-2.0" \
+        --maintainer "CrystalDB Team <info@crystal.cloud>" \
+        --url "https://www.crystaldb.cloud/" \
+        --prefix /usr/local/bin \
+        --package "${RPM_DIR}/" \
+        "${TAR_GZ_DIR}/autodba-${VERSION}/bin/autodba-bff-${ARCH_SUFFIX}"=/usr/local/bin/autodba-bff \
+        "${TAR_GZ_DIR}/autodba-${VERSION}/webapp"=/usr/local/share/autodba/webapp \
+        "${TAR_GZ_DIR}/autodba-${VERSION}/prometheus/${ARCH_SUFFIX}"=/usr/local/share/prometheus \
+        "${TAR_GZ_DIR}/autodba-${VERSION}/entrypoint.sh"=/usr/local/bin/autodba-entrypoint.sh
+done
 
-%prep
-%setup -q
+# Prepare DEB packages
+echo "Creating DEB packages..."
 
-%build
+for arch in amd64 arm64; do
+    fpm -s dir -t deb -n autodba -v "${VERSION}" \
+        -a ${arch} \
+        --description "AutoDBA is an AI agent for operating PostgreSQL databases." \
+        --license "Apache-2.0" \
+        --maintainer "CrystalDB Team <info@crystal.cloud>" \
+        --url "https://www.crystaldb.cloud/" \
+        --prefix /usr/local/bin \
+        --package "${DEB_DIR}/" \
+        "${TAR_GZ_DIR}/autodba-${VERSION}/bin/autodba-bff-${arch}"=/usr/local/bin/autodba-bff \
+        "${TAR_GZ_DIR}/autodba-${VERSION}/webapp"=/usr/local/share/autodba/webapp \
+        "${TAR_GZ_DIR}/autodba-${VERSION}/prometheus/${arch}"=/usr/local/share/prometheus \
+        "${TAR_GZ_DIR}/autodba-${VERSION}/entrypoint.sh"=/usr/local/bin/autodba-entrypoint.sh
+done
 
-%install
-rm -rf %{buildroot}
-mkdir -p %{buildroot}/usr/local/bin
-mkdir -p %{buildroot}/usr/local/share/$APP_NAME/webapp
-mkdir -p %{buildroot}/usr/local/share/$APP_NAME/prometheus
-mkdir -p %{buildroot}/usr/local/share/$APP_NAME/postgres_exporter
-mkdir -p %{buildroot}/usr/local/share/$APP_NAME/sql_exporter
-mkdir -p %{buildroot}/usr/local/share/$APP_NAME/rds_exporter
+# Package the source code
+echo "Packaging source code..."
+git archive --format=tar.gz --output="${SRC_DIR}/autodba-${VERSION}-source.tar.gz" HEAD
 
-cp $BINARY_PATH %{buildroot}/usr/local/bin/$APP_NAME
-cp -r $BUILD_DIR/webapp/* %{buildroot}/usr/local/share/$APP_NAME/webapp/
-cp -r $BUILD_DIR/prometheus/* %{buildroot}/usr/local/share/$APP_NAME/prometheus/
-cp -r $BUILD_DIR/postgres_exporter/* %{buildroot}/usr/local/share/$APP_NAME/postgres_exporter/
-cp -r $BUILD_DIR/sql_exporter/* %{buildroot}/usr/local/share/$APP_NAME/sql_exporter/
-cp -r $BUILD_DIR/rds_exporter/bin/prometheus-rds-exporter %{buildroot}/usr/local/share/$APP_NAME/rds_exporter/
-
-%files
-/usr/local/bin/$APP_NAME
-/usr/local/share/$APP_NAME/webapp/*
-/usr/local/share/$APP_NAME/prometheus/*
-/usr/local/share/$APP_NAME/postgres_exporter/*
-/usr/local/share/$APP_NAME/sql_exporter/*
-/usr/local/share/$APP_NAME/rds_exporter/*
-
-%post
-echo "Installation complete."
-
-%preun
-echo "Preparing to uninstall."
-
-%postun
-echo "Uninstallation complete."
-
-%changelog
-* $(date +'%a %b %d %Y') Your Name <your.email@example.com> - $VERSION-1
-- Initial RPM release.
-EOF
-
-rpmbuild -bb --buildroot=$BUILD_DIR/$APP_NAME $BUILD_DIR/$APP_NAME.spec
-cp ~/rpmbuild/RPMS/x86_64/${APP_NAME}-${VERSION}-1.el7.x86_64.rpm $DIST_DIR/
-
-echo "Release packages created in $DIST_DIR:"
-ls -lh $DIST_DIR
-
-# Cleanup build directory
-rm -rf $BUILD_DIR
+echo "Release build complete. Output located in ${OUTPUT_DIR}."
