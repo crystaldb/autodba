@@ -1,0 +1,39 @@
+name: autodba application
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths-ignore:
+      - '**/README.md'
+      - 'docs/**'
+
+jobs:
+  agent:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Build
+      id: build
+      uses: docker/build-push-action@v5
+      with:
+        push: false
+        target: builder
+
+    - name: Lint
+      id: lint
+      uses: docker/build-push-action@v5
+      with:
+        push: false
+        target: lint
+
+    - name: Test
+      id: test
+      uses: docker/build-push-action@v5
+      with:
+        push: false
+        target: test
