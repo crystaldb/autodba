@@ -77,46 +77,23 @@ export function CubeActivity() {
   });
 
   return (
-    <>
-      <section class="flex flex-col md:flex-row items-start gap-4">
-        <section class="flex flex-col gap-4">
-          <div class="flex flex-wrap gap-x-3 text-sm">
-            <label class="font-medium">Slice/Color by</label>
-            <SelectSliceBy dimension={DimensionField.uiLegend} />
-          </div>
-          <Legend legend={legendDistinct()} />
-        </section>
-        <section class="flex flex-col gap-5">
-          <section class="flex flex-col gap-y-5">
-            <div class="flex items-baseline gap-3 text-sm">
-              <DimensionTabs dimension="uiDimension1" cubeData={cubeData} />
-            </div>
-          </section>
-          <Dimension1 cubeData={cubeData} legend={legendDistinct()} />
-        </section>
+    <section class="flex flex-col md:flex-row items-start gap-4">
+      <section class="flex flex-col gap-4">
+        <div class="flex flex-wrap gap-x-3 text-sm">
+          <label class="font-medium">Slice/Color by</label>
+          <SelectSliceBy dimension={DimensionField.uiLegend} />
+        </div>
+        <Legend legend={legendDistinct()} />
       </section>
-
-      <details>
-        <summary class="text-gray-500">debug0</summary>
-        <section class="text-gray-500">
-          <div>
-            legend & dimension{">>>"}
-            {state.cubeActivity.uiLegend}::
-            {state.cubeActivity.uiDimension1}:::{state.cubeActivity.uiFilter1}
+      <section class="flex flex-col gap-5">
+        <section class="flex flex-col gap-y-5">
+          <div class="flex items-baseline gap-3 text-sm">
+            <DimensionTabs dimension="uiDimension1" cubeData={cubeData} />
           </div>
-          <div>legend is {JSON.stringify(legendDistinct())}</div>
         </section>
-      </details>
-
-      <details>
-        <summary class="text-gray-500">debug2</summary>
-        <pre class="text-xs whitespace-pre-wrap break-works text-neutral-500 max-w-28 dark:text-neutral-400">
-          Cube data
-          <br />
-          {JSON.stringify(state.cubeActivity, null, 2)}
-        </pre>
-      </details>
-    </>
+        <Dimension1 cubeData={cubeData} legend={legendDistinct()} />
+      </section>
+    </section>
   );
 }
 
@@ -220,15 +197,6 @@ function DimensionView(props: IDimensionView) {
           />
         )}
       </For>
-      <details>
-        <summary class="text-gray-500">debug1</summary>
-        <div class="word-break whitespace-pre">
-          {JSON.stringify(distinctDimension1(), null, 2)}
-        </div>
-        <For each={distinctDimension1()}>
-          {(value) => <div>dimension1 is {JSON.stringify(value)}</div>}
-        </For>
-      </details>
     </section>
   );
 }

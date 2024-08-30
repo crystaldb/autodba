@@ -14,7 +14,7 @@ export function Echarts2(props: {
 
   const base = {
     grid: {
-      bottom: 25,
+      bottom: 75,
     },
     tooltip: {
       trigger: "axis",

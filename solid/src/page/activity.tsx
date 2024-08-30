@@ -6,7 +6,7 @@ import { queryCube } from "../http";
 export function PageActivity() {
   const { state, setState } = contextState();
   const changed = createMemo((changeCount: number) => {
-    state.database.name;
+    state.database_instance.dbidentifier;
     state.cubeActivity.uiLegend;
     state.cubeActivity.uiDimension1;
     state.cubeActivity.uiFilter1;

@@ -1,17 +1,28 @@
 import { produce } from "solid-js/store";
 import { DimensionName, type State } from "./state";
-import { httpFakeDatabase } from "./fake.http";
 
 let debugFirstTimestamp: number = 0;
 
-export async function getDatabaseInfo(
+export async function getDatabaseInstanceInfo(
   setState: (arg0: string, arg1: any, arg2?: any) => void,
 ): Promise<boolean> {
-  // const response = await fetch("/api/query/database", { method: "GET", });
+  const response = await fetch("/api/v1/info", { method: "GET" });
 
-  const json = httpFakeDatabase();
+  const json = await response.json();
+  if (!response.ok) return false;
+  setState("database_instance", json || {});
+  return true;
+}
 
-  setState("database", json.database);
+export async function getDatabaseList(
+  setState: (arg0: string, arg1: any, arg2?: any) => void,
+): Promise<boolean> {
+  const response = await fetch("/api/v1/databases", { method: "GET" });
+
+  const json = await response.json();
+  if (!response.ok) return false;
+
+  setState("database_list", json || []);
   return true;
 }
 
@@ -20,62 +31,57 @@ export async function getEndpointData(
   state: State,
   setState: (arg0: string, arg1: any, arg2?: any) => void,
 ): Promise<boolean> {
-  if (apiEndpoint === "activity") {
-    if (!state.database.name) return false;
-    return await queryCube(state, setState);
-  } else if (apiEndpoint === "health" || apiEndpoint === "metric") {
-    if (!state.database.name) return false;
+  if (apiEndpoint === "activity") return queryCube(state, setState);
+  if (apiEndpoint !== "health" && apiEndpoint !== "metric") return false;
+  if (!state.database_instance.dbidentifier) return false;
+  if (!state.database_list.length) return false;
 
-    const safe_prometheus_11kSampleLimit_ms = 10950 * state.interval_ms;
-    const time_start = Math.max(
-      state.timeframe_start_ms,
-      +new Date() - 15 * 60 * 1000, // query 15 minutes of data max
-      +new Date() - safe_prometheus_11kSampleLimit_ms, // ensure we do not query too much data.
-    );
-    const response = await fetch(
-      `/api/v1/${apiEndpoint}?datname=${
-        state.database.datname || state.database.name
-      }&start=${time_start}&end=${+new Date()}&step=${
-        state.interval_ms
-      }ms&dbidentifier=${state.database.name}`,
-      {
-        method: "GET",
-      },
-    );
+  const safe_prometheus_11kSampleLimit_ms = 10950 * state.interval_ms;
+  const time_start = Math.max(
+    state.timeframe_start_ms,
+    +new Date() - 15 * 60 * 1000, // query 15 minutes of data max
+    +new Date() - safe_prometheus_11kSampleLimit_ms, // ensure we do not query too much data.
+  );
+  const response = await fetch(
+    `/api/v1/${apiEndpoint}?datname=(${state.database_list.join(
+      "|",
+    )})&start=${time_start}&end=${+new Date()}&step=${
+      state.interval_ms
+    }ms&dbidentifier=${state.database_instance.dbidentifier}`,
+    {
+      method: "GET",
+    },
+  );
 
-    const json = await response.json();
-    if (response.ok) {
-      let max_time = 0;
-      for (let i = json.length - 1; i >= 0; --i) {
-        if (json[i].time_ms > max_time) {
-          max_time = json[i].time_ms;
-        }
-      }
-      // ++max_time; // do not query the same data again
-      setState("timeframe_start_ms", Math.max(time_start, max_time));
+  const json = await response.json();
+  if (!response.ok) return false;
+
+  let max_time = 0;
+  for (let i = json.length - 1; i >= 0; --i) {
+    if (json[i].time_ms > max_time) {
+      max_time = json[i].time_ms;
     }
-
-    if (!debugFirstTimestamp) debugFirstTimestamp = json[0].time_ms;
-
-    console.log(
-      "json",
-      (json || []).map(
-        (row: { time_ms: any }) => row.time_ms - debugFirstTimestamp,
-      ),
-      json,
-    );
-
-    const dataBucketName = apiEndpoint + "Data";
-    const maxDataPoints = 60 * 15 * 12; // number of 5 second intervals in 15 minutes
-    setState(dataBucketName, (data: any[]) => {
-      let newData = spliceArraysTogetherSkippingDuplicateTimestamps(data, json);
-      if (newData.length > maxDataPoints)
-        newData = newData.slice(-maxDataPoints);
-      return newData;
-    });
-    console.log("newdata:", state.metricData.length);
-    return true;
   }
+  // ++max_time; // do not query the same data again
+  setState("timeframe_start_ms", Math.max(time_start, max_time));
+
+  if (!debugFirstTimestamp) debugFirstTimestamp = json[0].time_ms;
+
+  // console.log(
+  //   "json",
+  //   (json || []).map(
+  //     (row: { time_ms: any }) => row.time_ms - debugFirstTimestamp,
+  //   ),
+  //   json,
+  // );
+
+  const dataBucketName = apiEndpoint + "Data";
+  const maxDataPoints = 60 * 15 * 12; // number of 5 second intervals in 15 minutes
+  setState(dataBucketName, (data: any[]) => {
+    let newData = spliceArraysTogetherSkippingDuplicateTimestamps(data, json);
+    if (newData.length > maxDataPoints) newData = newData.slice(-maxDataPoints);
+    return newData;
+  });
   return true;
 }
 
@@ -114,10 +120,10 @@ export async function queryCube(
   state: State,
   setState: (arg0: string, arg1: any, arg2?: any) => void,
 ): Promise<boolean> {
-  if (!state.database.name) return false;
+  if (!state.database_instance.dbidentifier) return false;
+  if (!state.database_list.length) return false;
   if (queryCubeBusy) return false;
 
-  console.log("queryCube");
   const safe_prometheus_11kSampleLimit_ms = 10950 * state.interval_ms;
   const time_start = Math.max(
     state.cubeActivity.uiDimension1 === DimensionName.time // ? state.timeframe_start_ms
@@ -129,9 +135,9 @@ export async function queryCube(
 
   queryCubeBusy = true;
   const response = await fetch(
-    `/api/v1/activity?database_list=${
-      "(postgres|rdsadmin|template0|template1)" || state.database.name
-    }&start=${time_start}&end=${state.timeframe_end_ms || +new Date()}&step=${
+    `/api/v1/activity?database_list=(${state.database_list.join(
+      "|",
+    )})&start=${time_start}&end=${state.timeframe_end_ms || +new Date()}&step=${
       state.interval_ms
     }ms&limit=${state.cubeActivity.limit}&legend=${
       state.cubeActivity.uiLegend

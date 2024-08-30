@@ -29,30 +29,28 @@ export function EchartsTimebar(props: IEchartsTimebarProps) {
   };
 
   return (
-    <>
-      <ECharts
-        // @ts-expect-error suppress complaint about `type: "gauge"`
-        option={mergeProps(base, {
-          dataZoom: [
-            {
-              show: true,
-              realtime: true,
-              start: state.range_start,
-              end: state.range_end,
-              xAxisIndex: [0, 1],
-            },
-            {
-              type: "inside",
-              realtime: true,
-              start: state.range_start,
-              end: state.range_end,
-              xAxisIndex: [0, 1],
-            },
-          ],
-        })}
-        eventHandlers={eventHandlers}
-        class={props.class}
-      />
-    </>
+    <ECharts
+      // @ts-expect-error suppress complaint about `type: "gauge"`
+      option={mergeProps(base, {
+        dataZoom: [
+          {
+            show: true,
+            realtime: true,
+            start: state.range_start,
+            end: state.range_end,
+            xAxisIndex: [0, 1],
+          },
+          {
+            type: "inside",
+            realtime: true,
+            start: state.range_start,
+            end: state.range_end,
+            xAxisIndex: [0, 1],
+          },
+        ],
+      })}
+      eventHandlers={eventHandlers}
+      class={props.class}
+    />
   );
 }

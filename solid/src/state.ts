@@ -66,14 +66,13 @@ export type State = {
     cpu: number[];
     time: number[];
   };
-  database: {
-    name: string;
+  database_instance: {
+    dbidentifier: string;
     engine: string;
-    version: string;
-    size: string;
-    kind: string;
-    datname: string;
+    engine_version: string;
+    instance_class: string;
   };
+  database_list: string[];
   metricData: any[];
   interval_ms: number;
   timeframe_start_ms: number;
@@ -164,14 +163,13 @@ const [state, setState] = createStore({
     cpu: [],
     time: [],
   },
-  database: {
-    name: "",
+  database_instance: {
+    dbidentifier: "",
     engine: "",
-    version: "",
-    size: "",
-    kind: "",
-    datname: "",
+    engine_version: "",
+    instance_class: "",
   },
+  database_list: [],
   interval_ms: 5 * 1000, // 5 seconds
   timeframe_start_ms: 0,
   str: "string",

@@ -16,14 +16,23 @@ import {
   onCleanup,
   runWithOwner,
 } from "solid-js";
-import { getEndpointData, getDatabaseInfo } from "./http";
+import {
+  getEndpointData,
+  getDatabaseInstanceInfo,
+  getDatabaseList,
+} from "./http";
 import { Dynamic } from "solid-js/web";
 import { DarkmodeSelector } from "./view/darkmode";
 import { EchartsTimebar } from "./view/echarts_timebar";
 
 export default function App(): JSX.Element {
   const { setState } = useState();
-  const [databaseIsReady] = createResource(() => getDatabaseInfo(setState));
+  const [databaseInstanceIsReady] = createResource(() =>
+    getDatabaseInstanceInfo(setState),
+  );
+  const [databaseListIsReady] = createResource(() => getDatabaseList(setState));
+  const databaseIsReady = () =>
+    databaseListIsReady() && databaseInstanceIsReady();
 
   return (
     <div class="max-w-screen-xl mx-auto">
@@ -100,7 +109,7 @@ function PageWrapper(
   }
 
   createEffect(() => {
-    console.log("EFFECT interval", state.interval_ms);
+    // console.log("EFFECT interval", state.interval_ms);
     state.interval_ms;
     if (timeout) clearTimeout(timeout);
     queryData();
@@ -115,32 +124,41 @@ function PageWrapper(
   });
 
   return (
-    <section data-testid={testid} class="flex flex-col mx-1 xs:mx-8">
-      <NavTopConfig1 />
-      <section class="flex flex-wrap justify-between gap-4 mb-8">
-        <DatabaseHeader />
-        <IntervalSelector class="self-start" />
+    <>
+      <section data-testid={testid} class="flex flex-col mx-1 xs:mx-8">
+        <NavTopConfig1 />
+        <section class="flex flex-wrap justify-between gap-4 mb-8">
+          <DatabaseHeader class="" />
+          <IntervalSelector class="self-start" />
+        </section>
+        <Dynamic component={page} />
+        <section class="sticky bottom-0 flex flex-col mt-3 z-20 backdrop-blur">
+          <EchartsTimebar class="w-48 xs:w-10/12 h-12" />
+        </section>
       </section>
-      <EchartsTimebar class="h-12 mb-3" />
-      <Dynamic component={page} />
       <DarkmodeSelector class="mt-16 mb-4 self-start" />
-    </section>
+    </>
   );
 }
 
-function DatabaseHeader(props: { class?: any }) {
+interface PropsDatabaseHeader {
+  class?: string;
+}
+
+function DatabaseHeader(props: PropsDatabaseHeader) {
   const { state } = contextState();
   return (
     <section
       data-testid="db-header"
       class={`flex flex-col gap-y-1 ${props.class}`}
     >
-      <h1 class="text-lg xs:text-2xl font-semibold">{state.database.name}</h1>
+      <h1 class="text-lg xs:text-2xl font-semibold">
+        {state.database_instance.dbidentifier}
+      </h1>
       <p class="text-neutral-500 flex flex-wrap gap-x-4 dark:text-neutral-400 text-xs sm:text-sm">
-        <span>{state.database.engine}</span>
-        <span>{state.database.version}</span>
-        <span>{state.database.size}</span>
-        <span>{state.database.kind}</span>
+        <span>{state.database_instance.engine}</span>
+        <span>{state.database_instance.engine_version}</span>
+        <span>{state.database_instance.instance_class}</span>
       </p>
     </section>
   );
@@ -225,6 +243,7 @@ function NavTopConfig1() {
       >
         Metrics
       </A>
+      {/*
       <div class="h-5 border-s w-1 border-neutral-200 dark:border-neutral-700"></div>
       <A
         activeClass="active"
@@ -242,6 +261,7 @@ function NavTopConfig1() {
       >
         Explorer
       </A>
+      */}
     </NavTop>
   );
 }

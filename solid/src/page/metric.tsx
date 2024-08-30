@@ -1,7 +1,6 @@
 import { For } from "solid-js";
 import { contextState } from "../context_state";
 import { Echarts2 } from "../view/echarts2";
-import { Echarts3 } from "../view/echarts3";
 
 export function PageMetric(props: any) {
   const page = "pageMetric";
@@ -13,21 +12,6 @@ export function PageMetric(props: any) {
         tast {JSON.stringify(state.metricData.length, null, 2)}
       </div>
       <section class="flex flex-col gap-y-12">
-        {/*
-        <div class="flex flex-col p-4 gap-y-4 rounded-xl bg-neutral-100 dark:bg-neutral-800">
-          <h2 class="font-medium">Database metrics</h2>
-          <div class="h-80 p-4 rounded-lg bg-neutral-100 dark:bg-neutral-950">
-            <Echarts2
-              title="Tuples: DML (tuples per second)"
-              dataA={state.data.echart2a}
-              dataB={state.data.echart2b}
-              dataC={state.data.echart2c}
-              class="h-80 p-4 rounded-lg bg-neutral-100 dark:bg-neutral-950"
-            />
-          </div>
-        </div>
-        */}
-
         <div class="flex flex-col p-4 gap-y-4 rounded-xl bg-neutral-100 dark:bg-neutral-800">
           <h2 class="font-medium">Database metrics</h2>
 
@@ -65,7 +49,7 @@ export function PageMetric(props: any) {
             >
               {(metric: string) => (
                 <section class="p-4 rounded-lg bg-neutral-100 dark:bg-neutral-950">
-                  <h2>{metric}</h2>
+                  <h2 class="break-words">{metric}</h2>
                   <Echarts2
                     title={metric}
                     metric={metric}

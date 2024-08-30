@@ -137,10 +137,6 @@ export function CubeDimensionTime(props: PropsLegend) {
           />
         </Show>
       </section>
-      <details class="mt-20 text-gray-500 text-xs w-full">
-        <summary class="text-right">dataset is</summary>{" "}
-        {JSON.stringify(dataset(), null, 2)}
-      </details>
     </>
   );
 }
