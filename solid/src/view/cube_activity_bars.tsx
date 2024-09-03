@@ -1,135 +1,141 @@
 import { contextState } from "../context_state";
-import { createMemo, For, Match, Switch } from "solid-js";
+import { For, JSX } from "solid-js";
 import {
   DimensionField,
-  listColors,
   DimensionName,
   listDimensionTabNames,
   CubeData,
 } from "../state";
 import {
-  arrange,
   distinct,
   filter,
-  fixedOrder,
+  first,
+  groupBy,
   map,
+  sum,
+  summarize,
   tidy,
-  slice,
 } from "@tidyjs/tidy";
-import { CubeDimensionTime } from "./cube_activity_time";
-import { DimensionBars } from "./cube_activity_bars";
+import { ILegend } from "./cube_activity";
 
-export type ILegend = {
-  item: string;
-  colorText: string;
-  colorBg: string;
-}[];
+interface IDimensionBars {
+  cubeData: () => CubeData;
+  legend: ILegend;
+  class?: string;
+}
 
-export function CubeActivity() {
+export function DimensionBars(props: IDimensionBars) {
   const { state } = contextState();
 
-  const cubeData = createMemo<CubeData>(() => {
-    return state.cubeActivity.cubeData;
-    // state.cubeActivity.uiLegend;
-    // state.cubeActivity.uiDimension1;
-    // return tidy(
-    //   state.cubeActivity.cubeData,
-    //   filter(
-    //     (row) =>
-    //       !!row.metric[state.cubeActivity.uiLegend] &&
-    //       (state.cubeActivity.uiDimension1 === DimensionName.time ||
-    //         !!row.metric[state.cubeActivity.uiDimension1]),
-    //   ),
-    // );
-  });
-
-  const legendDistinct = createMemo((): ILegend => {
-    state.cubeActivity.uiLegend;
+  const distinctDimension1 = (): {
+    dimensionValue: string;
+    total: number;
+    records: { metric: { [key: string]: string }; values: { value: any }[] }[];
+  }[] => {
+    if (state.cubeActivity.uiDimension1 === DimensionName.time) {
+      return [];
+    }
     return tidy(
-      cubeData(),
-      distinct((row) => row.metric[state.cubeActivity.uiLegend]),
-      map((row) => ({
-        item: row.metric[state.cubeActivity.uiLegend],
-      })),
-      filter(({ item }) => !!item),
-      arrange(["item"]),
-      arrange([
-        // move CPU to the end of the list iff it exists
-        fixedOrder((row) => row.item, ["CPU"], { position: "end" }),
-      ]),
-      slice(0, 15),
-      map((item, index) => ({
-        item: item.item!,
-        colorText: listColors[index]?.text || "",
-        colorBg: listColors[index]?.bg || "",
-      })),
+      props.cubeData(),
+      filter(
+        (d) =>
+          !!d.metric[state.cubeActivity.uiDimension1] &&
+          (d.metric[state.cubeActivity.uiDimension1] === DimensionName.time ||
+            !!d.metric[state.cubeActivity.uiDimension1]),
+      ),
+      groupBy(
+        (d) => d.metric[state.cubeActivity.uiDimension1],
+        [
+          summarize({
+            dimensionValue: first(
+              (d: {
+                metric: Record<string, string>;
+                values: { value: number }[];
+              }) => {
+                return d.metric[state.cubeActivity.uiDimension1];
+              },
+            ),
+            total: sum(
+              (d: { values: { value: number }[] }) => d.values[0].value,
+            ),
+            records: (d) => d,
+          }),
+        ],
+      ),
     );
-  });
+  };
 
   return (
-    <section class="flex flex-col md:flex-row items-start gap-4">
-      <section class="flex flex-col gap-4">
-        <div class="flex flex-wrap gap-x-3 text-sm">
-          <label class="font-medium">Slice/Color by</label>
-          <SelectSliceBy dimension={DimensionField.uiLegend} />
-        </div>
-        <Legend legend={legendDistinct()} />
-      </section>
-      <section class="flex flex-col gap-5">
-        <section class="flex flex-col gap-y-5">
-          <div class="flex items-baseline gap-3 text-sm">
-            <DimensionTabs dimension="uiDimension1" cubeData={cubeData} />
-          </div>
-        </section>
-        <Dimension1 cubeData={cubeData} legend={legendDistinct()} />
-      </section>
-    </section>
-  );
-}
-
-interface PropsLegend {
-  legend: ILegend;
-}
-
-function Legend(props: PropsLegend) {
-  return (
-    <section class="flex flex-col gap-4">
-      <For each={props.legend}>
-        {(item) => (
-          <label>
-            <span class={item.colorText}>{item.item}</span>
-          </label>
+    <section class={`flex flex-col gap-4 ${props.class}`}>
+      <For each={distinctDimension1()}>
+        {({ total, dimensionValue, records }) => (
+          <DimensionRow
+            len={total}
+            txt={dimensionValue}
+            records={records}
+            legend={props.legend}
+          />
         )}
       </For>
     </section>
   );
 }
 
-interface IDimension1 {
-  cubeData: () => CubeData;
-  class?: string;
+interface IDimensionRow {
+  legend: ILegend;
+  records: any;
+  len: number;
+  txt:
+    | number
+    | boolean
+    | Node
+    | JSX.ArrayElement
+    | (string & {})
+    | null
+    | undefined;
+}
+
+function DimensionRow(props: IDimensionRow) {
+  const { state } = contextState();
+  return (
+    <section class="flex items-center">
+      <div class="w-48 xs:w-64 flex flex-row">
+        <For each={props.records}>
+          {(record) => (
+            <DimensionRowPart
+              len={record.values[0].value}
+              txt={record.metric[state.cubeActivity.uiLegend]}
+              legend={props.legend}
+            />
+          )}
+        </For>
+      </div>
+      <div class="grow">{props.txt}</div>
+    </section>
+  );
+}
+
+interface IDimensionRowPart {
+  len: number;
+  txt: string & {};
   legend: ILegend;
 }
 
-function Dimension1(props: IDimension1) {
-  const { state } = contextState();
+function DimensionRowPart(props: IDimensionRowPart) {
+  let css = "";
+  for (let i = 0; i < props.legend.length; i++) {
+    if (props.legend[i].item === props.txt) {
+      css = props.legend[i].colorBg;
+    }
+  }
   return (
-    <>
-      <Switch>
-        <Match when={state.cubeActivity.uiDimension1 === DimensionName.time}>
-          <div class={`${props.class}`}>
-            <CubeDimensionTime legend={props.legend} />
-          </div>
-        </Match>
-        <Match when={true}>
-          <DimensionBars
-            cubeData={props.cubeData}
-            legend={props.legend}
-            class="min-h-64"
-          />
-        </Match>
-      </Switch>
-    </>
+    <div
+      style={{ width: `${props.len * 10}%` }}
+      class={`rounded cursor-default ${css}`}
+      title={props.txt}
+    >
+      {props.len.toFixed(1)}
+    </div>
   );
 }
 
@@ -139,7 +145,7 @@ interface IDimensionTabs {
 }
 
 function DimensionTabs(props: IDimensionTabs) {
-  const { state } = contextState();
+  const { state, setState } = contextState();
 
   return (
     <section class="flex flex-col gap-3">
@@ -254,3 +260,25 @@ function Option(props: { value: string; txt: string; selected: boolean }) {
     </option>
   );
 }
+
+// function listFor(
+//   dimensionField: DimensionField,
+//   cubeData: () => CubeData,
+// ): [string, string][] {
+//   if (dimensionField !== DimensionField.uiFilter1) return [];
+//   const { state } = contextState();
+//   const dimensionName: DimensionName = state.cubeActivity[dimensionField];
+//
+//   const input = tidy(
+//     cubeData(),
+//     filter((d) => !!d.metric[dimensionName]),
+//     map((d) => ({ result: d.metric[dimensionName] })),
+//     distinct((d) => d.result),
+//     filter(({ result }) => !!result),
+//   ).map(({ result }) => result!);
+//
+//   let list: [string, string][] = input.map((x) => [x, x]);
+//
+//   list.unshift(["", "no filter"]);
+//   return list;
+// }
