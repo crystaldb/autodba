@@ -283,35 +283,3 @@ func processMatrix(matrix model.Matrix, isTimeSeriesQuery bool) ([]map[string]in
 
 	return jsonMatrix, nil
 }
-
-// for _, stream := range matrix {
-// 			metricMap := make(map[string]interface{})
-// 			for k, v := range stream.Metric {
-// 				metricMap[string(k)] = string(v)
-// 			}
-
-// 			var lenght int
-// 			if isTimeSeriesQuery {
-// 				lenght = len(stream.Values)
-// 			} else {
-// 				lenght = 1
-// 			}
-
-// 			values := make([]map[string]interface{}, lenght)
-// 			for i, sample := range stream.Values {
-// 				values[i] = map[string]interface{}{
-// 					"timestamp": int64(sample.Timestamp),
-// 					"value":     float64(sample.Value),
-// 				}
-
-// 				if !isTimeSeriesQuery {
-// 					break
-// 				}
-// 			}
-
-// 			jsonStream := map[string]interface{}{
-// 				"metric": metricMap,
-// 				"values": values,
-// 			}
-// 			jsonMatrix = append(jsonMatrix, jsonStream)
-// 		}
