@@ -50,12 +50,8 @@ type Stream struct {
 
 type Metric map[model.LabelName]model.LabelValue
 
-func (r repository) Execute(query string, options map[string]string) (*map[int64]map[string]float64, error) {
-
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	var range_config v1.Range
+func parseTimeRange(options map[string]string) (*v1.Range, error) {
+	var rangeConfig v1.Range
 
 	if start, ok := options["start"]; ok && start != "" {
 
@@ -91,21 +87,35 @@ func (r repository) Execute(query string, options map[string]string) (*map[int64
 			step = (30 * time.Second)
 		}
 
-		range_config = v1.Range{
+		rangeConfig = v1.Range{
 			Start: startTime,
 			End:   endTime,
 			Step:  step,
 		}
 
 	} else {
-		range_config = v1.Range{
+		rangeConfig = v1.Range{
 			Start: time.Now(),
 			End:   time.Now(),
 			Step:  (30 * time.Second),
 		}
 	}
 
-	result, warnings, err := r.Api.QueryRange(ctx, query, range_config, v1.WithTimeout(5*time.Second))
+	return &rangeConfig, nil
+}
+
+func (r repository) Execute(query string, options map[string]string) (*map[int64]map[string]float64, error) {
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	rangeConfig, err := parseTimeRange(options)
+	if err != nil {
+		fmt.Println("Error parsing time range:", err)
+		return nil, err
+	}
+
+	result, warnings, err := r.Api.QueryRange(ctx, query, *rangeConfig, v1.WithTimeout(5*time.Second))
 	if err != nil {
 		fmt.Println("Error executing query: ", err)
 		return nil, err
@@ -147,69 +157,24 @@ func (r repository) ExecuteRaw(query string, options map[string]string) ([]map[s
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
-	var range_config v1.Range
+	rangeConfig, err := parseTimeRange(options)
+	if err != nil {
+		fmt.Println("Error parsing time range:", err)
+		return nil, err
+	}
 
 	isTimeSeriesQuery := true
 	if value, ok := options["dim"]; ok && value != "time" {
 		isTimeSeriesQuery = false
 	}
 
-	if start, ok := options["start"]; ok && start != "" {
-
-		millis, err := strconv.ParseInt(start, 10, 64)
-
-		if err != nil {
-			fmt.Println("Error parsing timestamp:", err)
-			return nil, err
-		}
-
-		startTime := time.UnixMilli(millis)
-		var endTime time.Time
-		var step time.Duration
-
-		if end, ok := options["end"]; ok && end != "" {
-			millis, err := strconv.ParseInt(end, 10, 64)
-			if err != nil {
-				fmt.Println("Error parsing timestamp:", err)
-				return nil, err
-			}
-			endTime = time.UnixMilli(millis)
-		} else {
-			endTime = time.Now()
-		}
-
-		if stepStr, ok := options["step"]; ok && stepStr != "" {
-			step, err = time.ParseDuration(stepStr)
-			if err != nil {
-				fmt.Println("Error parsing step:", err)
-				return nil, err
-			}
-		} else {
-			step = (30 * time.Second)
-		}
-
-		range_config = v1.Range{
-			Start: startTime,
-			End:   endTime,
-			Step:  step,
-		}
-
-	} else {
-		range_config = v1.Range{
-			Start: time.Now(),
-			End:   time.Now(),
-			Step:  (30 * time.Second),
-		}
-	}
-
 	var result model.Value
 	var warnings v1.Warnings
-	var err error
 
 	if isTimeSeriesQuery {
-		result, warnings, err = r.Api.QueryRange(ctx, query, range_config, v1.WithTimeout(60*time.Second))
+		result, warnings, err = r.Api.QueryRange(ctx, query, *rangeConfig, v1.WithTimeout(60*time.Second))
 	} else {
-		result, warnings, err = r.Api.Query(ctx, query, range_config.End, v1.WithTimeout(60*time.Second))
+		result, warnings, err = r.Api.Query(ctx, query, rangeConfig.End, v1.WithTimeout(60*time.Second))
 	}
 	if err != nil {
 		fmt.Println("Error executing query: ", err)
@@ -222,36 +187,9 @@ func (r repository) ExecuteRaw(query string, options map[string]string) ([]map[s
 	switch r := result.(type) {
 	case model.Vector:
 		fmt.Printf("Vector: %v\n", r)
-		vector, ok := result.(model.Vector)
-		if !ok {
-			fmt.Println("Result is not a matrix")
-			return nil, errors.New("Failed to parse prometheus result. Result is not a matrix")
-		}
-
-		if len(vector) == 0 {
-			return []map[string]interface{}{}, nil
-		}
-
-		var jsonVector []map[string]interface{}
-
-		for _, sample := range vector {
-			metricMap := make(map[string]interface{})
-			for k, v := range sample.Metric {
-				metricMap[string(k)] = string(v)
-			}
-
-			values := []map[string]interface{}{
-				{
-					"timestamp": int64(sample.Timestamp),
-					"value":     float64(sample.Value),
-				},
-			}
-
-			jsonSample := map[string]interface{}{
-				"metric": metricMap,
-				"values": values,
-			}
-			jsonVector = append(jsonVector, jsonSample)
+		jsonVector, err := processVector(r)
+		if err != nil {
+			return nil, err
 		}
 
 		jsonData, err := json.MarshalIndent(jsonVector, "", "  ")
@@ -265,49 +203,9 @@ func (r repository) ExecuteRaw(query string, options map[string]string) ([]map[s
 		return jsonVector, nil
 	case model.Matrix:
 		fmt.Printf("Matrix: %v\n", r)
-		matrix, ok := result.(model.Matrix)
-		if !ok {
-			fmt.Println("Result is not a matrix")
-			return nil, errors.New("Failed to parse prometheus result. Result is not a matrix")
-		}
-
-		if len(matrix) == 0 {
-			return []map[string]interface{}{}, nil
-		}
-
-		// Convert model.Matrix to a serializable structure
-		var jsonMatrix []map[string]interface{}
-
-		for _, stream := range matrix {
-			metricMap := make(map[string]interface{})
-			for k, v := range stream.Metric {
-				metricMap[string(k)] = string(v)
-			}
-
-			var lenght int
-			if isTimeSeriesQuery {
-				lenght = len(stream.Values)
-			} else {
-				lenght = 1
-			}
-
-			values := make([]map[string]interface{}, lenght)
-			for i, sample := range stream.Values {
-				values[i] = map[string]interface{}{
-					"timestamp": int64(sample.Timestamp),
-					"value":     float64(sample.Value),
-				}
-
-				if !isTimeSeriesQuery {
-					break
-				}
-			}
-
-			jsonStream := map[string]interface{}{
-				"metric": metricMap,
-				"values": values,
-			}
-			jsonMatrix = append(jsonMatrix, jsonStream)
+		jsonMatrix, err := processMatrix(r, isTimeSeriesQuery)
+		if err != nil {
+			return nil, err
 		}
 
 		jsonData, err := json.MarshalIndent(jsonMatrix, "", "  ")
@@ -324,6 +222,96 @@ func (r repository) ExecuteRaw(query string, options map[string]string) ([]map[s
 		fmt.Println("Result is of unknown type")
 		return nil, errors.New("Failed to parse Prometheus result. Result is of unknown type")
 	}
-
-	return nil, errors.New("Failed to parse Prometheus result. Result is of unknown type")
 }
+func processVector(vector model.Vector) ([]map[string]interface{}, error) {
+	if len(vector) == 0 {
+		return []map[string]interface{}{}, nil
+	}
+
+	var jsonVector []map[string]interface{}
+	for _, sample := range vector {
+		metricMap := make(map[string]interface{})
+		for k, v := range sample.Metric {
+			metricMap[string(k)] = string(v)
+		}
+
+		jsonSample := map[string]interface{}{
+			"metric": metricMap,
+			"values": []map[string]interface{}{
+				{
+					"timestamp": int64(sample.Timestamp),
+					"value":     float64(sample.Value),
+				},
+			},
+		}
+		jsonVector = append(jsonVector, jsonSample)
+	}
+
+	return jsonVector, nil
+}
+
+func processMatrix(matrix model.Matrix, isTimeSeriesQuery bool) ([]map[string]interface{}, error) {
+	if len(matrix) == 0 {
+		return []map[string]interface{}{}, nil
+	}
+
+	var jsonMatrix []map[string]interface{}
+	for _, stream := range matrix {
+		metricMap := make(map[string]interface{})
+		for k, v := range stream.Metric {
+			metricMap[string(k)] = string(v)
+		}
+
+		values := make([]map[string]interface{}, len(stream.Values))
+		for i, sample := range stream.Values {
+			values[i] = map[string]interface{}{
+				"timestamp": int64(sample.Timestamp),
+				"value":     float64(sample.Value),
+			}
+
+			if !isTimeSeriesQuery {
+				break
+			}
+		}
+
+		jsonStream := map[string]interface{}{
+			"metric": metricMap,
+			"values": values,
+		}
+		jsonMatrix = append(jsonMatrix, jsonStream)
+	}
+
+	return jsonMatrix, nil
+}
+
+// for _, stream := range matrix {
+// 			metricMap := make(map[string]interface{})
+// 			for k, v := range stream.Metric {
+// 				metricMap[string(k)] = string(v)
+// 			}
+
+// 			var lenght int
+// 			if isTimeSeriesQuery {
+// 				lenght = len(stream.Values)
+// 			} else {
+// 				lenght = 1
+// 			}
+
+// 			values := make([]map[string]interface{}, lenght)
+// 			for i, sample := range stream.Values {
+// 				values[i] = map[string]interface{}{
+// 					"timestamp": int64(sample.Timestamp),
+// 					"value":     float64(sample.Value),
+// 				}
+
+// 				if !isTimeSeriesQuery {
+// 					break
+// 				}
+// 			}
+
+// 			jsonStream := map[string]interface{}{
+// 				"metric": metricMap,
+// 				"values": values,
+// 			}
+// 			jsonMatrix = append(jsonMatrix, jsonStream)
+// 		}
