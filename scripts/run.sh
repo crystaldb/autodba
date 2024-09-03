@@ -9,7 +9,6 @@ SOURCE_DIR=$(dirname "$(readlink -f "$0")")
 cd $SOURCE_DIR/..
 
 # Initialize variables
-# VOLUME_NAME="autodba_postgres_data"
 IMAGE_NAME="autodba-image"
 DOCKERFILE="Dockerfile"
 AUTODBA_TARGET_DB= # 'postgresql://autodba_db_user:autodba_db_pass@localhost:5432/autodba_db'
@@ -113,18 +112,21 @@ if [[ -z "$AUTODBA_TARGET_DB" ]]; then
 fi
 
 if [[ -z "$AWS_RDS_INSTANCE" ]]; then
-    echo "NOTE: --rds-instance not specified. Starting without RDS Instance metrics."
+    echo "Warning: --rds-instance not specified. Starting without RDS Instance metrics."
 fi
 
 if [[ -n "$AWS_RDS_INSTANCE" ]]; then
   if ! command_exists "aws"; then
-    echo "AWS CLI is not installed. Please install AWS CLI to fetch AWS credentials."
-    exit 1
+    echo "AWarning: WS CLI is not installed. Please install AWS CLI to fetch AWS credentials."
   else
     # Fetch AWS Access Key and AWS Secret Key
-    AWS_ACCESS_KEY_ID=$(aws configure get aws_access_key_id)
-    AWS_SECRET_ACCESS_KEY=$(aws configure get aws_secret_access_key)
-    AWS_REGION=$(aws configure get region)
+    AWS_ACCESS_KEY_ID=$(aws configure get aws_access_key_id || echo "")
+    AWS_SECRET_ACCESS_KEY=$(aws configure get aws_secret_access_key || echo "")
+    AWS_REGION=$(aws configure get region || echo "")
+
+    if [[ -z "$AWS_ACCESS_KEY_ID" || -z "$AWS_SECRET_ACCESS_KEY" || -z "$AWS_REGION" ]]; then
+        echo "Warning: AWS credentials or region are not configured properly. Proceeding without AWS integration."
+    fi
   fi
 fi
 
