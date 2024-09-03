@@ -12,11 +12,10 @@ import {
 import {
   datazoomEventHandler,
   DimensionField,
-  listWaitsColorsText,
+  listColors,
   DimensionName,
   listDimensionTabNames,
   CubeData,
-  listWaitsColorsBg,
 } from "../state";
 import {
   arrange,
@@ -70,8 +69,8 @@ export function CubeActivity() {
       slice(0, 15),
       map((item, index) => ({
         item: item.item!,
-        colorText: listWaitsColorsText[index] || "",
-        colorBg: listWaitsColorsBg[index] || "",
+        colorText: listColors[index]?.text || "",
+        colorBg: listColors[index]?.bg || "",
       })),
     );
   });

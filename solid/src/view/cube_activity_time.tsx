@@ -1,7 +1,7 @@
 import { EChartsAutoSize } from "echarts-solid";
 import { contextState } from "../context_state";
 import { createMemo, mergeProps, Show } from "solid-js";
-import { datazoomEventHandler, listColorsHex } from "../state";
+import { datazoomEventHandler, listColors } from "../state";
 import {
   arrange,
   distinct,
@@ -29,7 +29,7 @@ export function CubeDimensionTime(props: PropsLegend) {
   };
 
   const base = {
-    color: listColorsHex,
+    color: listColors.map((item) => item.hex),
     animation: false,
     grid: {
       left: 0,
@@ -96,8 +96,8 @@ export function CubeDimensionTime(props: PropsLegend) {
 
   return (
     <>
-      <section class="h-64 min-w-128">
-        <Show when={state.cubeActivity.uiLegend} keyed>
+      <section class="h-[40rem] min-w-128">
+        <Show when={`${state.cubeActivity.uiLegend}${state.interval_ms}`} keyed>
           <EChartsAutoSize
             // @ts-expect-error
             option={mergeProps(base, {
@@ -117,13 +117,13 @@ export function CubeDimensionTime(props: PropsLegend) {
               // { name: "vCPUs", type: "line", data: [20, 20, 20, 20, 20], markLine: { data: [{ type: "average", name: "Avg" }], },
               // },
               dataZoom: [
-                {
-                  show: true,
-                  realtime: true,
-                  start: state.range_start,
-                  end: state.range_end,
-                  xAxisIndex: [0, 1],
-                },
+                // {
+                //   show: true,
+                //   realtime: true,
+                //   start: state.range_start,
+                //   end: state.range_end,
+                //   xAxisIndex: [0, 1],
+                // },
                 {
                   type: "inside",
                   realtime: true,

@@ -57,12 +57,7 @@ export type State = {
     arrApplications: string[];
     arrDatabases: string[];
   };
-  data: {
-    echart1: number[][];
-    echart2a: any[];
-    echart2b: any[];
-    echart2c: any[];
-    echart3: any[];
+  healthData: {
     cpu: number[];
     time: number[];
   };
@@ -94,44 +89,158 @@ export const datazoomEventHandler = (
   });
 };
 
-export const listWaitsColorsText = [
-  "text-blue-300 accent-blue-300",
-  "text-green-300 accent-green-300",
-  "text-yellow-300 accent-yellow-300",
-  "text-red-400 accent-red-400",
-  "text-teal-500 accent-teal-500",
-  "text-purple-500 accent-purple-500",
-  "text-orange-500 accent-orange-500",
-  "text-indigo-500 accent-neutral-500",
-  "text-fuchsia-500 accent-fuchsia-500",
-  "text-green-500 accent-green-500",
-];
-
-export const listWaitsColorsBg = [
-  "bg-blue-300 accent-blue-300 text-neutral-500",
-  "bg-green-300 accent-green-300 text-neutral-500",
-  "bg-yellow-300 accent-yellow-300 text-neutral-500",
-  "bg-red-400 accent-red-400",
-  "bg-teal-500 accent-teal-500",
-  "bg-purple-500 accent-purple-500",
-  "bg-orange-500 accent-orange-500",
-  "bg-indigo-500 accent-neutral-500",
-  "bg-fuchsia-500 accent-fuchsia-500",
-  "bg-green-500 accent-green-500",
-];
-
-export const listColorsHex = [
-  "#93c5fd", // "bg-blue-300",
-  "#86efac", // "bg-green-300",
-  "#fde047", // "bg-yellow-300",
-  "#fca5a5", // "bg-red-400",
-  "#5eead4", // "bg-teal-500",
-  "#a855f7", // "bg-purple-500",
-  "#f97316", // "bg-orange-500",
-  "#6366f1", // "bg-indigo-500",
-  "#d946ef", // "bg-fuchsia-500",
-  "#14b8a6", // "bg-green-500",
-  // ... add a bunch of neutral colors for non differentiated colors
+export const listColors = [
+  {
+    text: "text-blue-300 accent-blue-300",
+    bg: "bg-blue-300 accent-blue-300 text-neutral-500",
+    hex: "#93c5fd", // "bg-blue-300",
+  },
+  {
+    text: "text-green-300 accent-green-300",
+    bg: "bg-green-300 accent-green-300 text-neutral-500",
+    hex: "#86efac", // "bg-green-300",
+  },
+  {
+    text: "text-yellow-300 accent-yellow-300",
+    bg: "bg-yellow-300 accent-yellow-300 text-neutral-500",
+    hex: "#fde047", // "bg-yellow-300",
+  },
+  {
+    text: "text-red-400 accent-red-400",
+    bg: "bg-red-400 accent-red-400",
+    hex: "#fca5a5", // "bg-red-400",
+  },
+  {
+    text: "text-teal-500 accent-teal-500",
+    bg: "bg-teal-500 accent-teal-500",
+    hex: "#5eead4", // "bg-teal-500",
+  },
+  {
+    text: "text-purple-500 accent-purple-500",
+    bg: "bg-purple-500 accent-purple-500",
+    hex: "#a855f7", // "bg-purple-500",
+  },
+  {
+    text: "text-orange-500 accent-orange-500",
+    bg: "bg-orange-500 accent-orange-500",
+    hex: "#f97316", // "bg-orange-500",
+  },
+  {
+    text: "text-indigo-500 accent-neutral-500",
+    bg: "bg-indigo-500 accent-neutral-500",
+    hex: "#6366f1", // "bg-indigo-500",
+  },
+  {
+    text: "text-fuchsia-500 accent-fuchsia-500",
+    bg: "bg-fuchsia-500 accent-fuchsia-500",
+    hex: "#d946ef", // "bg-fuchsia-500",
+  },
+  {
+    text: "text-green-500 accent-green-500",
+    bg: "bg-green-500 accent-green-500",
+    hex: "#14b8a6", // "bg-green-500",
+  },
+  // ... add a bunch of neutral colors for non differentiated colors to avoid eCharts wrap-around
+  {
+    text: "text-gray-500 accent-gray-500",
+    bg: "bg-gray-500 accent-gray-500",
+    hex: "#6b7280", // "bg-gray-500",
+  },
+  {
+    text: "text-gray-500 accent-gray-500",
+    bg: "bg-gray-500 accent-gray-500",
+    hex: "#6b7280", // "bg-gray-500",
+  },
+  {
+    text: "text-gray-500 accent-gray-500",
+    bg: "bg-gray-500 accent-gray-500",
+    hex: "#6b7280", // "bg-gray-500",
+  },
+  {
+    text: "text-gray-500 accent-gray-500",
+    bg: "bg-gray-500 accent-gray-500",
+    hex: "#6b7280", // "bg-gray-500",
+  },
+  {
+    text: "text-gray-500 accent-gray-500",
+    bg: "bg-gray-500 accent-gray-500",
+    hex: "#6b7280", // "bg-gray-500",
+  },
+  {
+    text: "text-gray-500 accent-gray-500",
+    bg: "bg-gray-500 accent-gray-500",
+    hex: "#6b7280", // "bg-gray-500",
+  },
+  {
+    text: "text-gray-500 accent-gray-500",
+    bg: "bg-gray-500 accent-gray-500",
+    hex: "#6b7280", // "bg-gray-500",
+  },
+  {
+    text: "text-gray-500 accent-gray-500",
+    bg: "bg-gray-500 accent-gray-500",
+    hex: "#6b7280", // "bg-gray-500",
+  },
+  {
+    text: "text-gray-500 accent-gray-500",
+    bg: "bg-gray-500 accent-gray-500",
+    hex: "#6b7280", // "bg-gray-500",
+  },
+  {
+    text: "text-gray-500 accent-gray-500",
+    bg: "bg-gray-500 accent-gray-500",
+    hex: "#6b7280", // "bg-gray-500",
+  },
+  {
+    text: "text-gray-500 accent-gray-500",
+    bg: "bg-gray-500 accent-gray-500",
+    hex: "#6b7280", // "bg-gray-500",
+  },
+  {
+    text: "text-gray-500 accent-gray-500",
+    bg: "bg-gray-500 accent-gray-500",
+    hex: "#6b7280", // "bg-gray-500",
+  },
+  {
+    text: "text-gray-500 accent-gray-500",
+    bg: "bg-gray-500 accent-gray-500",
+    hex: "#6b7280", // "bg-gray-500",
+  },
+  {
+    text: "text-gray-500 accent-gray-500",
+    bg: "bg-gray-500 accent-gray-500",
+    hex: "#6b7280", // "bg-gray-500",
+  },
+  {
+    text: "text-gray-500 accent-gray-500",
+    bg: "bg-gray-500 accent-gray-500",
+    hex: "#6b7280", // "bg-gray-500",
+  },
+  {
+    text: "text-gray-500 accent-gray-500",
+    bg: "bg-gray-500 accent-gray-500",
+    hex: "#6b7280", // "bg-gray-500",
+  },
+  {
+    text: "text-gray-500 accent-gray-500",
+    bg: "bg-gray-500 accent-gray-500",
+    hex: "#6b7280", // "bg-gray-500",
+  },
+  {
+    text: "text-gray-500 accent-gray-500",
+    bg: "bg-gray-500 accent-gray-500",
+    hex: "#6b7280", // "bg-gray-500",
+  },
+  {
+    text: "text-gray-500 accent-gray-500",
+    bg: "bg-gray-500 accent-gray-500",
+    hex: "#6b7280", // "bg-gray-500",
+  },
+  {
+    text: "text-gray-500 accent-gray-500",
+    bg: "bg-gray-500 accent-gray-500",
+    hex: "#6b7280", // "bg-gray-500",
+  },
 ];
 
 const [state, setState] = createStore({
@@ -154,12 +263,7 @@ const [state, setState] = createStore({
     arrDatabases: [],
   },
   metricData: [],
-  data: {
-    echart1: [[], [], [], [], []],
-    echart2a: [],
-    echart2b: [],
-    echart2c: [],
-    echart3: [],
+  healthData: {
     cpu: [],
     time: [],
   },
