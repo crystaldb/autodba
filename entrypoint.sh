@@ -88,6 +88,7 @@ if (( $EXITED_PID == $PROMETHEUS_PID ))
 then
   echo "prometheus exited with return code $retcode - killing all jobs"
 elif (( $EXITED_PID == $BFF_PID ))
+then
   echo "Bff exited with return code $retcode - killing all jobs"
 else
   echo "An unknown background process (with PID=$EXITED_PID) exited with return code $retcode - killing all jobs"
