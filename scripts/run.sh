@@ -117,7 +117,7 @@ fi
 
 if [[ -n "$AWS_RDS_INSTANCE" ]]; then
   if ! command_exists "aws"; then
-    echo "AWarning: WS CLI is not installed. Please install AWS CLI to fetch AWS credentials."
+    echo "Warning: AWS CLI is not installed. Please install AWS CLI to fetch AWS credentials."
   else
     # Fetch AWS Access Key and AWS Secret Key
     AWS_ACCESS_KEY_ID=$(aws configure get aws_access_key_id || echo "")
