@@ -1,5 +1,5 @@
 import { contextState } from "../context_state";
-import { For, JSX } from "solid-js";
+import { createMemo, createResource, For, JSX } from "solid-js";
 import {
   DimensionField,
   DimensionName,
@@ -17,15 +17,31 @@ import {
   tidy,
 } from "@tidyjs/tidy";
 import { ILegend } from "./cube_activity";
+import { queryCube } from "../http";
 
 interface IDimensionBars {
-  cubeData: () => CubeData;
+  cubeData: CubeData;
   legend: ILegend;
   class?: string;
 }
 
 export function DimensionBars(props: IDimensionBars) {
-  const { state } = contextState();
+  const { state, setState } = contextState();
+  const changed = createMemo((changeCount: number) => {
+    state.database_instance.dbidentifier;
+    state.range_start;
+    state.range_end;
+    state.cubeActivity.uiLegend;
+    state.cubeActivity.uiDimension1;
+    state.cubeActivity.uiFilter1;
+    state.cubeActivity.uiFilter1Value;
+    console.log("changed", changeCount);
+    return changeCount + 1;
+  }, 0);
+
+  createResource(changed, () => {
+    queryCube(state, setState);
+  });
 
   const distinctDimension1 = (): {
     dimensionValue: string;
@@ -36,7 +52,7 @@ export function DimensionBars(props: IDimensionBars) {
       return [];
     }
     return tidy(
-      props.cubeData(),
+      props.cubeData,
       filter(
         (d) =>
           !!d.metric[state.cubeActivity.uiDimension1] &&
@@ -141,7 +157,7 @@ function DimensionRowPart(props: IDimensionRowPart) {
 
 interface IDimensionTabs {
   dimension: "uiDimension1";
-  cubeData: () => CubeData;
+  cubeData: CubeData;
 }
 
 function DimensionTabs(props: IDimensionTabs) {

@@ -28,25 +28,25 @@ export type ILegend = {
 export function CubeActivity() {
   const { state } = contextState();
 
-  const cubeData = createMemo<CubeData>(() => {
-    return state.cubeActivity.cubeData;
-    // state.cubeActivity.uiLegend;
-    // state.cubeActivity.uiDimension1;
-    // return tidy(
-    //   state.cubeActivity.cubeData,
-    //   filter(
-    //     (row) =>
-    //       !!row.metric[state.cubeActivity.uiLegend] &&
-    //       (state.cubeActivity.uiDimension1 === DimensionName.time ||
-    //         !!row.metric[state.cubeActivity.uiDimension1]),
-    //   ),
-    // );
-  });
+  // const cubeData = createMemo<CubeData>(() => {
+  //   return state.cubeActivity.cubeData;
+  //   // state.cubeActivity.uiLegend;
+  //   // state.cubeActivity.uiDimension1;
+  //   // return tidy(
+  //   //   state.cubeActivity.cubeData,
+  //   //   filter(
+  //   //     (row) =>
+  //   //       !!row.metric[state.cubeActivity.uiLegend] &&
+  //   //       (state.cubeActivity.uiDimension1 === DimensionName.time ||
+  //   //         !!row.metric[state.cubeActivity.uiDimension1]),
+  //   //   ),
+  //   // );
+  // });
 
   const legendDistinct = createMemo((): ILegend => {
     state.cubeActivity.uiLegend;
     return tidy(
-      cubeData(),
+      state.cubeActivity.cubeData,
       distinct((row) => row.metric[state.cubeActivity.uiLegend]),
       map((row) => ({
         item: row.metric[state.cubeActivity.uiLegend],
@@ -78,10 +78,16 @@ export function CubeActivity() {
       <section class="flex flex-col gap-5">
         <section class="flex flex-col gap-y-5">
           <div class="flex items-baseline gap-3 text-sm">
-            <DimensionTabs dimension="uiDimension1" cubeData={cubeData} />
+            <DimensionTabs
+              dimension="uiDimension1"
+              cubeData={state.cubeActivity.cubeData}
+            />
           </div>
         </section>
-        <Dimension1 cubeData={cubeData} legend={legendDistinct()} />
+        <Dimension1
+          cubeData={state.cubeActivity.cubeData}
+          legend={legendDistinct()}
+        />
       </section>
     </section>
   );
@@ -106,7 +112,7 @@ function Legend(props: PropsLegend) {
 }
 
 interface IDimension1 {
-  cubeData: () => CubeData;
+  cubeData: CubeData;
   class?: string;
   legend: ILegend;
 }
@@ -135,7 +141,7 @@ function Dimension1(props: IDimension1) {
 
 interface IDimensionTabs {
   dimension: "uiDimension1";
-  cubeData: () => CubeData;
+  cubeData: CubeData;
 }
 
 function DimensionTabs(props: IDimensionTabs) {

@@ -120,6 +120,7 @@ export async function queryCube(
   state: State,
   setState: (arg0: string, arg1: any, arg2?: any) => void,
 ): Promise<boolean> {
+  console.log("queryCube", queryCubeBusy);
   if (!state.database_instance.dbidentifier) return false;
   if (!state.database_list.length) return false;
   if (queryCubeBusy) return false;

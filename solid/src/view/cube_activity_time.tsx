@@ -1,6 +1,6 @@
 import { EChartsAutoSize } from "echarts-solid";
 import { contextState } from "../context_state";
-import { createMemo, mergeProps, Show } from "solid-js";
+import { createMemo, createResource, mergeProps, Show } from "solid-js";
 import { datazoomEventHandler, listColors } from "../state";
 import {
   arrange,
@@ -12,6 +12,7 @@ import {
   tidy,
 } from "@tidyjs/tidy";
 import { ILegend } from "./cube_activity";
+import { queryCube } from "../http";
 
 interface PropsLegend {
   legend: ILegend;
@@ -19,6 +20,19 @@ interface PropsLegend {
 
 export function CubeDimensionTime(props: PropsLegend) {
   const { state, setState } = contextState();
+  const changed = createMemo((changeCount: number) => {
+    state.database_instance.dbidentifier;
+    state.cubeActivity.uiLegend;
+    state.cubeActivity.uiDimension1;
+    state.cubeActivity.uiFilter1;
+    state.cubeActivity.uiFilter1Value;
+    console.log("changed", changeCount);
+    return changeCount + 1;
+  }, 0);
+
+  createResource(changed, () => {
+    queryCube(state, setState);
+  });
 
   const eventHandlers = {
     click: (event: any) => {
