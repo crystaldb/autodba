@@ -55,10 +55,19 @@ install_tar_gz() {
     tar -xzvf "$1" -C /tmp/
     sudo cp /tmp/autodba-*/bin/autodba-bff-${ARCH_SUFFIX} "${INSTALL_DIR}/autodba-bff"
     sudo cp -r /tmp/autodba-*/webapp/* "${WEBAPP_DIR}/"
-    sudo cp -r /tmp/autodba-*/exporters/${ARCH_SUFFIX}/* "${EXPORTER_DIR}/"
-    sudo cp -r /tmp/autodba-*/monitor/prometheus/sql_exporter/* "${EXPORTER_DIR}/"
-    sudo cp -r /tmp/autodba-*/monitor/prometheus/rds_exporter/* "${EXPORTER_DIR}/"
+
+    # Copy each exporter into its own directory
+    sudo mkdir -p "${EXPORTER_DIR}/postgres_exporter"
+    sudo mkdir -p "${EXPORTER_DIR}/sql_exporter"
+    sudo mkdir -p "${EXPORTER_DIR}/rds_exporter"
+    
+    sudo cp -r /tmp/autodba-*/exporters/${ARCH_SUFFIX}/postgres_exporter/* "${EXPORTER_DIR}/postgres_exporter/"
+    sudo cp -r /tmp/autodba-*/exporters/${ARCH_SUFFIX}/sql_exporter/* "${EXPORTER_DIR}/sql_exporter/"
+    sudo cp -r /tmp/autodba-*/exporters/${ARCH_SUFFIX}/rds_exporter/* "${EXPORTER_DIR}/rds_exporter/"
+
     sudo cp /tmp/autodba-*/monitor/prometheus/prometheus.yml "${CONFIG_DIR}/prometheus.yml"
+    sudo cp -r /tmp/autodba-*/monitor/prometheus/sql_exporter/* "${EXPORTER_DIR}/sql_exporter/"
+    sudo cp -r /tmp/autodba-*/monitor/prometheus/rds_exporter/* "${EXPORTER_DIR}/rds_exporter/"
     sudo chown -R prometheus:prometheus ${CONFIG_DIR} /var/lib/prometheus
     sudo cp /tmp/autodba-*/config/config.json "${AUTODBA_CONFIG_DIR}/config.json"
     sudo cp /tmp/autodba-*/entrypoint.sh "${INSTALL_DIR}/autodba-entrypoint.sh"
@@ -117,18 +126,21 @@ if [[ -z "$AUTODBA_TARGET_DB" ]]; then
 fi
 
 if [[ -z "$AWS_RDS_INSTANCE" ]]; then
-    echo "AWS_RDS_INSTANCE environment variable is not set"
+    echo "Warning: AWS_RDS_INSTANCE environment variable is not set"
 fi
 
 if [[ -n "$AWS_RDS_INSTANCE" ]]; then
   if ! command_exists "aws"; then
-    echo "AWS CLI is not installed. Please install AWS CLI to fetch AWS credentials."
-    exit 1
+    echo "Warning: AWS CLI is not installed. Please install AWS CLI to fetch AWS credentials."
   else
     # Fetch AWS Access Key and AWS Secret Key
-    AWS_ACCESS_KEY_ID=$(aws configure get aws_access_key_id)
-    AWS_SECRET_ACCESS_KEY=$(aws configure get aws_secret_access_key)
-    AWS_REGION=$(aws configure get region)
+    AWS_ACCESS_KEY_ID=$(aws configure get aws_access_key_id || echo "")
+    AWS_SECRET_ACCESS_KEY=$(aws configure get aws_secret_access_key || echo "")
+    AWS_REGION=$(aws configure get region || echo "")
+
+    if [[ -z "$AWS_ACCESS_KEY_ID" || -z "$AWS_SECRET_ACCESS_KEY" || -z "$AWS_REGION" ]]; then
+        echo "Warning: AWS credentials or region are not configured properly. Proceeding without AWS integration."
+    fi
   fi
 fi
 
@@ -164,7 +176,7 @@ fi
 # Run the application (if not using systemd)
 if [ ! "$(which systemctl)" ]; then
     echo "Starting AutoDBA..."
-
+    cd "${AUTODBA_CONFIG_DIR}"
     sudo AUTODBA_TARGET_DB=${AUTODBA_TARGET_DB} AWS_RDS_INSTANCE=${AWS_RDS_INSTANCE} AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY} AWS_REGION=${AWS_REGION} ${INSTALL_DIR}/autodba-entrypoint.sh
 fi
 

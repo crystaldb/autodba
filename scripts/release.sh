@@ -61,19 +61,23 @@ SQL_EXPORTER_VERSION="0.14.3"
 RDS_EXPORTER_REPO="https://github.com/crystaldb/prometheus-rds-exporter.git"
 
 for arch in amd64 arm64; do
-    mkdir -p "${TAR_GZ_DIR}/autodba-${VERSION}/exporters/${arch}"
+    # Create separate directories for each exporter
+    mkdir -p "${TAR_GZ_DIR}/autodba-${VERSION}/exporters/${arch}/postgres_exporter"
+    mkdir -p "${TAR_GZ_DIR}/autodba-${VERSION}/exporters/${arch}/sql_exporter"
+    mkdir -p "${TAR_GZ_DIR}/autodba-${VERSION}/exporters/${arch}/rds_exporter"
 
     # Postgres Exporter
-    wget -qO- https://github.com/prometheus-community/postgres_exporter/releases/download/v${EXPORTER_VERSION}/postgres_exporter-${EXPORTER_VERSION}.linux-${arch}.tar.gz | tar -xzf - -C "${TAR_GZ_DIR}/autodba-${VERSION}/exporters/${arch}" --strip-components=1
+    wget -qO- https://github.com/prometheus-community/postgres_exporter/releases/download/v${EXPORTER_VERSION}/postgres_exporter-${EXPORTER_VERSION}.linux-${arch}.tar.gz | tar -xzf - -C "${TAR_GZ_DIR}/autodba-${VERSION}/exporters/${arch}/postgres_exporter" --strip-components=1
 
     # SQL Exporter
-    wget -qO- https://github.com/burningalchemist/sql_exporter/releases/download/${SQL_EXPORTER_VERSION}/sql_exporter-${SQL_EXPORTER_VERSION}.linux-${arch}.tar.gz | tar -xzf - -C "${TAR_GZ_DIR}/autodba-${VERSION}/exporters/${arch}" --strip-components=1
+    wget -qO- https://github.com/burningalchemist/sql_exporter/releases/download/${SQL_EXPORTER_VERSION}/sql_exporter-${SQL_EXPORTER_VERSION}.linux-${arch}.tar.gz | tar -xzf - -C "${TAR_GZ_DIR}/autodba-${VERSION}/exporters/${arch}/sql_exporter" --strip-components=1
+    rm "${TAR_GZ_DIR}/autodba-${VERSION}/exporters/${arch}/sql_exporter/mssql_standard.collector.yml"
 
     # RDS Exporter (Build from source)
     rm -rf "/tmp/prometheus_rds_exporter"
     git clone "${RDS_EXPORTER_REPO}" "/tmp/prometheus_rds_exporter"
     cd /tmp/prometheus_rds_exporter
-    GOARCH=${arch} GOOS=linux go build -o "${TAR_GZ_DIR}/autodba-${VERSION}/exporters/${arch}/prometheus-rds-exporter"
+    GOARCH=${arch} GOOS=linux go build -o "${TAR_GZ_DIR}/autodba-${VERSION}/exporters/${arch}/rds_exporter/prometheus-rds-exporter"
     cd -
 done
 
@@ -123,7 +127,9 @@ create_rpm() {
             --package "${RPM_DIR}/" \
             "${TAR_GZ_DIR}/autodba-${VERSION}/bin/autodba-bff-${ARCH_SUFFIX}"=/usr/local/bin/autodba-bff \
             "${TAR_GZ_DIR}/autodba-${VERSION}/webapp"=/usr/local/share/autodba/webapp \
-            "${TAR_GZ_DIR}/autodba-${VERSION}/exporters/${ARCH_SUFFIX}"=/usr/local/share/prometheus_exporters \
+            "${TAR_GZ_DIR}/autodba-${VERSION}/exporters/${ARCH_SUFFIX}/postgres_exporter"=/usr/local/share/prometheus_exporters/postgres_exporter \
+            "${TAR_GZ_DIR}/autodba-${VERSION}/exporters/${ARCH_SUFFIX}/sql_exporter"=/usr/local/share/prometheus_exporters/sql_exporter \
+            "${TAR_GZ_DIR}/autodba-${VERSION}/exporters/${ARCH_SUFFIX}/rds_exporter"=/usr/local/share/prometheus_exporters/rds_exporter \
             "${TAR_GZ_DIR}/autodba-${VERSION}/monitor/prometheus/sql_exporter"=/usr/local/share/prometheus_exporters/sql_exporter \
             "${TAR_GZ_DIR}/autodba-${VERSION}/monitor/prometheus/rds_exporter"=/usr/local/share/prometheus_exporters/rds_exporter \
             "${TAR_GZ_DIR}/autodba-${VERSION}/monitor/prometheus/prometheus.yml"=/etc/prometheus/prometheus.yml \
@@ -147,7 +153,9 @@ create_deb() {
             --package "${DEB_DIR}/" \
             "${TAR_GZ_DIR}/autodba-${VERSION}/bin/autodba-bff-${arch}"=/usr/local/bin/autodba-bff \
             "${TAR_GZ_DIR}/autodba-${VERSION}/webapp"=/usr/local/share/autodba/webapp \
-            "${TAR_GZ_DIR}/autodba-${VERSION}/exporters/${arch}"=/usr/local/share/prometheus_exporters \
+            "${TAR_GZ_DIR}/autodba-${VERSION}/exporters/${arch}/postgres_exporter"=/usr/local/share/prometheus_exporters/postgres_exporter \
+            "${TAR_GZ_DIR}/autodba-${VERSION}/exporters/${arch}/sql_exporter"=/usr/local/share/prometheus_exporters/sql_exporter \
+            "${TAR_GZ_DIR}/autodba-${VERSION}/exporters/${arch}/rds_exporter"=/usr/local/share/prometheus_exporters/rds_exporter \
             "${TAR_GZ_DIR}/autodba-${VERSION}/monitor/prometheus/sql_exporter"=/usr/local/share/prometheus_exporters/sql_exporter \
             "${TAR_GZ_DIR}/autodba-${VERSION}/monitor/prometheus/rds_exporter"=/usr/local/share/prometheus_exporters/rds_exporter \
             "${TAR_GZ_DIR}/autodba-${VERSION}/monitor/prometheus/prometheus.yml"=/etc/prometheus/prometheus.yml \

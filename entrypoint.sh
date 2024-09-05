@@ -2,8 +2,6 @@
 
 # SPDX-License-Identifier: Apache-2.0
 
-cd /etc/autodba
-
 # Ensure required environment variables are set
 if [ -z "$AUTODBA_TARGET_DB" ]; then
   echo "Error: AUTODBA_TARGET_DB environment variable is not set."
@@ -22,7 +20,7 @@ trap clean_up SIGHUP SIGINT SIGTERM
 
 if [ -z "$DISABLE_DATA_COLLECTION" ] || [ "$DISABLE_DATA_COLLECTION" = false ]; then
   # Start up Prometheus Postgres Exporter
-  DATA_SOURCE_NAME="$AUTODBA_TARGET_DB" /usr/local/share/prometheus_exporters/postgres_exporter \
+  DATA_SOURCE_NAME="$AUTODBA_TARGET_DB" /usr/local/share/prometheus_exporters/postgres_exporter/postgres_exporter \
     --exclude-databases="rdsadmin" \
     --collector.database \
     --collector.database_wraparound \
@@ -44,7 +42,7 @@ if [ -z "$DISABLE_DATA_COLLECTION" ] || [ "$DISABLE_DATA_COLLECTION" = false ]; 
   POSTGRES_EXPORTER_PID=$!
 
   # Start up Prometheus SQL Exporter
-  pushd /usr/local/share/prometheus_exporters
+  pushd /usr/local/share/prometheus_exporters/sql_exporter
   ./sql_exporter -config.data-source-name "$AUTODBA_TARGET_DB" &
   SQL_EXPORTER_PID=$!
   popd
@@ -52,8 +50,8 @@ if [ -z "$DISABLE_DATA_COLLECTION" ] || [ "$DISABLE_DATA_COLLECTION" = false ]; 
   # Start up Prometheus RDS Exporter
   if [[ -n "$AWS_ACCESS_KEY_ID" && -n "$AWS_SECRET_ACCESS_KEY" && -n "$AWS_REGION" ]]; then
     AWS_ACCESS_KEY_ID="$AWS_ACCESS_KEY_ID" \
-      AWS_SECRET_ACCESS_KEY="$AWS_SECRET_ACCESS_KEY" \
-      /usr/local/share/prometheus_exporters/prometheus-rds-exporter -c /usr/local/share/prometheus_exporters/rds_exporter/prometheus-rds-exporter.yaml --filter-instances "$AWS_RDS_INSTANCE" &
+    AWS_SECRET_ACCESS_KEY="$AWS_SECRET_ACCESS_KEY" \
+    /usr/local/share/prometheus_exporters/rds_exporter/prometheus-rds-exporter -c /usr/local/share/prometheus_exporters/rds_exporter/prometheus-rds-exporter.yaml --filter-instances "$AWS_RDS_INSTANCE" &
     RDS_EXPORTER_PID=$!
   else
     echo "One or more required AWS environment variables are missing or empty, so not running the RDS Exporter."

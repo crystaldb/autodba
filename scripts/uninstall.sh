@@ -1,14 +1,16 @@
 #!/bin/bash
 
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-Identifier: Apache-2.0
 
 set -e
 
 # Define paths
 INSTALL_DIR="/usr/local/bin"
 WEBAPP_DIR="/usr/local/share/autodba/webapp"
-PROM_DIR="/usr/local/share/prometheus"
+EXPORTER_DIR="/usr/local/share/prometheus_exporters"
 CONFIG_DIR="/etc/autodba"
+PROMETHEUS_DIR="/etc/prometheus"
+PROMETHEUS_STORAGE_DIR="/prometheus"
 SYSTEMD_SERVICE="/etc/systemd/system/autodba.service"
 
 echo "Uninstalling AutoDBA..."
@@ -31,12 +33,18 @@ sudo rm -rf "${INSTALL_DIR}/autodba-entrypoint.sh"
 echo "Removing web application files..."
 sudo rm -rf "${WEBAPP_DIR}"
 
-# Remove Prometheus and exporters
-echo "Removing Prometheus and exporters..."
-sudo rm -rf "${PROM_DIR}"
+# Remove Prometheus exporters and directories
+echo "Removing Prometheus exporters and directories..."
+sudo rm -rf "${EXPORTER_DIR}"
 
-# Remove configuration files
-echo "Removing configuration files..."
+# Remove Prometheus configuration and storage
+echo "Removing Prometheus configuration and storage..."
+sudo rm -rf "${PROMETHEUS_DIR}"
+sudo rm -rf "${PROMETHEUS_STORAGE_DIR}"
+
+# Remove AutoDBA configuration files
+echo "Removing AutoDBA configuration files..."
 sudo rm -rf "${CONFIG_DIR}"
 
 echo "AutoDBA has been successfully uninstalled."
+
