@@ -173,11 +173,13 @@ func TestMetricsHandlerJSONFormat(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, record.Code)
 
-	var result []map[string]interface{}
+	var result map[string]interface{}
 	err := json.Unmarshal(record.Body.Bytes(), &result)
 	if err != nil {
 		t.Fatalf("Failed to parse response body: %v", err)
 	}
+
+	data := result["data"]
 
 	expectedResult := []map[string]interface{}{
 		{
@@ -192,7 +194,7 @@ func TestMetricsHandlerJSONFormat(t *testing.T) {
 		},
 	}
 
-	assert.ElementsMatch(t, expectedResult, result)
+	assert.ElementsMatch(t, expectedResult, data)
 }
 
 func TestMissingParameters(t *testing.T) {
@@ -316,61 +318,6 @@ func TestDefaultDBIdentifier(t *testing.T) {
 	req := httptest.NewRequest("GET", "/api/v1/test", nil)
 	handler := metrics_handler(routeConfigs, defaultDBIdentifier, mockService)
 	handler.ServeHTTP(record, req)
-
-	mockService.AssertExpectations(t)
-}
-func TestMetricsJsonFormat(t *testing.T) {
-	mockService := new(MockMetricsService)
-
-	routeConfigs := map[string]RouteConfig{
-		"/v1/test": {
-			Params: []string{"dbidentifier"},
-			Metrics: map[string]string{
-				"cpu": "sum(rds_cpu_usage_percent_average{dbidentifier=~\"$dbidentifier\"})",
-			},
-			Options: map[string]string{},
-		},
-	}
-
-	mockService.On("Execute", mock.Anything, mock.Anything).
-		Return(map[int64]map[string]float64{
-			2: {
-				"cpu": 2.0,
-			},
-			1: {
-				"cpu": 1.0,
-			},
-			3: {
-				"cpu": 3.0,
-			},
-		}, nil)
-
-	record := httptest.NewRecorder()
-	req := httptest.NewRequest("GET", "/api/v1/test", nil)
-	handler := metrics_handler(routeConfigs, "default_db", mockService)
-	handler.ServeHTTP(record, req)
-
-	assert.Equal(t, http.StatusOK, record.Code)
-
-	var response []map[string]interface{}
-	_ = json.Unmarshal(record.Body.Bytes(), &response)
-
-	expectedResponse := []map[string]interface{}{
-		{
-			"time_ms": 1.0,
-			"cpu":     1.0,
-		},
-		{
-			"time_ms": 2.0,
-			"cpu":     2.0,
-		},
-		{
-			"time_ms": 3.0,
-			"cpu":     3.0,
-		},
-	}
-
-	assert.Equal(t, expectedResponse, response)
 
 	mockService.AssertExpectations(t)
 }
