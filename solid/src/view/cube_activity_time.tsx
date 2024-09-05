@@ -12,7 +12,7 @@ import {
   tidy,
 } from "@tidyjs/tidy";
 import { ILegend } from "./cube_activity";
-import { queryCube } from "../http";
+import { queryCubeIfLive } from "../http";
 
 interface PropsLegend {
   legend: ILegend;
@@ -31,7 +31,7 @@ export function CubeDimensionTime(props: PropsLegend) {
   }, 0);
 
   createResource(changed, () => {
-    queryCube(state, setState);
+    queryCubeIfLive(state, setState);
   });
 
   const eventHandlers = {
@@ -39,7 +39,7 @@ export function CubeDimensionTime(props: PropsLegend) {
       console.log("Chart is clicked!", event);
     },
     // highlight: (event: any) => { console.log("Chart Highlight", event); },
-    datazoom: datazoomEventHandler.bind(null, setState, state),
+    datazoom: datazoomEventHandler,
   };
 
   const base = {
@@ -134,14 +134,14 @@ export function CubeDimensionTime(props: PropsLegend) {
                 // {
                 //   show: true,
                 //   realtime: true,
-                //   start: state.range_start,
+                //   start: state.range_begin,
                 //   end: state.range_end,
                 //   xAxisIndex: [0, 1],
                 // },
                 {
                   type: "inside",
                   realtime: true,
-                  start: state.range_start,
+                  start: state.range_begin,
                   end: state.range_end,
                   xAxisIndex: [0, 1],
                 },

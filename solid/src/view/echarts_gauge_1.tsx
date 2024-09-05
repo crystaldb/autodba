@@ -135,7 +135,7 @@ export function EchartsGauge1(props: IProps) {
     highlight: (event: any) => {
       console.log("Chart Highlight", event);
     },
-    datazoom: datazoomEventHandler.bind(null, setState, state),
+    datazoom: datazoomEventHandler,
   };
 
   return (

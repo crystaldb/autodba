@@ -1,11 +1,11 @@
 /* @refresh reload */
 import { render } from "solid-js/web";
 
-import { attachDevtoolsOverlay } from "@solid-devtools/overlay";
-attachDevtoolsOverlay({
-  defaultOpen: false, // or alwaysOpen
-  noPadding: true,
-});
+// import { attachDevtoolsOverlay } from "@solid-devtools/overlay";
+// attachDevtoolsOverlay({
+//   defaultOpen: false, // or alwaysOpen
+//   noPadding: true,
+// });
 
 import "./index.css";
 import App from "./App";
