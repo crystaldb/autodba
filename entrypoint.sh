@@ -1,17 +1,32 @@
 #!/bin/bash
 
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-Identifier: Apache-2.0
 
 # Set the base directory based on installation
 PARENT_DIR="${PARENT_DIR:-/usr/local/autodba}"
 
+# Load environment variables from a JSON config file if provided
+if [ -n "$CONFIG_FILE" ]; then
+    echo "Loading environment variables from JSON config file: $CONFIG_FILE"
+    if [ -f "$CONFIG_FILE" ]; then
+        AUTODBA_TARGET_DB=$(jq -r '.AUTODBA_TARGET_DB' "$CONFIG_FILE")
+        AWS_RDS_INSTANCE=$(jq -r '.AWS_RDS_INSTANCE' "$CONFIG_FILE")
+        AWS_ACCESS_KEY_ID=$(jq -r '.AWS_ACCESS_KEY_ID' "$CONFIG_FILE")
+        AWS_SECRET_ACCESS_KEY=$(jq -r '.AWS_SECRET_ACCESS_KEY' "$CONFIG_FILE")
+        AWS_REGION=$(jq -r '.AWS_REGION' "$CONFIG_FILE")
+    else
+        echo "Error: Config file $CONFIG_FILE does not exist."
+        exit 1
+    fi
+fi
+
+# Ensure required environment variables are set
 if [ -z "$AUTODBA_TARGET_DB" ]; then
   echo "Error: AUTODBA_TARGET_DB environment variable is not set."
   exit 1
 fi
 
 function clean_up {
-
     # Perform program exit housekeeping
     kill $(jobs -p)
     wait # wait for all children to exit -- this lets their logs make it out of the container environment

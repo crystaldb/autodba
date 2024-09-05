@@ -10,6 +10,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SYSTEM_INSTALL=false
 USER_INSTALL_DIR=""
 PACKAGE_FILE=""
+CONFIG_FILE=""
 GENERATE_PACKAGE=false
 
 # Parse arguments
@@ -26,6 +27,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --package)
             PACKAGE_FILE="$2"
+            shift 2
+            ;;
+        --config)
+            CONFIG_FILE="$2"
             shift 2
             ;;
         *)
@@ -65,6 +70,7 @@ AUTODBA_CONFIG_DIR="$PARENT_DIR/config/autodba"
 PROMETHEUS_STORAGE_DIR="$PARENT_DIR/prometheus_data"
 PROMETHEUS_INSTALL_DIR="$PARENT_DIR/prometheus"
 PROMETHEUS_VERSION="2.42.0"
+AUTODBA_CONFIG_FILE="$AUTODBA_CONFIG_DIR/autodba-config.json"
 
 # Detect system architecture
 ARCH=$(uname -m)
@@ -126,7 +132,6 @@ install_tar_gz() {
     cp /tmp/autodba-*/config/config.json "${AUTODBA_CONFIG_DIR}/config.json"
     cp /tmp/autodba-*/entrypoint.sh "${INSTALL_DIR}/autodba-entrypoint.sh"
 
-    # sudo chown -R prometheus:prometheus "${PROMETHEUS_STORAGE_DIR}"
     chmod +x "${INSTALL_DIR}/autodba-entrypoint.sh"
 }
 
@@ -166,32 +171,61 @@ case "$PACKAGE_FILE" in
         ;;
 esac
 
-# Set up the configuration
-echo "Setting up configuration..."
+# Copy the configuration file if provided
+if [ -n "$CONFIG_FILE" ]; then
+    echo "Copying config file to $AUTODBA_CONFIG_FILE"
+    mkdir -p "$AUTODBA_CONFIG_DIR"
+    cp "$CONFIG_FILE" "$AUTODBA_CONFIG_FILE"
+fi
+
+if [ -n "$CONFIG_FILE" ]; then
+    echo "Using config file: $CONFIG_FILE"
+    if [ -f "$CONFIG_FILE" ]; then
+        echo "Copying config file to $AUTODBA_CONFIG_FILE"
+        mkdir -p "$AUTODBA_CONFIG_DIR"
+        cp "$CONFIG_FILE" "$AUTODBA_CONFIG_FILE"
+    else
+        echo "Error: Config file $CONFIG_FILE does not exist."
+        exit 1
+    fi
+else
+    echo "No config file provided, generating autodba-config.json from environment variables."
 
 # Check if required parameters are provided
-if [[ -z "$AUTODBA_TARGET_DB" ]]; then
-    echo "AUTODBA_TARGET_DB environment variable is not set"
-    usage
-fi
-
-if [[ -z "$AWS_RDS_INSTANCE" ]]; then
-    echo "Warning: AWS_RDS_INSTANCE environment variable is not set"
-fi
-
-if [[ -n "$AWS_RDS_INSTANCE" ]]; then
-  if ! command_exists "aws"; then
-    echo "Warning: AWS CLI is not installed. Please install AWS CLI to fetch AWS credentials."
-  else
-    # Fetch AWS Access Key and AWS Secret Key
-    AWS_ACCESS_KEY_ID=$(aws configure get aws_access_key_id || echo "")
-    AWS_SECRET_ACCESS_KEY=$(aws configure get aws_secret_access_key || echo "")
-    AWS_REGION=$(aws configure get region || echo "")
-
-    if [[ -z "$AWS_ACCESS_KEY_ID" || -z "$AWS_SECRET_ACCESS_KEY" || -z "$AWS_REGION" ]]; then
-        echo "Warning: AWS credentials or region are not configured properly. Proceeding without AWS integration."
+    if [[ -z "$AUTODBA_TARGET_DB" ]]; then
+        echo "AUTODBA_TARGET_DB environment variable is not set"
+        usage
     fi
-  fi
+
+    if [[ -z "$AWS_RDS_INSTANCE" ]]; then
+        echo "Warning: AWS_RDS_INSTANCE environment variable is not set"
+    fi
+
+    if [[ -n "$AWS_RDS_INSTANCE" ]]; then
+        if ! command_exists "aws"; then
+            echo "Warning: AWS CLI is not installed. Please install AWS CLI to fetch AWS credentials."
+        else
+            # Fetch AWS Access Key and AWS Secret Key
+            AWS_ACCESS_KEY_ID=$(aws configure get aws_access_key_id || echo "")
+            AWS_SECRET_ACCESS_KEY=$(aws configure get aws_secret_access_key || echo "")
+            AWS_REGION=$(aws configure get region || echo "")
+
+            if [[ -z "$AWS_ACCESS_KEY_ID" || -z "$AWS_SECRET_ACCESS_KEY" || -z "$AWS_REGION" ]]; then
+                echo "Warning: AWS credentials or region are not configured properly. Proceeding without AWS integration."
+            fi
+        fi
+    fi
+    mkdir -p "$AUTODBA_CONFIG_DIR"
+    cat <<EOF > "$AUTODBA_CONFIG_FILE"
+{
+    "AUTODBA_TARGET_DB": "${AUTODBA_TARGET_DB:-""}",
+    "AWS_RDS_INSTANCE": "${AWS_RDS_INSTANCE:-""}",
+    "AWS_ACCESS_KEY_ID": "${AWS_ACCESS_KEY_ID:-""}",
+    "AWS_SECRET_ACCESS_KEY": "${AWS_SECRET_ACCESS_KEY:-""}",
+    "AWS_REGION": "${AWS_REGION:-""}"
+}
+EOF
+    echo "Generated config file at $AUTODBA_CONFIG_FILE"
 fi
 
 # Systemctl service installation (only if installing as root)
@@ -205,15 +239,11 @@ After=network.target
 [Service]
 Type=simple
 WorkingDirectory=${AUTODBA_CONFIG_DIR}
-ExecStart=${INSTALL_DIR}/autodba-entrypoint.sh
+ExecStart=${INSTALL_DIR}/autodba-entrypoint.sh --config ${AUTODBA_CONFIG_FILE}
 Restart=on-failure
 User=$USER
 Environment="PARENT_DIR=${PARENT_DIR}"
-Environment="AUTODBA_TARGET_DB=${AUTODBA_TARGET_DB}"
-Environment="AWS_RDS_INSTANCE=${AWS_RDS_INSTANCE}"
-Environment="AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}"
-Environment="AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}"
-Environment="AWS_REGION=${AWS_REGION}"
+Environment="CONFIG_FILE=${AUTODBA_CONFIG_FILE}"
 
 [Install]
 WantedBy=multi-user.target
@@ -226,7 +256,8 @@ else
     echo "System installation not requested or systemctl is unavailable. Skipping systemd service setup."
     echo "Starting AutoDBA..."
     cd "${AUTODBA_CONFIG_DIR}"
-    PARENT_DIR="${PARENT_DIR}" AUTODBA_TARGET_DB="${AUTODBA_TARGET_DB}" AWS_RDS_INSTANCE="${AWS_RDS_INSTANCE}" AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}" AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}" AWS_REGION="${AWS_REGION}" ${INSTALL_DIR}/autodba-entrypoint.sh
+    PARENT_DIR="${PARENT_DIR}" CONFIG_FILE=${AUTODBA_CONFIG_FILE} ${INSTALL_DIR}/autodba-entrypoint.sh --config "${AUTODBA_CONFIG_FILE}"
 fi
 
 echo "Installation complete."
+
