@@ -35,17 +35,17 @@ export function EchartsTimebar(props: IEchartsTimebarProps) {
         dataZoom: [
           {
             show: true,
-            realtime: true,
+            realtime: false,
             start: state.range_start,
             end: state.range_end,
-            xAxisIndex: [0, 1],
+            // xAxisIndex: [0, 1],
           },
           {
             type: "inside",
-            realtime: true,
+            realtime: false,
             start: state.range_start,
             end: state.range_end,
-            xAxisIndex: [0, 1],
+            // xAxisIndex: [0, 1],
           },
         ],
       })}

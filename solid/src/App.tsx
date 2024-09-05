@@ -27,12 +27,9 @@ import { EchartsTimebar } from "./view/echarts_timebar";
 
 export default function App(): JSX.Element {
   const { setState } = useState();
-  const [databaseInstanceIsReady] = createResource(() =>
-    getDatabaseInstanceInfo(setState),
-  );
+  createResource(() => getDatabaseInstanceInfo(setState));
   const [databaseListIsReady] = createResource(() => getDatabaseList(setState));
-  const databaseIsReady = () =>
-    databaseListIsReady() && databaseInstanceIsReady();
+  const databaseIsReady = () => databaseListIsReady();
 
   return (
     <div class="max-w-screen-xl mx-auto">

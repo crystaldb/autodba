@@ -163,14 +163,17 @@ cython_debug/
 
 # Production files
 .env.prod
+
 # Devenv
 .devenv*
 devenv.local.nix
 
 # direnv
 .direnv
+.envrc
 
 # pre-commit
 .pre-commit-config.yaml
 autodba_backups_dir
 bff/main
+
