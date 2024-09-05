@@ -90,5 +90,6 @@ fi
 echo "Removing tmp directories..."
 rm -rf /tmp/autodba-0.1.0
 rm -rf /tmp/prometheus_rds_exporter
+rm -rf /tmp/prometheus-2.42.0.linux-amd64
 
 echo "AutoDBA has been successfully uninstalled."
