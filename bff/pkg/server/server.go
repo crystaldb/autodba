@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
@@ -245,6 +246,30 @@ func activity_handler(metrics_service metrics.Service) http.HandlerFunc {
 				return
 			}
 		}
+		parsedStart, err := parseAndValidateInt(start, "start")
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		parsedEnd, err := parseAndValidateInt(end, "end")
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		if limit != "" {
+			_, err = parseAndValidateInt(limit, "limit")
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+		}
+
+		if parsedEnd <= parsedStart {
+			http.Error(w, "Parameter 'end' must be greater than 'start'", http.StatusBadRequest)
+			return
+		}
 
 		promQLInput := PromQLInput{
 			DatabaseList:      database_list,
@@ -364,4 +389,21 @@ func info_handler(metrics_service metrics.Service) http.HandlerFunc {
 		w.Write(js)
 
 	})
+}
+
+func parseAndValidateInt(param string, paramName string) (int, error) {
+	if param == "" {
+		return 0, fmt.Errorf("Missing param/value: %s", paramName)
+	}
+
+	value, err := strconv.Atoi(param)
+	if err != nil {
+		return 0, fmt.Errorf("Invalid %s: %s", paramName, err.Error())
+	}
+
+	if value <= 0 {
+		return 0, fmt.Errorf("%s must be a positive integer", paramName)
+	}
+
+	return value, nil
 }

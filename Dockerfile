@@ -76,10 +76,10 @@ RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/i
 
 FROM bff_builder AS test
 WORKDIR /home/autodba/bff
-# RUN go test ./pkg/server/server_test.go -v
 RUN go test ./pkg/server/promql_codegen_test.go -v
-# RUN go test ./pkg/metrics/metrics_test.go -v
-# RUN go test ./pkg/prometheus/prometheus_test.go -v
+RUN go test ./pkg/server -v
+RUN go test ./pkg/metrics -v
+RUN go test ./pkg/prometheus -v
 
 FROM base AS autodba
 USER root
