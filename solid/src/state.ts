@@ -70,23 +70,12 @@ export type State = {
   database_list: string[];
   metricData: any[];
   interval_ms: number;
-  timeframe_start_ms: number;
-  timeframe_end_ms?: number;
-  str: string;
-  range_start: number;
+  range_begin: number;
   range_end: number;
-};
-
-export const datazoomEventHandler = (
-  setState: (arg0: string, arg1: any) => void,
-  stateFn: any,
-  event: any,
-) => {
-  console.log("Chart2 Data Zoom", event);
-  batch(() => {
-    setState("range_start", event.start || event.batch?.at(0)?.start);
-    setState("range_end", event.end || event.batch?.at(0)?.end);
-  });
+  time_begin_ms: number;
+  time_end_ms: number;
+  window_begin_ms: number;
+  window_end_ms: number;
 };
 
 export const listColors = [
@@ -243,13 +232,16 @@ export const listColors = [
   },
 ];
 
-const [state, setState] = createStore({
+const appZero = +new Date();
+
+const [state, setState]: [State, any] = createStore({
   cubeActivity: {
     cubeData: [],
     limit: 15,
     uiLegend: DimensionName.wait_event_name,
-    uiDimension1: DimensionName.time,
+    // uiDimension1: DimensionName.time,
     // uiDimension1: DimensionName.query,
+    uiDimension1: DimensionName.usename,
     uiFilter1: DimensionName.none,
     uiFilter1Value: undefined,
     arrActiveSessionCount: [],
@@ -275,12 +267,39 @@ const [state, setState] = createStore({
   },
   database_list: [],
   interval_ms: 5 * 1000, // 5 seconds
-  timeframe_start_ms: 0,
-  str: "string",
-  range_start: 25.0,
+  range_begin: 0.0,
   range_end: 100.0,
+  time_begin_ms: appZero - 15 * 60 * 1000,
+  time_end_ms: appZero,
+  window_begin_ms: appZero - 15 * 60 * 1000,
+  window_end_ms: appZero,
 });
 
 export function useState(): { state: State; setState: any } {
   return { state, setState };
 }
+
+export const datazoomEventHandler = (event: any) => {
+  console.log("Chart2 Data Zoom", event);
+  batch(() => {
+    const range_begin: number = event.start || event.batch?.at(0)?.start || 0.0;
+    const range_end: number = event.end || event.batch?.at(0)?.end || 100.0;
+    setState("range_begin", range_begin);
+    setState("range_end", range_end);
+    console.log("range", range_begin, range_end);
+    const window_begin_ms = Math.floor(
+      (state.time_end_ms - state.time_begin_ms) * (range_begin / 100) +
+        state.time_begin_ms,
+    );
+    const window_end_ms = Math.max(
+      window_begin_ms,
+      Math.ceil(
+        (state.time_end_ms - state.time_begin_ms) * (range_end / 100) +
+          state.time_begin_ms,
+      ),
+    );
+    console.log("windows", window_begin_ms, window_end_ms);
+    setState("window_begin_ms", window_begin_ms);
+    setState("window_end_ms", window_end_ms);
+  });
+};

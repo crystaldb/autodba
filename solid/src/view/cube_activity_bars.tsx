@@ -6,16 +6,7 @@ import {
   listDimensionTabNames,
   CubeData,
 } from "../state";
-import {
-  distinct,
-  filter,
-  first,
-  groupBy,
-  map,
-  sum,
-  summarize,
-  tidy,
-} from "@tidyjs/tidy";
+import { first, groupBy, sum, summarize, tidy } from "@tidyjs/tidy";
 import { ILegend } from "./cube_activity";
 import { queryCube } from "../http";
 
@@ -28,9 +19,9 @@ interface IDimensionBars {
 export function DimensionBars(props: IDimensionBars) {
   const { state, setState } = contextState();
   const changed = createMemo((changeCount: number) => {
-    state.database_instance.dbidentifier;
-    state.range_start;
+    state.range_begin;
     state.range_end;
+    state.database_instance.dbidentifier;
     state.cubeActivity.uiLegend;
     state.cubeActivity.uiDimension1;
     state.cubeActivity.uiFilter1;
@@ -43,49 +34,51 @@ export function DimensionBars(props: IDimensionBars) {
     queryCube(state, setState);
   });
 
-  const distinctDimension1 = (): {
-    dimensionValue: string;
-    total: number;
-    records: { metric: { [key: string]: string }; values: { value: any }[] }[];
-  }[] => {
-    if (state.cubeActivity.uiDimension1 === DimensionName.time) {
-      return [];
-    }
-    return tidy(
-      props.cubeData,
-      filter(
-        (d) =>
-          !!d.metric[state.cubeActivity.uiDimension1] &&
-          (d.metric[state.cubeActivity.uiDimension1] === DimensionName.time ||
-            !!d.metric[state.cubeActivity.uiDimension1]),
-      ),
-      groupBy(
-        (d) => d.metric[state.cubeActivity.uiDimension1],
-        [
-          summarize({
-            dimensionValue: first(
-              (d: {
-                metric: Record<string, string>;
-                values: { value: number }[];
-              }) => {
-                return d.metric[state.cubeActivity.uiDimension1];
-              },
-            ),
-            total: sum(
-              (d: { values: { value: number }[] }) => d.values[0].value,
-            ),
-            records: (d) => d,
-          }),
-        ],
-      ),
-    );
-  };
+  const cubeDataGrouped = createMemo(
+    (): {
+      dimensionValue: string;
+      total: number;
+      records: {
+        metric: { [key: string]: string };
+        values: { value: any }[];
+      }[];
+    }[] => {
+      if (state.cubeActivity.uiDimension1 === DimensionName.time) {
+        return [];
+      }
+      let cubeData = tidy(
+        props.cubeData,
+        // filter( (d) => !!d.metric[state.cubeActivity.uiDimension1] && (d.metric[state.cubeActivity.uiDimension1] === DimensionName.time || !!d.metric[state.cubeActivity.uiDimension1]),),
+        groupBy(
+          (d) => d.metric[state.cubeActivity.uiDimension1],
+          [
+            summarize({
+              dimensionValue: first(
+                (d: {
+                  metric: Record<string, string>;
+                  values: { value: number }[];
+                }) => {
+                  return d.metric[state.cubeActivity.uiDimension1];
+                },
+              ),
+              total: sum(
+                (d: { values: { value: number }[] }) => d.values[0].value,
+              ),
+              records: (d) => d,
+            }),
+          ],
+        ),
+      );
+      // console.log("cubeDataGrouped", cubeData.length);
+      return cubeData;
+    },
+  );
 
   return (
     <section class={`flex flex-col gap-4 ${props.class}`}>
-      <For each={distinctDimension1()}>
+      <For each={cubeDataGrouped()}>
         {({ total, dimensionValue, records }) => (
-          <DimensionRow
+          <DimensionRowGrouped
             len={total}
             txt={dimensionValue}
             records={records}
@@ -111,7 +104,7 @@ interface IDimensionRow {
     | undefined;
 }
 
-function DimensionRow(props: IDimensionRow) {
+function DimensionRowGrouped(props: IDimensionRow) {
   const { state } = contextState();
   return (
     <section class="flex items-center">

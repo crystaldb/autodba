@@ -25,13 +25,13 @@ export function Echarts3(this: any) {
       {
         show: true,
         realtime: true,
-        start: state.range_start,
+        start: state.range_begin,
         end: state.range_end,
       },
       {
         type: "inside",
         realtime: true,
-        start: state.range_start,
+        start: state.range_begin,
         end: state.range_end,
       },
     ],
@@ -44,7 +44,7 @@ export function Echarts3(this: any) {
     highlight: (event: any) => {
       console.log("Chart Highlight", event);
     },
-    datazoom: datazoomEventHandler.bind(null, setState, state),
+    datazoom: datazoomEventHandler,
   };
 
   return (

@@ -67,7 +67,7 @@ export function Echarts2(props: {
     datarangeselected: (event: any) => {
       console.log("Chart2 Data Range Selected", event);
     },
-    datazoom: datazoomEventHandler.bind(null, setState, state),
+    datazoom: datazoomEventHandler,
     dataviewchanged: (event: any) => {
       console.log("Chart2 Data View Changed", event);
     },
@@ -86,11 +86,11 @@ export function Echarts2(props: {
           dataZoom: [
             {
               type: "inside",
-              start: state.range_start,
+              start: state.range_begin,
               end: state.range_end,
             },
             {
-              start: state.range_start,
+              start: state.range_begin,
               end: state.range_end,
             },
           ],
