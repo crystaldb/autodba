@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -207,8 +208,16 @@ func metrics_handler(route_configs map[string]RouteConfig, dbIdentifier string, 
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
+
+			currentTime := time.Now().UnixNano() / int64(time.Millisecond)
+			wrappedJSON, err := WrapJSON(js, map[string]interface{}{"server_now": currentTime})
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
 			w.WriteHeader(http.StatusOK)
-			w.Write(js)
+			w.Write(wrappedJSON)
 		} else {
 			http.Error(w, "No matching route found", http.StatusNotFound)
 		}
@@ -229,7 +238,6 @@ func activity_handler(metrics_service metrics.Service) http.HandlerFunc {
 		filterdimselected := r.URL.Query().Get("filterdimselected")
 		limit := r.URL.Query().Get("limit")
 
-		// Map of parameter names to their values
 		requiredParamMap := map[string]string{
 			"database_list": database_list,
 			"start":         start,
@@ -239,7 +247,6 @@ func activity_handler(metrics_service metrics.Service) http.HandlerFunc {
 			"dim":           dim,
 		}
 
-		// Iterate over the map and check for missing values
 		for paramName, paramValue := range requiredParamMap {
 			if paramValue == "" {
 				http.Error(w, fmt.Sprintf("Missing param/value: %s", paramName), http.StatusBadRequest)
@@ -312,8 +319,16 @@ func activity_handler(metrics_service metrics.Service) http.HandlerFunc {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
+
+		currentTime := time.Now().UnixNano() / int64(time.Millisecond)
+		wrappedJSON, err := WrapJSON(js, map[string]interface{}{"server_now": currentTime})
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
 		w.WriteHeader(http.StatusOK)
-		w.Write(js)
+		w.Write(wrappedJSON)
 
 	})
 }
@@ -406,4 +421,21 @@ func parseAndValidateInt(param string, paramName string) (int, error) {
 	}
 
 	return value, nil
+}
+
+func WrapJSON(data []byte, metadata map[string]interface{}) ([]byte, error) {
+	container := map[string]interface{}{
+		"data": json.RawMessage(data),
+	}
+
+	for key, value := range metadata {
+		container[key] = value
+	}
+
+	wrappedJSON, err := json.Marshal(container)
+	if err != nil {
+		return nil, err
+	}
+
+	return wrappedJSON, nil
 }
