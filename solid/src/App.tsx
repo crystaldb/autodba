@@ -1,4 +1,4 @@
-import { NavTop } from "./NavTop";
+import { NavTop, NavTopConfig1 } from "./NavTop";
 import { A, Navigate } from "@solidjs/router";
 import { ContextState, contextState } from "./context_state";
 import { useState } from "./state";
@@ -17,18 +17,20 @@ import {
   runWithOwner,
 } from "solid-js";
 import {
-  getEndpointData,
-  getDatabaseInstanceInfo,
-  getDatabaseList,
+  queryEndpointData,
+  queryDatabaseInstanceInfo,
+  queryDatabaseList,
 } from "./http";
 import { Dynamic } from "solid-js/web";
 import { DarkmodeSelector } from "./view/darkmode";
-import { EchartsTimebar } from "./view/echarts_timebar";
+import { TimebarSection } from "./view/timebar_section";
 
 export default function App(): JSX.Element {
   const { setState } = useState();
-  createResource(() => getDatabaseInstanceInfo(setState));
-  const [databaseListIsReady] = createResource(() => getDatabaseList(setState));
+  createResource(() => queryDatabaseInstanceInfo(setState));
+  const [databaseListIsReady] = createResource(() =>
+    queryDatabaseList(setState),
+  );
   const databaseIsReady = () => databaseListIsReady();
 
   return (
@@ -97,7 +99,7 @@ function PageWrapper(
   function queryData() {
     runWithOwner(owner, () => {
       createResource(databaseIsReady, () =>
-        getEndpointData(apiEndpoint, state, setState),
+        queryEndpointData(apiEndpoint, state, setState),
       );
     });
     if (!destroyed) {
@@ -130,7 +132,7 @@ function PageWrapper(
         </section>
         <Dynamic component={page} />
         <section class="sticky bottom-0 flex flex-col mt-3 z-20 backdrop-blur">
-          <EchartsTimebar class="w-48 xs:w-10/12 h-12" />
+          <TimebarSection class="w-full xs:w-10/12" />
         </section>
       </section>
       <DarkmodeSelector class="mt-16 mb-4 self-start" />
@@ -218,47 +220,5 @@ function IntervalSelector(props: { class?: string }) {
         </select>
       </div>
     </>
-  );
-}
-
-function NavTopConfig1() {
-  return (
-    <NavTop class="mb-8">
-      <A
-        activeClass="active"
-        href="/activity"
-        class="flex items-center justify-center h-full"
-        end
-      >
-        Activity
-      </A>
-      <A
-        activeClass="active"
-        href="/metric"
-        class="flex items-center justify-center h-full"
-        end
-      >
-        Metrics
-      </A>
-      {/*
-      <div class="h-5 border-s w-1 border-neutral-200 dark:border-neutral-700"></div>
-      <A
-        activeClass="active"
-        href="/health"
-        class="flex items-center justify-center h-full"
-        end
-      >
-        Health
-      </A>
-      <A
-        activeClass="active"
-        href="/explorer"
-        class="flex items-center justify-center h-full"
-        end
-      >
-        Explorer
-      </A>
-      */}
-    </NavTop>
   );
 }

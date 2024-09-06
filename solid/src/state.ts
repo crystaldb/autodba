@@ -15,13 +15,13 @@ export enum DimensionName {
 
 export function listDimensionTabNames() {
   return [
-    [DimensionName.wait_event_name, "Waits"],
+    [DimensionName.wait_event_name, "Wait"],
     [DimensionName.query, "Sql"],
-    [DimensionName.client_addr, "Hosts"],
-    [DimensionName.usename, "Users"],
-    [DimensionName.backend_type, "Session types"],
-    [DimensionName.application_name, "Applications"],
-    [DimensionName.datname, "Databases"],
+    [DimensionName.client_addr, "Host"],
+    [DimensionName.usename, "User"],
+    [DimensionName.backend_type, "Session type"],
+    [DimensionName.application_name, "Application"],
+    [DimensionName.datname, "Database"],
   ];
 }
 
@@ -44,22 +44,7 @@ export type State = {
 
     uiFilter1: DimensionName;
     uiFilter1Value?: string;
-
     limit: number;
-
-    arrActiveSessionCount: number[];
-    arrTime: number[];
-    arrSql: string[];
-    arrWaits: string[];
-    arrHosts: string[];
-    arrUsers: string[];
-    arrSession_types: string[];
-    arrApplications: string[];
-    arrDatabases: string[];
-  };
-  healthData: {
-    cpu: number[];
-    time: number[];
   };
   database_instance: {
     dbidentifier: string;
@@ -68,25 +53,19 @@ export type State = {
     instance_class: string;
   };
   database_list: string[];
+  healthData: {
+    cpu: number[];
+    time: number[];
+  };
   metricData: any[];
-  interval_ms: number;
-  timeframe_start_ms: number;
-  timeframe_end_ms?: number;
-  str: string;
-  range_start: number;
-  range_end: number;
-};
 
-export const datazoomEventHandler = (
-  setState: (arg0: string, arg1: any) => void,
-  stateFn: any,
-  event: any,
-) => {
-  console.log("Chart2 Data Zoom", event);
-  batch(() => {
-    setState("range_start", event.start || event.batch?.at(0)?.start);
-    setState("range_end", event.end || event.batch?.at(0)?.end);
-  });
+  interval_ms: number;
+  range_begin: number;
+  range_end: number;
+  time_begin_ms: number;
+  time_end_ms: number;
+  window_begin_ms: number;
+  window_end_ms: number;
 };
 
 export const listColors = [
@@ -96,13 +75,13 @@ export const listColors = [
     hex: "#93c5fd", // "bg-blue-300",
   },
   {
-    text: "text-green-300 accent-green-300",
-    bg: "bg-green-300 accent-green-300 text-neutral-500",
+    text: "text-green-400 accent-green-400 dark:text-green-300 dark:accent-green-300 font-medium dark:font-normal",
+    bg: "bg-green-400 accent-green-400 dark:bg-green-300 dark:accent-green-300 text-neutral-500",
     hex: "#86efac", // "bg-green-300",
   },
   {
-    text: "text-yellow-300 accent-yellow-300",
-    bg: "bg-yellow-300 accent-yellow-300 text-neutral-500",
+    text: "text-yellow-500 accent-yellow-500 dark:text-yellow-300 dark:accent-yellow-300",
+    bg: "bg-yellow-500 dark:bg-yellow-300 accent-yellow-500 dark:accent-yellow-300 text-neutral-500",
     hex: "#fde047", // "bg-yellow-300",
   },
   {
@@ -136,8 +115,8 @@ export const listColors = [
     hex: "#d946ef", // "bg-fuchsia-500",
   },
   {
-    text: "text-green-500 accent-green-500",
-    bg: "bg-green-500 accent-green-500",
+    text: "text-green-700 accent-green-700 dark:text-green-500 dark:accent-green-500",
+    bg: "bg-green-700 accent-green-700 dark:bg-green-500 dark:accent-green-500",
     hex: "#14b8a6", // "bg-green-500",
   },
   // ... add a bunch of neutral colors for non differentiated colors to avoid eCharts wrap-around
@@ -243,24 +222,18 @@ export const listColors = [
   },
 ];
 
-const [state, setState] = createStore({
+const appZero = +new Date();
+
+const [state, setState]: [State, any] = createStore({
   cubeActivity: {
     cubeData: [],
     limit: 15,
     uiLegend: DimensionName.wait_event_name,
     uiDimension1: DimensionName.time,
     // uiDimension1: DimensionName.query,
+    // uiDimension1: DimensionName.usename,
     uiFilter1: DimensionName.none,
     uiFilter1Value: undefined,
-    arrActiveSessionCount: [],
-    arrTime: [],
-    arrSql: [],
-    arrWaits: [],
-    arrHosts: [],
-    arrUsers: [],
-    arrSession_types: [],
-    arrApplications: [],
-    arrDatabases: [],
   },
   metricData: [],
   healthData: {
@@ -275,12 +248,39 @@ const [state, setState] = createStore({
   },
   database_list: [],
   interval_ms: 5 * 1000, // 5 seconds
-  timeframe_start_ms: 0,
-  str: "string",
-  range_start: 25.0,
+  range_begin: 0.0,
   range_end: 100.0,
+  time_begin_ms: appZero - 15 * 60 * 1000,
+  time_end_ms: appZero,
+  window_begin_ms: appZero - 15 * 60 * 1000,
+  window_end_ms: appZero,
 });
 
 export function useState(): { state: State; setState: any } {
   return { state, setState };
 }
+
+export const datazoomEventHandler = (event: any) => {
+  console.log("Chart2 Data Zoom", event);
+  batch(() => {
+    const range_begin: number = event.start || event.batch?.at(0)?.start || 0.0;
+    const range_end: number = event.end || event.batch?.at(0)?.end || 100.0;
+    setState("range_begin", range_begin);
+    setState("range_end", range_end);
+    console.log("range", range_begin, range_end);
+    const window_begin_ms = Math.floor(
+      (state.time_end_ms - state.time_begin_ms) * (range_begin / 100) +
+        state.time_begin_ms,
+    );
+    const window_end_ms = Math.max(
+      window_begin_ms,
+      Math.ceil(
+        (state.time_end_ms - state.time_begin_ms) * (range_end / 100) +
+          state.time_begin_ms,
+      ),
+    );
+    console.log("windows", window_begin_ms, window_end_ms);
+    setState("window_begin_ms", window_begin_ms);
+    setState("window_end_ms", window_end_ms);
+  });
+};

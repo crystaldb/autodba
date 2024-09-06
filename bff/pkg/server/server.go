@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -99,13 +100,46 @@ func metrics_handler(route_configs map[string]RouteConfig, dbIdentifier string, 
 		route := strings.TrimPrefix(r.URL.Path, api_prefix)
 		fmt.Println("ROUTE: ", route)
 
-		options := make(map[string]string)
+		start := r.URL.Query().Get("start")
+		end := r.URL.Query().Get("end")
+
+		now := time.Now()
+
+		startTime, err := parseTimeParameter(start, now)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		var endTime time.Time
+		if end != "" {
+			endTime, err = parseTimeParameter(end, now)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+		} else {
+			endTime = now
+		}
+
+		if startTime.After(endTime) {
+			http.Error(w, "Parameter 'end' must be greater than 'start'", http.StatusBadRequest)
+			return
+		}
+
+		options := map[string]string{
+			"start": strconv.FormatInt(startTime.UnixMilli(), 10),
+			"end":   strconv.FormatInt(endTime.UnixMilli(), 10),
+		}
 		metrics := make(map[string]string)
 
 		if route_config, ok := route_configs[route]; ok {
 			fmt.Println("matching route found: extracting params")
 			for _, param := range route_config.Params {
 				value := r.URL.Query().Get(param)
+				if param == "start" || param == "end" {
+					continue
+				}
 
 				if param == "dbidentifier" && value == "" {
 					for metric, query := range route_config.Metrics {
@@ -207,8 +241,16 @@ func metrics_handler(route_configs map[string]RouteConfig, dbIdentifier string, 
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
+
+			currentTime := time.Now().UnixNano() / int64(time.Millisecond)
+			wrappedJSON, err := WrapJSON(js, map[string]interface{}{"server_now": currentTime})
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
 			w.WriteHeader(http.StatusOK)
-			w.Write(js)
+			w.Write(wrappedJSON)
 		} else {
 			http.Error(w, "No matching route found", http.StatusNotFound)
 		}
@@ -229,7 +271,6 @@ func activity_handler(metrics_service metrics.Service) http.HandlerFunc {
 		filterdimselected := r.URL.Query().Get("filterdimselected")
 		limit := r.URL.Query().Get("limit")
 
-		// Map of parameter names to their values
 		requiredParamMap := map[string]string{
 			"database_list": database_list,
 			"start":         start,
@@ -239,36 +280,19 @@ func activity_handler(metrics_service metrics.Service) http.HandlerFunc {
 			"dim":           dim,
 		}
 
-		// Iterate over the map and check for missing values
 		for paramName, paramValue := range requiredParamMap {
 			if paramValue == "" {
 				http.Error(w, fmt.Sprintf("Missing param/value: %s", paramName), http.StatusBadRequest)
 				return
 			}
 		}
-		parsedStart, err := parseAndValidateInt(start, "start")
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-
-		parsedEnd, err := parseAndValidateInt(end, "end")
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
 
 		if limit != "" {
-			_, err = parseAndValidateInt(limit, "limit")
+			_, err := parseAndValidateInt(limit, "limit")
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusBadRequest)
 				return
 			}
-		}
-
-		if parsedEnd <= parsedStart {
-			http.Error(w, "Parameter 'end' must be greater than 'start'", http.StatusBadRequest)
-			return
 		}
 
 		promQLInput := PromQLInput{
@@ -293,10 +317,33 @@ func activity_handler(metrics_service metrics.Service) http.HandlerFunc {
 		}
 
 		fmt.Println("query: ", query)
+		now := time.Now()
+
+		startTime, err := parseTimeParameter(start, now)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		var endTime time.Time
+		if end != "" {
+			endTime, err = parseTimeParameter(end, now)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+		} else {
+			endTime = now
+		}
+
+		if startTime.After(endTime) {
+			http.Error(w, "Parameter 'end' must be greater than 'start'", http.StatusBadRequest)
+			return
+		}
 
 		options := map[string]string{
-			"start": start,
-			"end":   end,
+			"start": strconv.FormatInt(startTime.UnixMilli(), 10),
+			"end":   strconv.FormatInt(endTime.UnixMilli(), 10),
 			"step":  step,
 			"dim":   dim,
 		}
@@ -312,8 +359,16 @@ func activity_handler(metrics_service metrics.Service) http.HandlerFunc {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
+
+		currentTime := now.UnixMilli()
+		wrappedJSON, err := WrapJSON(js, map[string]interface{}{"server_now": currentTime})
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
 		w.WriteHeader(http.StatusOK)
-		w.Write(js)
+		w.Write(wrappedJSON)
 
 	})
 }
@@ -406,4 +461,21 @@ func parseAndValidateInt(param string, paramName string) (int, error) {
 	}
 
 	return value, nil
+}
+
+func WrapJSON(data []byte, metadata map[string]interface{}) ([]byte, error) {
+	container := map[string]interface{}{
+		"data": json.RawMessage(data),
+	}
+
+	for key, value := range metadata {
+		container[key] = value
+	}
+
+	wrappedJSON, err := json.Marshal(container)
+	if err != nil {
+		return nil, err
+	}
+
+	return wrappedJSON, nil
 }

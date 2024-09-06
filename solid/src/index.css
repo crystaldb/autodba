@@ -7,9 +7,8 @@
     /* @apply scroll-smooth; */
   }
   body {
-    /* @apply bg-black; */
-    @apply bg-neutral-100 text-black dark:bg-neutral-900 dark:text-white;
-    /* @apply bg-neutral-100; */
+    /* NOTE: bg-zinc-100 dark:bg-zinc-900 set in index.html with style element */
+    @apply text-black dark:text-white;
   }
   [popover] {
     margin: 0;
@@ -30,8 +29,8 @@
     @apply max-w-60;
     @apply bg-neutral-100 text-black dark:bg-neutral-700 dark:text-white px-2.5 py-1.5 rounded;
   }
-  a.active {
-    @apply underline underline-offset-8;
+  a.activeTopNav {
+    @apply border-b-2 border-red-500;
   }
   .btn {
     @apply font-bold;

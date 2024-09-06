@@ -70,11 +70,11 @@ export function EchartsTimeseries1(props: IProps) {
     // dataZoom: [
     //   {
     //     type: "inside",
-    //     start: state.range_start,
+    //     start: state.range_begin,
     //     end: state.range_end,
     //   },
     //   {
-    //     start: state.range_start,
+    //     start: state.range_begin,
     //     end: state.range_end,
     //   },
     // ],
@@ -88,7 +88,7 @@ export function EchartsTimeseries1(props: IProps) {
     highlight: (event: any) => {
       console.log("Chart Highlight", event);
     },
-    datazoom: datazoomEventHandler.bind(null, setState, state),
+    datazoom: datazoomEventHandler,
   };
 
   return (
@@ -100,11 +100,11 @@ export function EchartsTimeseries1(props: IProps) {
           dataZoom: [
             {
               type: "inside",
-              start: state.range_start,
+              start: state.range_begin,
               end: state.range_end,
             },
             {
-              start: state.range_start,
+              start: state.range_begin,
               end: state.range_end,
             },
           ],

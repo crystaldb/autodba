@@ -12,7 +12,8 @@ import {
   tidy,
 } from "@tidyjs/tidy";
 import { ILegend } from "./cube_activity";
-import { queryCube } from "../http";
+import { queryCubeIfLive } from "../http";
+import moment from "moment-timezone";
 
 interface PropsLegend {
   legend: ILegend;
@@ -31,15 +32,19 @@ export function CubeDimensionTime(props: PropsLegend) {
   }, 0);
 
   createResource(changed, () => {
-    queryCube(state, setState);
+    queryCubeIfLive(state, setState);
   });
+
+  const timezone = moment.tz.guess();
+  const timezoneAbbreviation = moment.tz(moment(), timezone).format("z");
+  const timeFormat = "HH:mm:ss [GMT]Z ";
 
   const eventHandlers = {
     click: (event: any) => {
       console.log("Chart is clicked!", event);
     },
     // highlight: (event: any) => { console.log("Chart Highlight", event); },
-    datazoom: datazoomEventHandler.bind(null, setState, state),
+    datazoom: datazoomEventHandler,
   };
 
   const base = {
@@ -63,7 +68,23 @@ export function CubeDimensionTime(props: PropsLegend) {
       },
     },
     xAxis: {
-      type: "category",
+      type: "category", // NOTE: this isn't "time" because we need to stack the bar chats below.
+      axisPointer: {
+        label: {
+          formatter: function (pointer: { value: string }) {
+            let timestamp = parseInt(pointer.value, 10);
+            let date = moment(timestamp);
+            return date.format(timeFormat) + "(" + timezoneAbbreviation + ")";
+          },
+        },
+      },
+      axisLabel: {
+        formatter: function (value: string) {
+          let timestamp = parseInt(value, 10);
+          let date = moment(timestamp);
+          return date.format(timeFormat) + "(" + timezoneAbbreviation + ")";
+        },
+      },
     },
     yAxis: {
       type: "value",
@@ -110,7 +131,7 @@ export function CubeDimensionTime(props: PropsLegend) {
 
   return (
     <>
-      <section class="h-[40rem] min-w-128">
+      <section class="h-[35rem]">
         <Show when={`${state.cubeActivity.uiLegend}${state.interval_ms}`} keyed>
           <EChartsAutoSize
             // @ts-expect-error
@@ -123,9 +144,7 @@ export function CubeDimensionTime(props: PropsLegend) {
                 type: "bar",
                 barWidth: "50%",
                 stack: "time",
-                emphasis: {
-                  focus: "series",
-                },
+                // emphasis: { focus: "series", },
               })),
               // { label: { show: true, formatter: (params: { value: number }) => { //     return `val1: ${params.value.wait_event_name}: ${params.value.value}`; }, }, },
               // { name: "vCPUs", type: "line", data: [20, 20, 20, 20, 20], markLine: { data: [{ type: "average", name: "Avg" }], },
@@ -134,17 +153,18 @@ export function CubeDimensionTime(props: PropsLegend) {
                 // {
                 //   show: true,
                 //   realtime: true,
-                //   start: state.range_start,
+                //   start: state.range_begin,
                 //   end: state.range_end,
                 //   xAxisIndex: [0, 1],
                 // },
-                {
-                  type: "inside",
-                  realtime: true,
-                  start: state.range_start,
-                  end: state.range_end,
-                  xAxisIndex: [0, 1],
-                },
+                //
+                // {
+                //   type: "inside",
+                //   realtime: true,
+                //   start: state.range_begin,
+                //   end: state.range_end,
+                //   // xAxisIndex: [0, 1],
+                // },
               ],
             })}
             eventHandlers={eventHandlers}

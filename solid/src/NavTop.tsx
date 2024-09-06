@@ -20,22 +20,58 @@ export function NavTop(props: {
   return (
     <>
       <nav
-        class={`flex flex-col lg:flex-row items-center justify-between h-16 pe-3 ${props.class}`}
+        class={`flex flex-col sm:flex-row items-center justify-between pe-3 border-b border-zinc-500 ${props.class}`}
       >
-        <div class="flex items-center">
-          <A href="/" class="dark:hidden flex items-center" end>
-            <img src="/logo-dark-text.svg" alt="logo" class="h-12" />
-            <span class="text-lg font-medium">AutoDBA</span>
-          </A>
-          <A href="/" class="hidden dark:flex items-center" activeClass="">
-            <img src="/logo-light-text.svg" alt="logo" class="h-12" />
-            <span class="text-lg font-medium">AutoDBA</span>
-          </A>
-        </div>
+        <A href="/" class="flex items-center gap-2" end>
+          <img src="/logo.svg" alt="logo" class="h-7" />
+          <span class="text-2xl font-medium">AutoDBA</span>
+        </A>
         <section class="flex flex-wrap gap-4 items-center">
           {props.children}
         </section>
       </nav>
     </>
+  );
+}
+
+export function NavTopConfig1() {
+  return (
+    <NavTop class="mb-8">
+      <A
+        activeClass="activeTopNav"
+        href="/activity"
+        class="flex items-center justify-center h-16 px-4"
+        end
+      >
+        Activity
+      </A>
+      {/*
+      <A
+        activeClass="activeTopNav"
+        href="/metric"
+        class="flex items-center justify-center h-16 px-4"
+        end
+      >
+        Metrics
+      </A>
+      <div class="h-5 border-s w-1 border-neutral-200 dark:border-neutral-700"></div>
+      <A
+        activeClass="activeTopNav"
+        href="/health"
+        class="flex items-center justify-center h-16 px-4"
+        end
+      >
+        Health
+      </A>
+      <A
+        activeClass="activeTopNav"
+        href="/explorer"
+        class="flex items-center justify-center h-16 px-4"
+        end
+      >
+        Explorer
+      </A>
+      */}
+    </NavTop>
   );
 }
