@@ -15,6 +15,19 @@ export function PageMetric(props: any) {
             <For
               each={
                 [
+                  ["Sessions", "", ["sessions"]],
+                  [
+                    "Tuples",
+                    "",
+                    [
+                      "tuples_dml_deleted",
+                      "tuples_dml_inserted",
+                      "tuples_dml_updated",
+                      "tuples_reads_returned",
+                      "tuples_reads_returned_fetched",
+                    ],
+                  ],
+                  ["Connection utilization", "", ["connection_utilization"]],
                   [
                     "Transactions",
                     "",
@@ -40,9 +53,19 @@ export function PageMetric(props: any) {
                     "",
                     ["max_time_idle_in_transaction"],
                   ],
-                  ["Connection utilization", "", ["connection_utilization"]],
-                  ["CPU utilization", "", ["cpu_utilization"]],
                   ["Deadlocks", "", ["deadlocks"]],
+                  ["Vacuum", "", ["vacuum_max_used_transaction_ids"]],
+                  ["CPU utilization", "", ["cpu_utilization"]],
+                  [
+                    "IO read throughput",
+                    "",
+                    [
+                      "io_read_throughput",
+                      "io_vs_disk_blocks_hit",
+                      "io_vs_disk_blocks_read",
+                      "io_write_throughput",
+                    ],
+                  ],
                   [
                     "IOPS",
                     "",
@@ -63,29 +86,6 @@ export function PageMetric(props: any) {
                     ],
                   ],
                   ["Free storage space", "", ["free_storage_space"]],
-                  [
-                    "IO read throughput",
-                    "",
-                    [
-                      "io_read_throughput",
-                      "io_vs_disk_blocks_hit",
-                      "io_vs_disk_blocks_read",
-                      "io_write_throughput",
-                    ],
-                  ],
-                  ["Sessions", "", ["sessions"]],
-                  [
-                    "Tuples",
-                    "",
-                    [
-                      "tuples_dml_deleted",
-                      "tuples_dml_inserted",
-                      "tuples_dml_updated",
-                      "tuples_reads_returned",
-                      "tuples_reads_returned_fetched",
-                    ],
-                  ],
-                  ["Vacuum", "", ["vacuum_max_used_transaction_ids"]],
                 ] as [string, string, string[]][]
               }
             >
