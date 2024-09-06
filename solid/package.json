@@ -38,6 +38,8 @@
     "@tidyjs/tidy": "^2.5.2",
     "echarts": "^5.5.1",
     "echarts-solid": "^0.1.0",
+    "moment": "^2.30.1",
+    "moment-timezone": "^0.5.45",
     "solid-icons": "^1.1.0",
     "solid-js": "^1.8.11",
     "solid-simple-popover": "^2.0.0"

@@ -13,6 +13,7 @@ import {
 } from "@tidyjs/tidy";
 import { ILegend } from "./cube_activity";
 import { queryCubeIfLive } from "../http";
+import moment from "moment-timezone";
 
 interface PropsLegend {
   legend: ILegend;
@@ -33,6 +34,10 @@ export function CubeDimensionTime(props: PropsLegend) {
   createResource(changed, () => {
     queryCubeIfLive(state, setState);
   });
+
+  const timezone = moment.tz.guess();
+  const timezoneAbbreviation = moment.tz(moment(), timezone).format("z");
+  const timeFormat = "HH:mm:ss [GMT]Z ";
 
   const eventHandlers = {
     click: (event: any) => {
@@ -64,10 +69,21 @@ export function CubeDimensionTime(props: PropsLegend) {
     },
     xAxis: {
       type: "category", // NOTE: this isn't "time" because we need to stack the bar chats below.
+      axisPointer: {
+        type: "shadow",
+        label: {
+          formatter: function (pointer) {
+            let timestamp = parseInt(pointer.value, 10);
+            let date = moment(timestamp);
+            return date.format(timeFormat) + "(" + timezoneAbbreviation + ")";
+          },
+        },
+      },
       axisLabel: {
-        formatter: function (value) {
-          console.log("value", typeof value, value);
-          return new Date(parseInt(value) || 0);
+        formatter: function (value, index) {
+          let timestamp = parseInt(value, 10);
+          let date = moment(timestamp);
+          return date.format(timeFormat) + "(" + timezoneAbbreviation + ")";
         },
       },
     },
