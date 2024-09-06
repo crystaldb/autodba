@@ -2,7 +2,7 @@ export function unique<T>(list: T[]): T[] {
   return [...new Set(list)];
 }
 
-export function truncateString(str, maxLength = 100) {
+export function truncateString(str: string, maxLength = 100) {
     console.log('Truncate string');
     console.log('str', str);
     if (str.length > maxLength) {
