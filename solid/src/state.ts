@@ -15,13 +15,13 @@ export enum DimensionName {
 
 export function listDimensionTabNames() {
   return [
-    [DimensionName.wait_event_name, "Waits"],
+    [DimensionName.wait_event_name, "Wait"],
     [DimensionName.query, "Sql"],
-    [DimensionName.client_addr, "Hosts"],
-    [DimensionName.usename, "Users"],
-    [DimensionName.backend_type, "Session types"],
-    [DimensionName.application_name, "Applications"],
-    [DimensionName.datname, "Databases"],
+    [DimensionName.client_addr, "Host"],
+    [DimensionName.usename, "User"],
+    [DimensionName.backend_type, "Session type"],
+    [DimensionName.application_name, "Application"],
+    [DimensionName.datname, "Database"],
   ];
 }
 
@@ -85,13 +85,13 @@ export const listColors = [
     hex: "#93c5fd", // "bg-blue-300",
   },
   {
-    text: "text-green-300 accent-green-300",
-    bg: "bg-green-300 accent-green-300 text-neutral-500",
+    text: "text-green-400 accent-green-400 dark:text-green-300 dark:accent-green-300 font-medium dark:font-normal",
+    bg: "bg-green-400 accent-green-400 dark:bg-green-300 dark:accent-green-300 text-neutral-500",
     hex: "#86efac", // "bg-green-300",
   },
   {
-    text: "text-yellow-300 accent-yellow-300",
-    bg: "bg-yellow-300 accent-yellow-300 text-neutral-500",
+    text: "text-yellow-500 accent-yellow-500 dark:text-yellow-300 dark:accent-yellow-300",
+    bg: "bg-yellow-500 dark:bg-yellow-300 accent-yellow-500 dark:accent-yellow-300 text-neutral-500",
     hex: "#fde047", // "bg-yellow-300",
   },
   {
@@ -125,8 +125,8 @@ export const listColors = [
     hex: "#d946ef", // "bg-fuchsia-500",
   },
   {
-    text: "text-green-500 accent-green-500",
-    bg: "bg-green-500 accent-green-500",
+    text: "text-green-700 accent-green-700 dark:text-green-500 dark:accent-green-500",
+    bg: "bg-green-700 accent-green-700 dark:bg-green-500 dark:accent-green-500",
     hex: "#14b8a6", // "bg-green-500",
   },
   // ... add a bunch of neutral colors for non differentiated colors to avoid eCharts wrap-around

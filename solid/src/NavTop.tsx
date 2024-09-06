@@ -20,7 +20,7 @@ export function NavTop(props: {
   return (
     <>
       <nav
-        class={`flex flex-col lg:flex-row items-center justify-between h-16 pe-3 ${props.class}`}
+        class={`flex flex-col lg:flex-row items-center justify-between h-16 pe-3 border-b border-zinc-500 ${props.class}`}
       >
         <div class="flex items-center">
           <A href="/" class="dark:hidden flex items-center" end>

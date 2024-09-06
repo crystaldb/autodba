@@ -1,9 +1,6 @@
-import { ECharts, EChartsAutoSize } from "echarts-solid";
 import { contextState } from "../context_state";
-import { mergeProps, Show } from "solid-js";
-import { datazoomEventHandler } from "../state";
+import { Show } from "solid-js";
 import { isLiveQueryCube } from "../http";
-import { EchartsTimebar } from "./echarts_timebar";
 
 let debugZero = +new Date();
 
@@ -12,15 +9,17 @@ interface ITimebarSectionProps {
 }
 
 export function TimebarSection(props: ITimebarSectionProps) {
-  const { state, setState } = contextState();
+  const { state } = contextState();
 
   return (
     <section class={`flex items-center ${props.class}`}>
       <Show when={isLiveQueryCube(state)}>
-        <div class="p-2 rounded-md bg-yellow-200 text-black">LIVE</div>
+        <div class="border border-yellow-300 dark:border-0 dark:border-green-500 px-2.5 py-2 rounded-md bg-yellow-200 text-black font-semibold leading-none">
+          LIVE
+        </div>
       </Show>
-      {/*
       <TimebarDebugger />
+      {/*
       <EchartsTimebar class="h-12" />
       */}
     </section>
