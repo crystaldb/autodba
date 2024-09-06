@@ -22,16 +22,10 @@ export function NavTop(props: {
       <nav
         class={`flex flex-col lg:flex-row items-center justify-between h-16 pe-3 border-b border-zinc-500 ${props.class}`}
       >
-        <div class="flex items-center">
-          <A href="/" class="dark:hidden flex items-center" end>
-            <img src="/logo-dark-text.svg" alt="logo" class="h-12" />
-            <span class="text-lg font-medium">AutoDBA</span>
-          </A>
-          <A href="/" class="hidden dark:flex items-center" activeClass="">
-            <img src="/logo-light-text.svg" alt="logo" class="h-12" />
-            <span class="text-lg font-medium">AutoDBA</span>
-          </A>
-        </div>
+        <A href="/" class="flex items-center gap-2" end>
+          <img src="/logo.svg" alt="logo" class="h-7" />
+          <span class="text-2xl font-medium">AutoDBA</span>
+        </A>
         <section class="flex flex-wrap gap-4 items-center">
           {props.children}
         </section>
