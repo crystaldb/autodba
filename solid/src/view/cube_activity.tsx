@@ -127,7 +127,7 @@ function Dimension1(props: IDimension1) {
           <DimensionBars
             cubeData={props.cubeData}
             legend={props.legend}
-            class="min-h-64"
+            // class="min-h-64"
           />
         </Match>
       </Switch>
