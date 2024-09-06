@@ -34,6 +34,7 @@ fi
 check_fpm() {
     if ! command -v fpm &> /dev/null; then
         echo "Warning: 'fpm' is not installed. Skipping package creation for .rpm and .deb."
+        echo "To install fpm, run: 'apt-get install ruby ruby-dev rubygems build-essential'"
         return 1
     fi
     return 0
