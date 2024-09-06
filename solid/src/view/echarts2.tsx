@@ -19,7 +19,10 @@ export function Echarts2(props: PropsEcharts2) {
       // bottom: 75,
       containLabel: true,
     },
-    legend: { data: props.metricList },
+    legend: {
+      data: props.metricList,
+      itemGap: 1,
+    },
     tooltip: {
       trigger: "axis",
       axisPointer: {
@@ -35,7 +38,6 @@ export function Echarts2(props: PropsEcharts2) {
       type: "time",
       // boundaryGap: false,
       // axisLine: { onZero: false },
-      // data: props.dataA,
     },
     yAxis: {
       type: "value",
@@ -44,7 +46,7 @@ export function Echarts2(props: PropsEcharts2) {
     series: props.metricList.map((metric) => ({
       name: metric,
       type: "line",
-      stack: "Total",
+      // stack: "Total",
       dimensions: ["time_ms", metric],
       // name: "Requests",
       // // areaStyle: {},
@@ -52,9 +54,7 @@ export function Echarts2(props: PropsEcharts2) {
       // emphasis: { focus: "series", },
       // markArea: {
       //   silent: true, itemStyle: { opacity: 0.3, },
-      //   data: [ [ { xAxis: "2009/9/12\n7:00", }, { xAxis: "2009/9/22\n7:00", }, ], ],
       //   },
-      // data: props.dataB,
     })),
     // title: { text: props.title, left: -5, textStyle: { fontSize: 14, }, },
   };
@@ -89,11 +89,11 @@ export function Echarts2(props: PropsEcharts2) {
             forceSolidRefresh: props.data.length,
           },
           dataZoom: [
-            {
-              type: "inside",
-              start: state.range_begin,
-              end: state.range_end,
-            },
+            // {
+            //   type: "inside",
+            //   start: state.range_begin,
+            //   end: state.range_end,
+            // },
             {
               show: false,
               start: state.range_begin,

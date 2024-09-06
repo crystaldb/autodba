@@ -16,16 +16,6 @@ export function PageMetric(props: any) {
               each={
                 [
                   [
-                    "Transaction Commits",
-                    "",
-                    [
-                      "transactions_commit",
-                      // "transactions_in_progress_active_transactions",
-                      // "transactions_in_progress_blocked_transactions",
-                      // "transactions_rollback",
-                    ],
-                  ],
-                  [
                     "Transactions",
                     "",
                     [
@@ -35,9 +25,24 @@ export function PageMetric(props: any) {
                       "transactions_rollback",
                     ],
                   ],
-                  ["connection_utilization", "", ["connection_utilization"]],
-                  ["cpu_utilization", "", ["cpu_utilization"]],
-                  ["deadlocks", "", ["deadlocks"]],
+                  [
+                    "Transaction commits",
+                    "",
+                    [
+                      "transactions_commit",
+                      // "transactions_in_progress_active_transactions",
+                      // "transactions_in_progress_blocked_transactions",
+                      // "transactions_rollback",
+                    ],
+                  ],
+                  [
+                    "Max time idle in transaction",
+                    "",
+                    ["max_time_idle_in_transaction"],
+                  ],
+                  ["Connection utilization", "", ["connection_utilization"]],
+                  ["CPU utilization", "", ["cpu_utilization"]],
+                  ["Deadlocks", "", ["deadlocks"]],
                   [
                     "IOPS",
                     "",
@@ -57,9 +62,9 @@ export function PageMetric(props: any) {
                       "memory_usage_unused_instance_memory",
                     ],
                   ],
-                  ["free_storage_space", "", ["free_storage_space"]],
+                  ["Free storage space", "", ["free_storage_space"]],
                   [
-                    "io_read_throughput",
+                    "IO read throughput",
                     "",
                     [
                       "io_read_throughput",
@@ -68,12 +73,7 @@ export function PageMetric(props: any) {
                       "io_write_throughput",
                     ],
                   ],
-                  [
-                    "max_time_idle_in_transaction",
-                    "",
-                    ["max_time_idle_in_transaction"],
-                  ],
-                  ["sessions", "", ["sessions"]],
+                  ["Sessions", "", ["sessions"]],
                   [
                     "Tuples",
                     "",
@@ -85,11 +85,7 @@ export function PageMetric(props: any) {
                       "tuples_reads_returned_fetched",
                     ],
                   ],
-                  [
-                    "vacuum_max_used_transaction_ids",
-                    "",
-                    ["vacuum_max_used_transaction_ids"],
-                  ],
+                  ["Vacuum", "", ["vacuum_max_used_transaction_ids"]],
                 ] as [string, string, string[]][]
               }
             >
