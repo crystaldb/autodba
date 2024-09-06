@@ -5,11 +5,11 @@ This directory contains a set of scripts for managing the AutoDBA project. Below
 
 ## Scripts
 
-1. **release.sh**: This script is used to build and release AutoDBA in different formats, such as `.tar.gz`, `.deb`, or `.rpm` packages.
+1. **build.sh**: This script is used to build and release AutoDBA in different formats, such as `.tar.gz`, `.deb`, or `.rpm` packages.
 
 ### Usage:
 ```
-./release.sh [TARGET=all]
+./build.sh [TARGET=all]
 ```
 This will build the AutoDBA binaries for multiple architectures, prepare the web UI, include Prometheus exporters, and generate release packages in the `release_output` directory.
 
@@ -28,7 +28,7 @@ The optional argument to this script can specify the target. The possible choice
 ```
 - `--system`: Install system-wide under `/usr/local/autodba`. This flag also installs autodba as a service.
 - `--install-dir`: Specify a custom installation directory. If not specified, `$HOME/autodba` is used.
-- `--package`: Provide a specific package file (e.g., `.tar.gz`, `.deb`, `.rpm`) for installation. If not provided, the script calls `release.sh tar.gz` to create the package.
+- `--package`: Provide a specific package file (e.g., `.tar.gz`, `.deb`, `.rpm`) for installation. If not provided, the script calls `build.sh tar.gz` to create the package.
 - `--config`: Optionally provide a JSON configuration file that defines environment variables for AutoDBA.
 
 The config file should have this format:
