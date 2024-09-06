@@ -124,11 +124,6 @@ func metrics_handler(route_configs map[string]RouteConfig, dbIdentifier string, 
 
 		if startTime.After(endTime) {
 			http.Error(w, "Parameter 'end' must be greater than 'start'", http.StatusBadRequest)
-			fmt.Println("start: ", startTime)
-			fmt.Println("end: ", endTime)
-
-			fmt.Println("start param: ", start)
-			fmt.Println("end param: ", end)
 			return
 		}
 
@@ -220,14 +215,12 @@ func metrics_handler(route_configs map[string]RouteConfig, dbIdentifier string, 
 			fmt.Println("metrics: ", metrics)
 			fmt.Println("options: ", options)
 
-			fmt.Println("HERE")
 			results, err := metrics_service.Execute(metrics, options)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
 
-			fmt.Println("AFTER")
 			var metrics []map[string]interface{}
 
 			for time, record := range results {
