@@ -16,8 +16,10 @@ export function Echarts2(props: PropsEcharts2) {
 
   const base = {
     grid: {
-      bottom: 75,
+      // bottom: 75,
+      containLabel: true,
     },
+    legend: { data: props.metricList },
     tooltip: {
       trigger: "axis",
       axisPointer: {
@@ -55,8 +57,6 @@ export function Echarts2(props: PropsEcharts2) {
       // data: props.dataB,
     })),
     // title: { text: props.title, left: -5, textStyle: { fontSize: 14, }, },
-    // legend: { data: ["Requests", "Requests 2"], left: 0, bottom: 40, },
-    legend: { data: props.metricList, left: 0, bottom: 40 },
   };
 
   const eventHandlers = {

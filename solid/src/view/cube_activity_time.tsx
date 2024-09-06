@@ -71,7 +71,7 @@ export function CubeDimensionTime(props: PropsLegend) {
       type: "category", // NOTE: this isn't "time" because we need to stack the bar chats below.
       axisPointer: {
         label: {
-          formatter: function (pointer) {
+          formatter: function (pointer: { value: string }) {
             let timestamp = parseInt(pointer.value, 10);
             let date = moment(timestamp);
             return date.format(timeFormat) + "(" + timezoneAbbreviation + ")";
@@ -79,7 +79,7 @@ export function CubeDimensionTime(props: PropsLegend) {
         },
       },
       axisLabel: {
-        formatter: function (value, index) {
+        formatter: function (value: string) {
           let timestamp = parseInt(value, 10);
           let date = moment(timestamp);
           return date.format(timeFormat) + "(" + timezoneAbbreviation + ")";
