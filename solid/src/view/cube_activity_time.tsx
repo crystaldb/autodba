@@ -65,7 +65,7 @@ export function CubeDimensionTime(props: PropsLegend) {
     xAxis: {
       type: "category", // NOTE: this isn't "time" because we need to stack the bar chats below.
       axisLabel: {
-        formatter: function (value, index) {
+        formatter: function (value) {
           console.log("value", typeof value, value);
           return new Date(parseInt(value) || 0);
         },
@@ -116,7 +116,7 @@ export function CubeDimensionTime(props: PropsLegend) {
 
   return (
     <>
-      <section class="h-[35rem] min-w-128">
+      <section class="h-[35rem]">
         <Show when={`${state.cubeActivity.uiLegend}${state.interval_ms}`} keyed>
           <EChartsAutoSize
             // @ts-expect-error
@@ -142,13 +142,14 @@ export function CubeDimensionTime(props: PropsLegend) {
                 //   end: state.range_end,
                 //   xAxisIndex: [0, 1],
                 // },
-                {
-                  type: "inside",
-                  realtime: true,
-                  start: state.range_begin,
-                  end: state.range_end,
-                  xAxisIndex: [0, 1],
-                },
+                //
+                // {
+                //   type: "inside",
+                //   realtime: true,
+                //   start: state.range_begin,
+                //   end: state.range_end,
+                //   // xAxisIndex: [0, 1],
+                // },
               ],
             })}
             eventHandlers={eventHandlers}
