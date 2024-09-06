@@ -17,25 +17,28 @@ export function PageHealth(props: any) {
           {header(
             "info-Connections",
             "Connections",
-            `TODO ${state.data.cpu.length}`,
+            `TODO state.healthData.cpu.length = ${state.healthData.cpu.length}`,
           )}
           <div class="flex flex-col h-28">
-            <EchartsGauge1 data={state.data.cpu} />
+            <EchartsGauge1 data={state.healthData.cpu} />
           </div>
           <div class="flex flex-col h-64">
-            <EchartsTimeseries1 time={state.data.time} data={state.data.cpu} />
+            <EchartsTimeseries1
+              time={state.healthData.time}
+              data={state.healthData.cpu}
+            />
           </div>
         </MetricColumn>
 
         <MetricColumn>
           {header("info-Processes", "Processes")}
           <div class="flex flex-col h-28">
-            <EchartsGauge1 data={state.data.cpu.map((x) => x - 10)} />
+            <EchartsGauge1 data={state.healthData.cpu.map((x) => x - 10)} />
           </div>
           <div class="flex flex-col h-64">
             <EchartsTimeseries1
-              time={state.data.time}
-              data={state.data.cpu.map((x) => x - 10)}
+              time={state.healthData.time}
+              data={state.healthData.cpu.map((x) => x - 10)}
             />
           </div>
         </MetricColumn>
@@ -43,12 +46,12 @@ export function PageHealth(props: any) {
         <MetricColumn>
           {header("info-Memory", "Memory")}
           <div class="flex flex-col h-28">
-            <EchartsGauge1 data={state.data.cpu.map((x) => x + 10)} />
+            <EchartsGauge1 data={state.healthData.cpu.map((x) => x + 10)} />
           </div>
           <div class="flex flex-col h-64">
             <EchartsTimeseries1
-              time={state.data.time}
-              data={state.data.cpu.map((x) => x + 10)}
+              time={state.healthData.time}
+              data={state.healthData.cpu.map((x) => x + 10)}
             />
           </div>
         </MetricColumn>
@@ -56,12 +59,12 @@ export function PageHealth(props: any) {
         <MetricColumn>
           {header("info-Disk", "Disk")}
           <div class="flex flex-col h-28">
-            <EchartsGauge1 data={state.data.cpu.map((x) => x - 20)} />
+            <EchartsGauge1 data={state.healthData.cpu.map((x) => x - 20)} />
           </div>
           <div class="flex flex-col h-64">
             <EchartsTimeseries1
-              time={state.data.time}
-              data={state.data.cpu.map((x) => x - 20)}
+              time={state.healthData.time}
+              data={state.healthData.cpu.map((x) => x - 20)}
             />
           </div>
         </MetricColumn>

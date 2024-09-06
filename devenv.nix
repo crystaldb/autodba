@@ -26,7 +26,8 @@
 
   # https://devenv.sh/languages/
   # languages.nix.enable = true;
-  # languages.typescript.enable = true;
+  languages.typescript.enable = true;
+  languages.go.enable = true;
 
   # https://devenv.sh/pre-commit-hooks/
   # pre-commit.hooks.shellcheck.enable = true;
