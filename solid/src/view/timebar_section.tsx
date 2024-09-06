@@ -18,8 +18,8 @@ export function TimebarSection(props: ITimebarSectionProps) {
           LIVE
         </div>
       </Show>
-      <TimebarDebugger />
       {/*
+      <TimebarDebugger />
       <EchartsTimebar class="h-12" />
       */}
     </section>

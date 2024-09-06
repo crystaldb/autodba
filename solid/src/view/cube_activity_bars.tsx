@@ -101,7 +101,7 @@ interface IDimensionRow {
 
 function DimensionRowGrouped(props: IDimensionRow) {
   const { state } = contextState();
-  const a = [1, 2, 3].reduce;
+
   return (
     <section data-testclass="dimensionRow" class="flex items-center">
       <div class="w-48 xs:w-64 flex flex-row items-center">
@@ -114,7 +114,7 @@ function DimensionRowGrouped(props: IDimensionRow) {
             />
           )}
         </For>
-        <p class="ms-2">
+        <p class="ms-2 me-3">
           {props.records
             .reduce(
               (sum: number, record: { values: { value: any }[] }) =>
