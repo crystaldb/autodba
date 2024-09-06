@@ -70,7 +70,7 @@ export async function queryCube(
     time_begin ||
     Math.max(
       0,
-      dateNow - 15 * 60 * 1000, // query max of 15 minutes of data
+      dateNow - state.timeframe_ms, // query max of 15 minutes of data
       dateNow - safe_prometheus_11kSampleLimit_ms, // ensure we do not query too much data.
       state.time_begin_ms,
       state.window_begin_ms,
@@ -164,7 +164,7 @@ async function queryStandardEndpoint(
   if (!state.database_list.length) return false;
   const safe_prometheus_11kSampleLimit_ms = 10950 * state.interval_ms;
   const request_time_start = Math.max(
-    +new Date() - 15 * 60 * 1000, // query 15 minutes of data max
+    +new Date() - state.timeframe_ms, // query 15 minutes of data max
     +new Date() - safe_prometheus_11kSampleLimit_ms, // ensure we do not query too much data.
   );
   const response = await fetch(
@@ -208,35 +208,31 @@ async function queryStandardEndpoint(
     // );
 
     const dataBucketName = apiEndpoint + "Data";
-    const maxDataPoints = 60 * 15 * 12; // number of 5 second intervals in 15 minutes
-    setState(dataBucketName, (dataOld: any[]) => {
+    setState(dataBucketName, () => {
       // let newData = spliceArraysTogetherSkippingDuplicateTimestamps(data, data);
-      let newData = data;
-      if (newData.length > maxDataPoints)
-        newData = newData.slice(-maxDataPoints);
       return data;
     });
   });
   return true;
 }
 
-function spliceArraysTogetherSkippingDuplicateTimestamps(
-  arr1: any[],
-  arr2: any[] = [],
-): any[] {
-  // in the `arr1` array, starting at the end of the array and looking back up to `arr2.length` items, remove any timestamps from `arr1` that are already present in `arr2`, and then append the new `arr2` array to the end of `arr1`.
-  if (arr1.length === 0) return arr2;
-  if (arr2.length === 0) return arr1;
-  const newTimestamps = new Set(
-    arr2.map((row: { time_ms: any }) => row.time_ms),
-  );
-  const rangeStart = Math.max(0, arr1.length - arr2.length);
-
-  let insertAt = arr1.length;
-  for (let i = arr1.length - 1; i >= rangeStart; --i) {
-    if (newTimestamps.has(arr1[i].time_ms)) {
-      insertAt = i;
-    }
-  }
-  return [...arr1.slice(0, insertAt), ...arr2];
-}
+// function spliceArraysTogetherSkippingDuplicateTimestamps(
+//   arr1: any[],
+//   arr2: any[] = [],
+// ): any[] {
+//   // in the `arr1` array, starting at the end of the array and looking back up to `arr2.length` items, remove any timestamps from `arr1` that are already present in `arr2`, and then append the new `arr2` array to the end of `arr1`.
+//   if (arr1.length === 0) return arr2;
+//   if (arr2.length === 0) return arr1;
+//   const newTimestamps = new Set(
+//     arr2.map((row: { time_ms: any }) => row.time_ms),
+//   );
+//   const rangeStart = Math.max(0, arr1.length - arr2.length);
+//
+//   let insertAt = arr1.length;
+//   for (let i = arr1.length - 1; i >= rangeStart; --i) {
+//     if (newTimestamps.has(arr1[i].time_ms)) {
+//       insertAt = i;
+//     }
+//   }
+//   return [...arr1.slice(0, insertAt), ...arr2];
+// }

@@ -1,3 +1,4 @@
+import {init} from "echarts";
 import { batch } from "solid-js";
 import { createStore } from "solid-js/store";
 
@@ -59,6 +60,7 @@ export type State = {
   };
   metricData: any[];
 
+  timeframe_ms: number;
   interval_ms: number;
   range_begin: number;
   range_end: number;
@@ -223,6 +225,7 @@ export const listColors = [
 ];
 
 const appZero = +new Date();
+const initialTimeframe = 15 * 60 * 1000; // 15 minutes
 
 const [state, setState]: [State, any] = createStore({
   cubeActivity: {
@@ -250,9 +253,9 @@ const [state, setState]: [State, any] = createStore({
   interval_ms: 5 * 1000, // 5 seconds
   range_begin: 0.0,
   range_end: 100.0,
-  time_begin_ms: appZero - 15 * 60 * 1000,
+  time_begin_ms: appZero - initialTimeframe,
   time_end_ms: appZero,
-  window_begin_ms: appZero - 15 * 60 * 1000,
+  window_begin_ms: appZero - initialTimeframe,
   window_end_ms: appZero,
 });
 

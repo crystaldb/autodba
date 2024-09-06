@@ -1,6 +1,9 @@
 import { contextState } from "../context_state";
 import { Show } from "solid-js";
 import { isLiveQueryCube } from "../http";
+import { AiOutlineInfoCircle } from "solid-icons/ai";
+import { Popover } from "solid-simple-popover";
+import { flip } from "@floating-ui/dom";
 
 let debugZero = +new Date();
 
@@ -12,16 +15,44 @@ export function TimebarSection(props: ITimebarSectionProps) {
   const { state } = contextState();
 
   return (
-    <section class={`flex items-center ${props.class}`}>
+    <section class={`flex items-center gap-4 ${props.class}`}>
       <Show when={isLiveQueryCube(state)}>
         <div class="border border-yellow-300 dark:border-0 dark:border-green-500 px-2.5 py-2 rounded-md bg-yellow-200 text-black font-semibold leading-none">
           LIVE
         </div>
       </Show>
+      <TimeframeSelector />
       {/*
       <TimebarDebugger />
       <EchartsTimebar class="h-12" />
       */}
+    </section>
+  );
+}
+
+function TimeframeSelector() {
+  const { state } = contextState();
+  const id = "timeframeSelector";
+  const info = "hi";
+
+  return (
+    <section class="flex items-center gap-x-2">
+      <button id={id} class="w-6">
+        <AiOutlineInfoCircle size="24" class="text-gray-500" />
+      </button>
+
+      <Popover
+        triggerElement={`#${id}`}
+        autoUpdate
+        computePositionOptions={{
+          placement: "bottom-start",
+          middleware: [flip()],
+        }}
+        // sameWidth
+        dataAttributeName="data-open"
+      >
+        <div class="floating width60">{info}</div>
+      </Popover>
     </section>
   );
 }

@@ -1,7 +1,6 @@
-import type { ECharts } from "echarts-solid";
 import { EChartsAutoSize } from "echarts-solid";
 import { contextState } from "../context_state";
-import { createSignal, mergeProps } from "solid-js";
+import { mergeProps } from "solid-js";
 import { datazoomEventHandler } from "../state";
 
 interface PropsEcharts2 {
@@ -16,9 +15,8 @@ export function Echarts2(props: PropsEcharts2) {
 
   const base = {
     grid: {
-      // bottom: 75,
       containLabel: true,
-      top: 20 + props.metricList.length * 13,
+      top: 20 + props.metricList.length * 13, // space for the legend
       bottom: 0,
       right: 0,
       left: 0,
@@ -33,7 +31,7 @@ export function Echarts2(props: PropsEcharts2) {
     },
     tooltip: {
       trigger: "axis",
-      valueFormatter: (value) => value.toFixed(1),
+      valueFormatter: (value: number) => value.toFixed(1),
       axisPointer: {
         type: "cross",
         animation: false,
@@ -53,14 +51,12 @@ export function Echarts2(props: PropsEcharts2) {
     },
     yAxis: {
       type: "value",
-      //   name: "    Requests/sec",
     },
     series: props.metricList.map((metric) => ({
       name: metric,
       type: "line",
       // stack: "Total",
       dimensions: ["time_ms", metric],
-      // name: "Requests",
       // // areaStyle: {},
       // lineStyle: { width: 1, },
       // emphasis: { focus: "series", },
@@ -68,7 +64,6 @@ export function Echarts2(props: PropsEcharts2) {
       //   silent: true, itemStyle: { opacity: 0.3, },
       //   },
     })),
-    // title: { text: props.title, left: -5, textStyle: { fontSize: 14, }, },
   };
 
   const eventHandlers = {
