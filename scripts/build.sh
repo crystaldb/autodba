@@ -30,6 +30,15 @@ if [ -z "$TARGET" ]; then
   TARGET="all"
 fi
 
+# Function to check if fpm is installed
+check_fpm() {
+    if ! command -v fpm &> /dev/null; then
+        echo "Warning: 'fpm' is not installed. Skipping package creation for .rpm and .deb."
+        return 1
+    fi
+    return 0
+}
+
 # Build the binary for multiple architectures
 echo "Building the project for multiple architectures..."
 
@@ -110,58 +119,62 @@ create_tar_gz() {
 create_rpm() {
     echo "Creating RPM packages..."
 
-    for arch in x86_64 aarch64; do
-        if [ "$arch" == "x86_64" ]; then
-            ARCH_SUFFIX="amd64"
-        else
-            ARCH_SUFFIX="arm64"
-        fi
+    if check_fpm; then
+        for arch in x86_64 aarch64; do
+          if [ "$arch" == "x86_64" ]; then
+              ARCH_SUFFIX="amd64"
+          else
+              ARCH_SUFFIX="arm64"
+          fi
 
-        fpm -s dir -t rpm -n autodba -v "${VERSION}" \
-            -a ${arch} \
-            --description "AutoDBA is an AI agent for operating PostgreSQL databases." \
-            --license "Apache-2.0" \
-            --maintainer "CrystalDB Team <info@crystal.cloud>" \
-            --url "https://www.crystaldb.cloud/" \
-            --prefix /usr/local/bin \
-            --package "${RPM_DIR}/" \
-            "${TAR_GZ_DIR}/autodba-${VERSION}/bin/autodba-bff-${ARCH_SUFFIX}"=/usr/local/bin/autodba-bff \
-            "${TAR_GZ_DIR}/autodba-${VERSION}/webapp"=/usr/local/share/autodba/webapp \
-            "${TAR_GZ_DIR}/autodba-${VERSION}/exporters/${ARCH_SUFFIX}/postgres_exporter"=/usr/local/share/prometheus_exporters/postgres_exporter \
-            "${TAR_GZ_DIR}/autodba-${VERSION}/exporters/${ARCH_SUFFIX}/sql_exporter"=/usr/local/share/prometheus_exporters/sql_exporter \
-            "${TAR_GZ_DIR}/autodba-${VERSION}/exporters/${ARCH_SUFFIX}/rds_exporter"=/usr/local/share/prometheus_exporters/rds_exporter \
-            "${TAR_GZ_DIR}/autodba-${VERSION}/monitor/prometheus/sql_exporter"=/usr/local/share/prometheus_exporters/sql_exporter \
-            "${TAR_GZ_DIR}/autodba-${VERSION}/monitor/prometheus/rds_exporter"=/usr/local/share/prometheus_exporters/rds_exporter \
-            "${TAR_GZ_DIR}/autodba-${VERSION}/monitor/prometheus/prometheus.yml"=/etc/prometheus/prometheus.yml \
-            "${TAR_GZ_DIR}/autodba-${VERSION}/config/config.json"=/etc/autodba/config.json \
-            "${TAR_GZ_DIR}/autodba-${VERSION}/entrypoint.sh"=/usr/local/bin/autodba-entrypoint.sh
-    done
+          fpm -s dir -t rpm -n autodba -v "${VERSION}" \
+              -a ${arch} \
+              --description "AutoDBA is an AI agent for operating PostgreSQL databases." \
+              --license "Apache-2.0" \
+              --maintainer "CrystalDB Team <info@crystal.cloud>" \
+              --url "https://www.crystaldb.cloud/" \
+              --prefix /usr/local/bin \
+              --package "${RPM_DIR}/" \
+              "${TAR_GZ_DIR}/autodba-${VERSION}/bin/autodba-bff-${ARCH_SUFFIX}"=/usr/local/bin/autodba-bff \
+              "${TAR_GZ_DIR}/autodba-${VERSION}/webapp"=/usr/local/share/autodba/webapp \
+              "${TAR_GZ_DIR}/autodba-${VERSION}/exporters/${ARCH_SUFFIX}/postgres_exporter"=/usr/local/share/prometheus_exporters/postgres_exporter \
+              "${TAR_GZ_DIR}/autodba-${VERSION}/exporters/${ARCH_SUFFIX}/sql_exporter"=/usr/local/share/prometheus_exporters/sql_exporter \
+              "${TAR_GZ_DIR}/autodba-${VERSION}/exporters/${ARCH_SUFFIX}/rds_exporter"=/usr/local/share/prometheus_exporters/rds_exporter \
+              "${TAR_GZ_DIR}/autodba-${VERSION}/monitor/prometheus/sql_exporter"=/usr/local/share/prometheus_exporters/sql_exporter \
+              "${TAR_GZ_DIR}/autodba-${VERSION}/monitor/prometheus/rds_exporter"=/usr/local/share/prometheus_exporters/rds_exporter \
+              "${TAR_GZ_DIR}/autodba-${VERSION}/monitor/prometheus/prometheus.yml"=/etc/prometheus/prometheus.yml \
+              "${TAR_GZ_DIR}/autodba-${VERSION}/config/config.json"=/etc/autodba/config.json \
+              "${TAR_GZ_DIR}/autodba-${VERSION}/entrypoint.sh"=/usr/local/bin/autodba-entrypoint.sh
+      done
+    fi
 }
 
 # Function to create DEB packages
 create_deb() {
     echo "Creating DEB packages..."
 
-    for arch in amd64 arm64; do
-        fpm -s dir -t deb -n autodba -v "${VERSION}" \
-            -a ${arch} \
-            --description "AutoDBA is an AI agent for operating PostgreSQL databases." \
-            --license "Apache-2.0" \
-            --maintainer "CrystalDB Team <info@crystal.cloud>" \
-            --url "https://www.crystaldb.cloud/" \
-            --prefix /usr/local/bin \
-            --package "${DEB_DIR}/" \
-            "${TAR_GZ_DIR}/autodba-${VERSION}/bin/autodba-bff-${arch}"=/usr/local/bin/autodba-bff \
-            "${TAR_GZ_DIR}/autodba-${VERSION}/webapp"=/usr/local/share/autodba/webapp \
-            "${TAR_GZ_DIR}/autodba-${VERSION}/exporters/${arch}/postgres_exporter"=/usr/local/share/prometheus_exporters/postgres_exporter \
-            "${TAR_GZ_DIR}/autodba-${VERSION}/exporters/${arch}/sql_exporter"=/usr/local/share/prometheus_exporters/sql_exporter \
-            "${TAR_GZ_DIR}/autodba-${VERSION}/exporters/${arch}/rds_exporter"=/usr/local/share/prometheus_exporters/rds_exporter \
-            "${TAR_GZ_DIR}/autodba-${VERSION}/monitor/prometheus/sql_exporter"=/usr/local/share/prometheus_exporters/sql_exporter \
-            "${TAR_GZ_DIR}/autodba-${VERSION}/monitor/prometheus/rds_exporter"=/usr/local/share/prometheus_exporters/rds_exporter \
-            "${TAR_GZ_DIR}/autodba-${VERSION}/monitor/prometheus/prometheus.yml"=/etc/prometheus/prometheus.yml \
-            "${TAR_GZ_DIR}/autodba-${VERSION}/config/config.json"=/etc/autodba/config.json \
-            "${TAR_GZ_DIR}/autodba-${VERSION}/entrypoint.sh"=/usr/local/bin/autodba-entrypoint.sh
-    done
+    if check_fpm; then
+        for arch in amd64 arm64; do
+          fpm -s dir -t deb -n autodba -v "${VERSION}" \
+              -a ${arch} \
+              --description "AutoDBA is an AI agent for operating PostgreSQL databases." \
+              --license "Apache-2.0" \
+              --maintainer "CrystalDB Team <info@crystal.cloud>" \
+              --url "https://www.crystaldb.cloud/" \
+              --prefix /usr/local/bin \
+              --package "${DEB_DIR}/" \
+              "${TAR_GZ_DIR}/autodba-${VERSION}/bin/autodba-bff-${arch}"=/usr/local/bin/autodba-bff \
+              "${TAR_GZ_DIR}/autodba-${VERSION}/webapp"=/usr/local/share/autodba/webapp \
+              "${TAR_GZ_DIR}/autodba-${VERSION}/exporters/${arch}/postgres_exporter"=/usr/local/share/prometheus_exporters/postgres_exporter \
+              "${TAR_GZ_DIR}/autodba-${VERSION}/exporters/${arch}/sql_exporter"=/usr/local/share/prometheus_exporters/sql_exporter \
+              "${TAR_GZ_DIR}/autodba-${VERSION}/exporters/${arch}/rds_exporter"=/usr/local/share/prometheus_exporters/rds_exporter \
+              "${TAR_GZ_DIR}/autodba-${VERSION}/monitor/prometheus/sql_exporter"=/usr/local/share/prometheus_exporters/sql_exporter \
+              "${TAR_GZ_DIR}/autodba-${VERSION}/monitor/prometheus/rds_exporter"=/usr/local/share/prometheus_exporters/rds_exporter \
+              "${TAR_GZ_DIR}/autodba-${VERSION}/monitor/prometheus/prometheus.yml"=/etc/prometheus/prometheus.yml \
+              "${TAR_GZ_DIR}/autodba-${VERSION}/config/config.json"=/etc/autodba/config.json \
+              "${TAR_GZ_DIR}/autodba-${VERSION}/entrypoint.sh"=/usr/local/bin/autodba-entrypoint.sh
+      done
+    fi
 }
 
 # Function to package the source code
