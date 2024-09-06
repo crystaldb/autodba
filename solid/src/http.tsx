@@ -38,7 +38,7 @@ export async function queryEndpointData(
 }
 
 export function isLiveQueryCube(state: State): boolean {
-  if (!state.database_instance.dbidentifier) return false;
+  // if (!state.database_instance.dbidentifier) return false;
   if (!state.database_list.length) return false;
   if (state.range_end !== 100) return false;
   return true;
@@ -61,7 +61,7 @@ export async function queryCube(
   time_end?: number,
 ): Promise<boolean> {
   if (queryCubeBusy) return false;
-  if (!state.database_instance.dbidentifier) return false;
+  // if (!state.database_instance.dbidentifier) return false;
   if (!state.database_list.length) return false;
 
   const safe_prometheus_11kSampleLimit_ms = 10950 * state.interval_ms;
@@ -128,7 +128,7 @@ export async function queryCube(
     if (!json) return false;
     let timeOldest = request_time_start;
     let timeNewest = request_time_start;
-    json.forEach((row: { values: { timestamp: number }[] }) => {
+    json.data.forEach((row: { values: { timestamp: number }[] }) => {
       for (let i = 0; i < row.values.length; ++i) {
         const timestamp = row.values[i]?.timestamp;
         if (timestamp < timeOldest) timeOldest = timestamp;
@@ -140,7 +140,7 @@ export async function queryCube(
       setState(
         "cubeActivity",
         produce((cubeActivity: State["cubeActivity"]) => {
-          cubeActivity.cubeData = json;
+          cubeActivity.cubeData = json.data;
         }),
       );
       if (!state.time_begin_ms)
@@ -161,7 +161,7 @@ async function queryStandardEndpoint(
   setState: (arg0: string, arg1: any, arg2?: any) => void,
 ): Promise<boolean> {
   if (apiEndpoint !== "health" && apiEndpoint !== "metric") return false;
-  if (!state.database_instance.dbidentifier) return false;
+  // if (!state.database_instance.dbidentifier) return false;
   if (!state.database_list.length) return false;
   const safe_prometheus_11kSampleLimit_ms = 10950 * state.interval_ms;
   const request_time_start = Math.max(
