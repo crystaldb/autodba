@@ -1,5 +1,5 @@
 import { contextState } from "../context_state";
-import { Show } from "solid-js";
+import { For, Show } from "solid-js";
 import { isLiveQueryCube } from "../http";
 import { AiOutlineInfoCircle } from "solid-icons/ai";
 import { Popover } from "solid-simple-popover";
@@ -21,8 +21,8 @@ export function TimebarSection(props: ITimebarSectionProps) {
           LIVE
         </div>
       </Show>
-      <TimeframeSelector />
       {/*
+      <TimeframeSelector />
       <TimebarDebugger />
       <EchartsTimebar class="h-12" />
       */}
@@ -51,7 +51,33 @@ function TimeframeSelector() {
         // sameWidth
         dataAttributeName="data-open"
       >
-        <div class="floating width60">{info}</div>
+        <section class="floating width60">
+          <For
+            each={[
+              [
+                "15m",
+                "15 minutes",
+                15 * 60 * 1000,
+                "5s",
+                "5 seconds",
+                5 * 1000,
+              ],
+              ["1h", "1 hour", 60 * 60 * 1000, "1m", "1 minute", 60 * 1000],
+              [
+                "1d",
+                "1 day",
+                24 * 60 * 60 * 1000,
+                "30m",
+                "30 minutes",
+                30 * 60 * 1000,
+              ],
+            ]}
+          >
+            {([label, label2, ms, label3, label4, ms2]) => {
+              return "hi";
+            }}
+          </For>
+        </section>
       </Popover>
     </section>
   );
