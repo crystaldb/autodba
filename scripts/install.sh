@@ -40,16 +40,21 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# If no package file is provided, generate it using release.sh
+usage() {
+    echo "Usage: $0 --package <path/to/package> [--system] [--install-dir <path>] [--config <config.json>]"
+    echo ""
+    echo "Options:"
+    echo "  --package      Path to the package file (.tar.gz, .deb, or .rpm) [REQUIRED]"
+    echo "  --system       Install globally under /usr/local/autodba"
+    echo "  --install-dir  Specify a custom installation directory. If not specified, `$HOME/autodba` is used."
+    echo "  --config       Path to the AutoDBA config file (optional)"
+    exit 1
+}
+
+# Ensure that the --package argument is provided
 if [ -z "$PACKAGE_FILE" ]; then
-    echo "No package file provided. Running release.sh to generate the package..."
-    $SCRIPT_DIR/release.sh tar.gz
-    PACKAGE_FILE=$(ls release_output/tar.gz/autodba-*.tar.gz) # Assuming tar.gz is generated
-    if [ -z "$PACKAGE_FILE" ]; then
-        echo "Error: Failed to generate tar.gz package file."
-        exit 1
-    fi
-    echo "Generated package: $PACKAGE_FILE"
+    echo "Error: --package argument is required."
+    usage
 fi
 
 # Set the parent directory
