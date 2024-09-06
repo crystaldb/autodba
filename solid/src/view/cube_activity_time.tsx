@@ -129,9 +129,7 @@ export function CubeDimensionTime(props: PropsLegend) {
                 type: "bar",
                 barWidth: "50%",
                 stack: "time",
-                emphasis: {
-                  focus: "series",
-                },
+                // emphasis: { focus: "series", },
               })),
               // { label: { show: true, formatter: (params: { value: number }) => { //     return `val1: ${params.value.wait_event_name}: ${params.value.value}`; }, }, },
               // { name: "vCPUs", type: "line", data: [20, 20, 20, 20, 20], markLine: { data: [{ type: "average", name: "Avg" }], },
