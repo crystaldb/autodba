@@ -22,6 +22,10 @@ export function Echarts2(props: PropsEcharts2) {
     legend: {
       data: props.metricList,
       itemGap: 1,
+      left: 0,
+      // labelStyle: {
+      //   color: "white",
+      // },
     },
     tooltip: {
       trigger: "axis",
@@ -38,6 +42,9 @@ export function Echarts2(props: PropsEcharts2) {
       type: "time",
       // boundaryGap: false,
       // axisLine: { onZero: false },
+      axisLabel: {
+        rotate: 45,
+      },
     },
     yAxis: {
       type: "value",
