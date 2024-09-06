@@ -45,7 +45,6 @@ export function NavTopConfig1() {
       >
         Activity
       </A>
-      {/*
       <A
         activeClass="activeTopNav"
         href="/metric"
@@ -54,6 +53,7 @@ export function NavTopConfig1() {
       >
         Metrics
       </A>
+      {/*
       <div class="h-5 border-s w-1 border-neutral-200 dark:border-neutral-700"></div>
       <A
         activeClass="activeTopNav"
