@@ -100,13 +100,51 @@ func metrics_handler(route_configs map[string]RouteConfig, dbIdentifier string, 
 		route := strings.TrimPrefix(r.URL.Path, api_prefix)
 		fmt.Println("ROUTE: ", route)
 
-		options := make(map[string]string)
+		start := r.URL.Query().Get("start")
+		end := r.URL.Query().Get("end")
+
+		now := time.Now()
+
+		startTime, err := parseTimeParameter(start, now)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		var endTime time.Time
+		if end != "" {
+			endTime, err = parseTimeParameter(end, now)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+		} else {
+			endTime = now
+		}
+
+		if startTime.After(endTime) {
+			http.Error(w, "Parameter 'end' must be greater than 'start'", http.StatusBadRequest)
+			fmt.Println("start: ", startTime)
+			fmt.Println("end: ", endTime)
+
+			fmt.Println("start param: ", start)
+			fmt.Println("end param: ", end)
+			return
+		}
+
+		options := map[string]string{
+			"start": strconv.FormatInt(startTime.UnixMilli(), 10),
+			"end":   strconv.FormatInt(endTime.UnixMilli(), 10),
+		}
 		metrics := make(map[string]string)
 
 		if route_config, ok := route_configs[route]; ok {
 			fmt.Println("matching route found: extracting params")
 			for _, param := range route_config.Params {
 				value := r.URL.Query().Get(param)
+				if param == "start" || param == "end" {
+					continue
+				}
 
 				if param == "dbidentifier" && value == "" {
 					for metric, query := range route_config.Metrics {
@@ -182,12 +220,14 @@ func metrics_handler(route_configs map[string]RouteConfig, dbIdentifier string, 
 			fmt.Println("metrics: ", metrics)
 			fmt.Println("options: ", options)
 
+			fmt.Println("HERE")
 			results, err := metrics_service.Execute(metrics, options)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
 
+			fmt.Println("AFTER")
 			var metrics []map[string]interface{}
 
 			for time, record := range results {
@@ -253,29 +293,13 @@ func activity_handler(metrics_service metrics.Service) http.HandlerFunc {
 				return
 			}
 		}
-		parsedStart, err := parseAndValidateInt(start, "start")
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-
-		parsedEnd, err := parseAndValidateInt(end, "end")
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
 
 		if limit != "" {
-			_, err = parseAndValidateInt(limit, "limit")
+			_, err := parseAndValidateInt(limit, "limit")
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusBadRequest)
 				return
 			}
-		}
-
-		if parsedEnd <= parsedStart {
-			http.Error(w, "Parameter 'end' must be greater than 'start'", http.StatusBadRequest)
-			return
 		}
 
 		promQLInput := PromQLInput{
@@ -300,10 +324,33 @@ func activity_handler(metrics_service metrics.Service) http.HandlerFunc {
 		}
 
 		fmt.Println("query: ", query)
+		now := time.Now()
+
+		startTime, err := parseTimeParameter(start, now)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		var endTime time.Time
+		if end != "" {
+			endTime, err = parseTimeParameter(end, now)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+		} else {
+			endTime = now
+		}
+
+		if startTime.After(endTime) {
+			http.Error(w, "Parameter 'end' must be greater than 'start'", http.StatusBadRequest)
+			return
+		}
 
 		options := map[string]string{
-			"start": start,
-			"end":   end,
+			"start": strconv.FormatInt(startTime.UnixMilli(), 10),
+			"end":   strconv.FormatInt(endTime.UnixMilli(), 10),
 			"step":  step,
 			"dim":   dim,
 		}
@@ -320,7 +367,7 @@ func activity_handler(metrics_service metrics.Service) http.HandlerFunc {
 			return
 		}
 
-		currentTime := time.Now().UnixNano() / int64(time.Millisecond)
+		currentTime := now.UnixMilli()
 		wrappedJSON, err := WrapJSON(js, map[string]interface{}{"server_now": currentTime})
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
