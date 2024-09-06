@@ -18,10 +18,22 @@ export function Echarts2(props: PropsEcharts2) {
     grid: {
       // bottom: 75,
       containLabel: true,
+      top: 20 + props.metricList.length * 13,
+      bottom: 0,
+      right: 0,
+      left: 0,
     },
-    legend: { data: props.metricList },
+    legend: {
+      data: props.metricList,
+      itemGap: 1,
+      left: 0,
+      textStyle: {
+        color: "gray",
+      },
+    },
     tooltip: {
       trigger: "axis",
+      valueFormatter: (value) => value.toFixed(1),
       axisPointer: {
         type: "cross",
         animation: false,
@@ -35,7 +47,9 @@ export function Echarts2(props: PropsEcharts2) {
       type: "time",
       // boundaryGap: false,
       // axisLine: { onZero: false },
-      // data: props.dataA,
+      axisLabel: {
+        rotate: 45,
+      },
     },
     yAxis: {
       type: "value",
@@ -44,7 +58,7 @@ export function Echarts2(props: PropsEcharts2) {
     series: props.metricList.map((metric) => ({
       name: metric,
       type: "line",
-      stack: "Total",
+      // stack: "Total",
       dimensions: ["time_ms", metric],
       // name: "Requests",
       // // areaStyle: {},
@@ -52,9 +66,7 @@ export function Echarts2(props: PropsEcharts2) {
       // emphasis: { focus: "series", },
       // markArea: {
       //   silent: true, itemStyle: { opacity: 0.3, },
-      //   data: [ [ { xAxis: "2009/9/12\n7:00", }, { xAxis: "2009/9/22\n7:00", }, ], ],
       //   },
-      // data: props.dataB,
     })),
     // title: { text: props.title, left: -5, textStyle: { fontSize: 14, }, },
   };
@@ -89,11 +101,11 @@ export function Echarts2(props: PropsEcharts2) {
             forceSolidRefresh: props.data.length,
           },
           dataZoom: [
-            {
-              type: "inside",
-              start: state.range_begin,
-              end: state.range_end,
-            },
+            // {
+            //   type: "inside",
+            //   start: state.range_begin,
+            //   end: state.range_end,
+            // },
             {
               show: false,
               start: state.range_begin,
