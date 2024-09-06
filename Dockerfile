@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
-FROM debian:bookworm-slim AS base
+FROM ubuntu:24.04 AS base
 
-RUN addgroup --system autodba && adduser --system --group autodba --home /home/autodba --shell /bin/bash
+RUN useradd --system --user-group --home-dir /home/autodba --shell /bin/bash autodba
 
 RUN apt-get update
 RUN apt-get install -y --no-install-recommends \
@@ -34,7 +34,7 @@ RUN apt-get install -y --no-install-recommends \
     make
 
 # Install golang
-ENV GOLANG_VERSION 1.22.1
+ENV GOLANG_VERSION="1.22.1"
 RUN wget -O go.tgz "https://golang.org/dl/go${GOLANG_VERSION}.linux-amd64.tar.gz" \
     && tar -C /usr/lib -xzf go.tgz \
     && rm go.tgz
@@ -69,6 +69,19 @@ COPY entrypoint.sh /usr/local/autodba/bin/autodba-entrypoint.sh
 FROM bff_builder as lint
 WORKDIR /home/autodba/bff
 RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.55.2
+
+FROM go_builder as release
+WORKDIR /home/autodba
+RUN apt-get install -y --no-install-recommends rpm ruby ruby-dev rubygems build-essential && \
+    gem install fpm
+COPY ./ ./
+RUN ./scripts/build.sh && \
+    mkdir -p release_output && \
+    mv build_output/source/autodba-0.1.0-source.tar.gz release_output/ && \
+    mv build_output/tar.gz/autodba-0.1.0.tar.gz release_output/  && \
+    mv build_output/rpm/autodba*.rpm release_output/ && \
+    mv build_output/deb/autodba*.deb release_output/ && \
+    rm -rf build_output
 
 FROM bff_builder AS test
 WORKDIR /home/autodba/bff
