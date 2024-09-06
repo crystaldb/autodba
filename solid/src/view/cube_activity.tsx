@@ -19,6 +19,9 @@ import {
 import { CubeDimensionTime } from "./cube_activity_time";
 import { DimensionBars } from "./cube_activity_bars";
 
+const cssThingy =
+  "border border-zinc-200 bg-zinc-100 dark:border-zinc-600 dark:bg-zinc-800 dark:hover:bg-zinc-700 hover:bg-zinc-300 first:rounded-s-lg last:rounded-e-lg";
+
 export type ILegend = {
   item: string;
   colorText: string;
@@ -27,21 +30,6 @@ export type ILegend = {
 
 export function CubeActivity() {
   const { state } = contextState();
-
-  // const cubeData = createMemo<CubeData>(() => {
-  //   return state.cubeActivity.cubeData;
-  //   // state.cubeActivity.uiLegend;
-  //   // state.cubeActivity.uiDimension1;
-  //   // return tidy(
-  //   //   state.cubeActivity.cubeData,
-  //   //   filter(
-  //   //     (row) =>
-  //   //       !!row.metric[state.cubeActivity.uiLegend] &&
-  //   //       (state.cubeActivity.uiDimension1 === DimensionName.time ||
-  //   //         !!row.metric[state.cubeActivity.uiDimension1]),
-  //   //   ),
-  //   // );
-  // });
 
   const legendDistinct = createMemo((): ILegend => {
     state.cubeActivity.uiLegend;
@@ -66,17 +54,24 @@ export function CubeActivity() {
     );
   });
 
+  const cssSectionHeading = "flex flex-col gap-y-3.5";
+
   return (
-    <section class="flex flex-col md:flex-row items-start gap-4">
-      <section class="flex flex-col gap-4">
-        <div class="flex flex-wrap gap-x-3 text-sm">
-          <label class="font-medium">Slice/Color by</label>
+    <section class="flex flex-col-reverse md:flex-row items-start gap-4">
+      <section class={cssSectionHeading}>
+        <h2 class="font-medium text-lg">Legend</h2>
+        <div
+          class={`flex text-sm px-2.5 py-2 border-s rounded-lg ${cssThingy}`}
+        >
+          <label class="whitespace-pre">Slice By:</label>
           <SelectSliceBy dimension={DimensionField.uiLegend} />
         </div>
         <Legend legend={legendDistinct()} />
       </section>
+
       <section class="flex flex-col gap-5">
-        <section class="flex flex-col gap-y-5">
+        <section class={cssSectionHeading}>
+          <h2 class="font-medium text-lg">Dimensions</h2>
           <div class="flex items-baseline gap-3 text-sm">
             <DimensionTabs
               dimension="uiDimension1"
@@ -102,9 +97,10 @@ function Legend(props: PropsLegend) {
     <section class="flex flex-col gap-4">
       <For each={props.legend}>
         {(item) => (
-          <label>
+          <div class="flex items-center gap-x-3">
+            <div class={`rounded-md size-4 ${item.colorBg}`} />
             <span class={item.colorText}>{item.item}</span>
-          </label>
+          </div>
         )}
       </For>
     </section>
@@ -149,26 +145,21 @@ function DimensionTabs(props: IDimensionTabs) {
 
   return (
     <section class="flex flex-col gap-3">
-      <section class="flex gap-3 justify-between">
-        <h2 class="font-medium">Dimensions</h2>
-        <div class="flex flex-wrap gap-3">
-          <Tab
-            value={DimensionName.time}
-            txt="Time"
-            selected={
-              state.cubeActivity[props.dimension] === DimensionName.time
-            }
-          />
-          <For each={listDimensionTabNames()}>
-            {(value) => (
-              <Tab
-                value={value[0]}
-                txt={`${value[1]}`}
-                selected={state.cubeActivity[props.dimension] === value[0]}
-              />
-            )}
-          </For>
-        </div>
+      <section class="flex flex-wrap gap-y-2">
+        <Tab
+          value={DimensionName.time}
+          txt="Time"
+          selected={state.cubeActivity[props.dimension] === DimensionName.time}
+        />
+        <For each={listDimensionTabNames()}>
+          {(value) => (
+            <Tab
+              value={value[0]}
+              txt={`${value[1]}`}
+              selected={state.cubeActivity[props.dimension] === value[0]}
+            />
+          )}
+        </For>
       </section>
       {/*
       <section>
@@ -207,12 +198,10 @@ function Tab(props: { value: string; txt: string; selected: boolean }) {
   return (
     <button
       value={props.value}
-      class="px-1.5 border-x-2"
+      class={`tracking-wider flex text-sm px-6 py-2 font-normala ${cssThingy}`}
       classList={{
-        "text-black dark:text-white border-fuchsia-500 dark:border-fuchsia-500 rounded":
+        "font-semibold text-fuchsia-500 bg-zinc-300 dark:bg-zinc-700":
           props.selected,
-        "text-neutral-600 dark:text-neutral-400 border-transparent bg-neutral-100 dark:bg-neutral-800":
-          !props.selected,
       }}
       onClick={() => setState("cubeActivity", "uiDimension1", props.value)}
     >
@@ -234,7 +223,7 @@ function SelectSliceBy(props: {
         const value = event.target.value;
         setState("cubeActivity", props.dimension, value);
       }}
-      class={`bg-transparent border-x-2 border-fuchsia-500 rounded text-fuchsia-500 ps-2 pe-2 hover:border-gray-400 focus:outline-none ${props.class}`}
+      class={`bg-transparent text-fuchsia-500 px-2 focus:outline-none ${props.class}`}
     >
       <For each={props.list || listDimensionTabNames()}>
         {(value) => (

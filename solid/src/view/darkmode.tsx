@@ -34,9 +34,7 @@ export function DarkmodeSelector(props: DarkmodeSelectorProps) {
   });
 
   return (
-    <section
-      class={`dark:bg-black dark:text-white flex gap-x-0.5 ${props.class}`}
-    >
+    <section class={`flex gap-x-0.5 ${props.class}`}>
       <button
         onClick={() => setOpen(!open())}
         type="button"

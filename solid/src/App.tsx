@@ -227,17 +227,17 @@ function NavTopConfig1() {
   return (
     <NavTop class="mb-8">
       <A
-        activeClass="active"
+        activeClass="activeTopNav"
         href="/activity"
-        class="flex items-center justify-center h-full"
+        class="flex items-center justify-center h-16 px-4"
         end
       >
         Activity
       </A>
       <A
-        activeClass="active"
+        activeClass="activeTopNav"
         href="/metric"
-        class="flex items-center justify-center h-full"
+        class="flex items-center justify-center h-16 px-4"
         end
       >
         Metrics
@@ -245,17 +245,17 @@ function NavTopConfig1() {
       {/*
       <div class="h-5 border-s w-1 border-neutral-200 dark:border-neutral-700"></div>
       <A
-        activeClass="active"
+        activeClass="activeTopNav"
         href="/health"
-        class="flex items-center justify-center h-full"
+        class="flex items-center justify-center h-16 px-4"
         end
       >
         Health
       </A>
       <A
-        activeClass="active"
+        activeClass="activeTopNav"
         href="/explorer"
-        class="flex items-center justify-center h-full"
+        class="flex items-center justify-center h-16 px-4"
         end
       >
         Explorer
