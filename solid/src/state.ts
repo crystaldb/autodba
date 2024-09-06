@@ -44,22 +44,7 @@ export type State = {
 
     uiFilter1: DimensionName;
     uiFilter1Value?: string;
-
     limit: number;
-
-    arrActiveSessionCount: number[];
-    arrTime: number[];
-    arrSql: string[];
-    arrWaits: string[];
-    arrHosts: string[];
-    arrUsers: string[];
-    arrSession_types: string[];
-    arrApplications: string[];
-    arrDatabases: string[];
-  };
-  healthData: {
-    cpu: number[];
-    time: number[];
   };
   database_instance: {
     dbidentifier: string;
@@ -68,7 +53,12 @@ export type State = {
     instance_class: string;
   };
   database_list: string[];
+  healthData: {
+    cpu: number[];
+    time: number[];
+  };
   metricData: any[];
+
   interval_ms: number;
   range_begin: number;
   range_end: number;
@@ -244,15 +234,6 @@ const [state, setState]: [State, any] = createStore({
     // uiDimension1: DimensionName.usename,
     uiFilter1: DimensionName.none,
     uiFilter1Value: undefined,
-    arrActiveSessionCount: [],
-    arrTime: [],
-    arrSql: [],
-    arrWaits: [],
-    arrHosts: [],
-    arrUsers: [],
-    arrSession_types: [],
-    arrApplications: [],
-    arrDatabases: [],
   },
   metricData: [],
   healthData: {
@@ -266,7 +247,7 @@ const [state, setState]: [State, any] = createStore({
     instance_class: "",
   },
   database_list: [],
-  interval_ms: 5 * 1000, // 5 seconds
+  interval_ms: 50 * 1000, // 5 seconds
   range_begin: 0.0,
   range_end: 100.0,
   time_begin_ms: appZero - 15 * 60 * 1000,

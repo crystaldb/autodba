@@ -49,7 +49,6 @@ export async function queryCubeIfLive(
   state: State,
   setState: (arg0: string, arg1: any, arg2?: any) => void,
 ): Promise<boolean> {
-  // console.log("queryCube called", queryCubeBusy);
   if (!isLiveQueryCube(state)) return false;
   return queryCube(state, setState);
 }
@@ -171,7 +170,9 @@ async function queryStandardEndpoint(
   const response = await fetch(
     `/api/v1/${
       apiEndpoint //
-    }?datname=(${state.database_list.join("|")})&start=${
+    }?datname=(${
+      state.database_list.join("|") //
+    })&start=${
       request_time_start //
     }&end=${
       +new Date() //
@@ -185,18 +186,21 @@ async function queryStandardEndpoint(
     },
   );
 
-  const json = await response.json();
-  if (!response.ok) return false;
+  const { data, server_now } = await response.json();
+  if (!response.ok) {
+    console.log("Response not ok", response);
+    return false;
+  }
 
   let max_time = 0;
-  for (let i = json.length - 1; i >= 0; --i) {
-    if (json[i].time_ms > max_time) {
-      max_time = json[i].time_ms;
+  for (let i = data.length - 1; i >= 0; --i) {
+    if (data[i].time_ms > max_time) {
+      max_time = data[i].time_ms;
     }
   }
   // ++max_time; // do not query the same data again
   batch(() => {
-    if (!debugFirstTimestamp) debugFirstTimestamp = json[0].time_ms;
+    if (!debugFirstTimestamp) debugFirstTimestamp = data[0].time_ms;
 
     // console.log( "json",
     //   (json || []).map((row: { time_ms: any }) => row.time_ms - debugFirstTimestamp),
@@ -205,11 +209,12 @@ async function queryStandardEndpoint(
 
     const dataBucketName = apiEndpoint + "Data";
     const maxDataPoints = 60 * 15 * 12; // number of 5 second intervals in 15 minutes
-    setState(dataBucketName, (data: any[]) => {
-      let newData = spliceArraysTogetherSkippingDuplicateTimestamps(data, json);
+    setState(dataBucketName, (dataOld: any[]) => {
+      // let newData = spliceArraysTogetherSkippingDuplicateTimestamps(data, data);
+      let newData = data;
       if (newData.length > maxDataPoints)
         newData = newData.slice(-maxDataPoints);
-      return newData;
+      return data;
     });
   });
   return true;
