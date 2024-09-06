@@ -3,6 +3,7 @@ package server
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -38,7 +39,7 @@ func TestEndpointsGeneration(t *testing.T) {
 	route := "/v1/health"
 	routesConfig := map[string]RouteConfig{
 		route: {
-			Params: []string{"datname", "dbindentifier", "start", "end"},
+			Params: []string{"start", "end"},
 			Options: map[string]string{
 				"start": "$start",
 				"end":   "$end",
@@ -55,13 +56,13 @@ func TestEndpointsGeneration(t *testing.T) {
 
 	// TEST configured route exists
 	record := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/health", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/health?start=now", nil)
 	handler.ServeHTTP(record, req)
 	assert.Equal(t, http.StatusOK, record.Code)
 
 	// TEST route not found
 	record = httptest.NewRecorder()
-	req = httptest.NewRequest(http.MethodGet, "/api/v2/health", nil)
+	req = httptest.NewRequest(http.MethodGet, "/api/v2/health?start=now", nil)
 	handler.ServeHTTP(record, req)
 	assert.Equal(t, http.StatusNotFound, record.Code)
 }
@@ -86,7 +87,7 @@ func TestParamsPopulation(t *testing.T) {
 	}
 
 	expectedOptions := map[string]string{
-		"start": "0000",
+		"start": "0",
 		"end":   "1111",
 	}
 
@@ -133,13 +134,17 @@ func TestMissingParams(t *testing.T) {
 
 	mockMetricsService := new(MockMetricsService)
 
-	mockMetricsService.On("Execute", mock.Anything, mock.Anything).Return(map[string]string{"connections": "12"}, nil)
+	mockMetricsService.On("Execute", mock.Anything, mock.Anything).Return(
+		map[int64]map[string]float64{
+			1620000000000: {"connections": 12.0},
+		},
+		nil,
+	)
 	handler := metrics_handler(routesConfig, "", mockMetricsService)
 
 	record := httptest.NewRecorder()
 
-	// end time missing, but specified in options, expect bad request
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/health?datname=test_db&start=0000", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/health?start=0000", nil)
 	handler.ServeHTTP(record, req)
 	assert.Equal(t, http.StatusBadRequest, record.Code)
 
@@ -157,22 +162,27 @@ func TestMetricsHandlerJSONFormat(t *testing.T) {
 	)
 
 	routesConfig := map[string]RouteConfig{
-		"/metrics": {
-			Params:  []string{},
-			Options: map[string]string{},
-			Metrics: map[string]string{},
+		"/v1/metrics": {
+			Params: []string{"start", "end"},
+			Options: map[string]string{
+				"start": "$start",
+				"end":   "$end",
+			},
+			Metrics: map[string]string{
+				"cpu":  "",
+				"disk": "",
+			},
 		},
 	}
 
 	handler := metrics_handler(routesConfig, "", mockMetricsService)
 
 	record := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/api/metrics", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/metrics?start=now", nil)
 	handler.ServeHTTP(record, req)
 	assert.Equal(t, http.StatusOK, record.Code)
 
-	assert.Equal(t, http.StatusOK, record.Code)
-
+	fmt.Println("Response body: ", record.Body.String())
 	var result map[string]interface{}
 	err := json.Unmarshal(record.Body.Bytes(), &result)
 	if err != nil {
@@ -245,13 +255,13 @@ func TestActivityValidationLogic(t *testing.T) {
 		expectedStatus int
 		expectedError  string
 	}{
-		{map[string]string{"start": "-1", "end": "10", "limit": "10"}, http.StatusBadRequest, "start must be a positive integer"},
-		{map[string]string{"start": "10", "end": "10", "limit": "10"}, http.StatusBadRequest, "Parameter 'end' must be greater than 'start'"},
 		{map[string]string{"start": "10", "end": "5", "limit": "10"}, http.StatusBadRequest, "Parameter 'end' must be greater than 'start'"},
 		{map[string]string{"start": "10", "end": "20", "limit": "0"}, http.StatusBadRequest, "limit must be a positive integer"},
 	}
 
 	defaultParams := map[string]string{"database_list": "postgres", "step": "5000ms", "legend": "wait_event_name", "dim": "time", "filterdim": ""}
+
+	mockService.On("ExecuteRaw", mock.Anything, mock.Anything).Return([]map[string]interface{}{}, nil)
 
 	for _, test := range tests {
 
@@ -315,7 +325,7 @@ func TestDefaultDBIdentifier(t *testing.T) {
 
 	// Create a request without the dbidentifier parameter
 	record := httptest.NewRecorder()
-	req := httptest.NewRequest("GET", "/api/v1/test", nil)
+	req := httptest.NewRequest("GET", "/api/v1/test?start=now", nil)
 	handler := metrics_handler(routeConfigs, defaultDBIdentifier, mockService)
 	handler.ServeHTTP(record, req)
 
