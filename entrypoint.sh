@@ -9,7 +9,7 @@ PARENT_DIR="${PARENT_DIR:-/usr/local/autodba}"
 if [ -n "$CONFIG_FILE" ]; then
     echo "Loading environment variables from JSON config file: $CONFIG_FILE"
     if [ -f "$CONFIG_FILE" ]; then
-        AUTODBA_TARGET_DB=$(jq -r '.AUTODBA_TARGET_DB' "$CONFIG_FILE")
+        DB_CONN_STRING=$(jq -r '.DB_CONN_STRING' "$CONFIG_FILE")
         AWS_RDS_INSTANCE=$(jq -r '.AWS_RDS_INSTANCE' "$CONFIG_FILE")
         AWS_ACCESS_KEY_ID=$(jq -r '.AWS_ACCESS_KEY_ID' "$CONFIG_FILE")
         AWS_SECRET_ACCESS_KEY=$(jq -r '.AWS_SECRET_ACCESS_KEY' "$CONFIG_FILE")
@@ -21,8 +21,8 @@ if [ -n "$CONFIG_FILE" ]; then
 fi
 
 # Ensure required environment variables are set
-if [ -z "$AUTODBA_TARGET_DB" ]; then
-  echo "Error: AUTODBA_TARGET_DB environment variable is not set."
+if [ -z "$DB_CONN_STRING" ]; then
+  echo "Error: DB_CONN_STRING environment variable is not set."
   exit 1
 fi
 
@@ -37,7 +37,7 @@ trap clean_up SIGHUP SIGINT SIGTERM
 
 if [ -z "$DISABLE_DATA_COLLECTION" ] || [ "$DISABLE_DATA_COLLECTION" = false ]; then
   # Start up Prometheus Postgres Exporter
-  DATA_SOURCE_NAME="$AUTODBA_TARGET_DB" "$PARENT_DIR/share/prometheus_exporters/postgres_exporter/postgres_exporter" \
+  DATA_SOURCE_NAME="$DB_CONN_STRING" "$PARENT_DIR/share/prometheus_exporters/postgres_exporter/postgres_exporter" \
     --exclude-databases="rdsadmin" \
     --collector.database \
     --collector.database_wraparound \
@@ -60,7 +60,7 @@ if [ -z "$DISABLE_DATA_COLLECTION" ] || [ "$DISABLE_DATA_COLLECTION" = false ]; 
 
   # Start up Prometheus SQL Exporter
   pushd "$PARENT_DIR/share/prometheus_exporters/sql_exporter"
-  ./sql_exporter -config.data-source-name "$AUTODBA_TARGET_DB" &
+  ./sql_exporter -config.data-source-name "$DB_CONN_STRING" &
   SQL_EXPORTER_PID=$!
   popd
 

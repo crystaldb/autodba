@@ -218,8 +218,8 @@ else
     fi
 
     # Check if required parameters are provided
-    if [[ -z "$AUTODBA_TARGET_DB" ]]; then
-        echo "AUTODBA_TARGET_DB environment variable is not set"
+    if [[ -z "$DB_CONN_STRING" ]]; then
+        echo "DB_CONN_STRING environment variable is not set"
         usage
     fi
 
@@ -244,7 +244,7 @@ else
     mkdir -p "$AUTODBA_CONFIG_DIR"
     cat <<EOF > "$AUTODBA_CONFIG_FILE"
 {
-    "AUTODBA_TARGET_DB": "${AUTODBA_TARGET_DB:-""}",
+    "DB_CONN_STRING": "${DB_CONN_STRING:-""}",
     "AWS_RDS_INSTANCE": "${AWS_RDS_INSTANCE:-""}",
     "AWS_ACCESS_KEY_ID": "${AWS_ACCESS_KEY_ID:-""}",
     "AWS_SECRET_ACCESS_KEY": "${AWS_SECRET_ACCESS_KEY:-""}",

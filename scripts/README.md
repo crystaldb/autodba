@@ -34,7 +34,7 @@ The optional argument to this script can specify the target. The possible choice
 The config file should have this format:
 ```json
 {
-    "AUTODBA_TARGET_DB": "<CONNECTION_STRING_TO_YOUR_POSTGRES_DB>",
+    "DB_CONN_STRING": "<CONNECTION_STRING_TO_YOUR_POSTGRES_DB>",
     "AWS_ACCESS_KEY_ID": "<YOUR_AWS_ACCESS_KEY_ID>",
     "AWS_SECRET_ACCESS_KEY": "<YOUR_AWS_SECRET_ACCESS_KEY>",
     "AWS_REGION": "<YOUR_AWS_REGION>",
@@ -42,7 +42,7 @@ The config file should have this format:
 }
 ```
 
-If a config file is not provided, the script will attempt to read from stdin. If neither is provided, the configuration will be generated from environment variables. Here are the exepected environment variables: `AUTODBA_TARGET_DB`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, and `AWS_RDS_INSTANCE`.
+If a config file is not provided, the script will attempt to read from stdin. If neither is provided, the configuration will be generated from environment variables. Here are the exepected environment variables: `DB_CONN_STRING`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, and `AWS_RDS_INSTANCE`.
 
 If the input is provided via stdin, it will be validated as valid JSON before use. If invalid JSON is provided, the script will throw an error and exit.
 
