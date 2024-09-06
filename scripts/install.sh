@@ -279,9 +279,9 @@ EOF
     systemctl start autodba
 else
     echo "System installation not requested or systemctl is unavailable. Skipping systemd service setup."
-    echo "Starting AutoDBA..."
-    cd "${AUTODBA_CONFIG_DIR}"
-    PARENT_DIR="${PARENT_DIR}" CONFIG_FILE=${AUTODBA_CONFIG_FILE} ${INSTALL_DIR}/autodba-entrypoint.sh
+    echo "You can run the following command to start the AutoDBA service manually:"
+    
+    echo "  cd \"${AUTODBA_CONFIG_DIR}\" && PARENT_DIR=\"${PARENT_DIR}\" CONFIG_FILE=${AUTODBA_CONFIG_FILE} ${INSTALL_DIR}/autodba-entrypoint.sh"
 fi
 
 echo "Installation complete."
