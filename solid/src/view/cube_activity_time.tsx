@@ -13,6 +13,7 @@ import {
 } from "@tidyjs/tidy";
 import { ILegend } from "./cube_activity";
 import { queryCubeIfLive } from "../http";
+import { truncateString } from "../util";
 import moment from "moment-timezone";
 
 interface PropsLegend {
@@ -59,6 +60,37 @@ export function CubeDimensionTime(props: PropsLegend) {
     },
     tooltip: {
       trigger: "axis",
+      formatter: function (
+        params: {
+          color: any;
+          seriesName: string | number;
+          value: { [x: string]: any };
+        }[],
+      ) {
+        console.log("Params", params);
+        const createTooltipRow = (item: {
+          color: any;
+          seriesName: string | number;
+          value: { [x: string]: any };
+        }) => {
+          const colorDot = `<span style="background-color: ${item.color};" class="inline-block w-3 h-3 rounded-full mr-2"></span>`;
+
+          const truncatedSeriesName = truncateString(
+            item.seriesName.toString(),
+            80,
+          );
+          return `
+                    <div class="flex items-center mb-1 text-gray-800">
+                        ${colorDot}
+                        <div class="flex-1 text-left font-medium">${truncatedSeriesName}</div>
+                        <div class="ml-auto text-right font-semibold">
+                            ${item.value[item.seriesName] || "-"}
+                        </div>
+                    </div>`;
+        };
+
+        return params.map(createTooltipRow).join("");
+      },
       axisPointer: {
         type: "cross",
         animation: false,
