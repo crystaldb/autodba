@@ -14,12 +14,14 @@ interface PropsEcharts2 {
 export function Echarts2(props: PropsEcharts2) {
   const { state } = contextState();
 
-  const topOffset = props.metricList.length * 10 + "%";
   const base = {
     grid: {
       // bottom: 75,
       containLabel: true,
-      top: topOffset,
+      top: 20 + props.metricList.length * 13,
+      bottom: 0,
+      right: 0,
+      left: 0,
     },
     legend: {
       data: props.metricList,
