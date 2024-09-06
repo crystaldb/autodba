@@ -4,13 +4,15 @@ import { contextState } from "../context_state";
 import { createSignal, mergeProps } from "solid-js";
 import { datazoomEventHandler } from "../state";
 
-export function Echarts2(props: {
+interface PropsEcharts2 {
   title: string;
-  metric: string;
+  metricList: string[];
   data: any[];
   class?: string;
-}) {
-  const { state, setState } = contextState();
+}
+
+export function Echarts2(props: PropsEcharts2) {
+  const { state } = contextState();
 
   const base = {
     grid: {
@@ -27,6 +29,7 @@ export function Echarts2(props: {
       },
     },
     xAxis: {
+      // type: "category",
       type: "time",
       // boundaryGap: false,
       // axisLine: { onZero: false },
@@ -36,22 +39,24 @@ export function Echarts2(props: {
       type: "value",
       //   name: "    Requests/sec",
     },
-    series: [
-      {
-        type: "line",
-        // name: "Requests",
-        // // areaStyle: {},
-        // lineStyle: { width: 1, },
-        // emphasis: { focus: "series", },
-        // markArea: {
-        //   silent: true, itemStyle: { opacity: 0.3, },
-        //   data: [ [ { xAxis: "2009/9/12\n7:00", }, { xAxis: "2009/9/22\n7:00", }, ], ],
-        //   },
-        // data: props.dataB,
-      },
-    ],
+    series: props.metricList.map((metric) => ({
+      name: metric,
+      type: "line",
+      stack: "Total",
+      dimensions: ["time_ms", metric],
+      // name: "Requests",
+      // // areaStyle: {},
+      // lineStyle: { width: 1, },
+      // emphasis: { focus: "series", },
+      // markArea: {
+      //   silent: true, itemStyle: { opacity: 0.3, },
+      //   data: [ [ { xAxis: "2009/9/12\n7:00", }, { xAxis: "2009/9/22\n7:00", }, ], ],
+      //   },
+      // data: props.dataB,
+    })),
     // title: { text: props.title, left: -5, textStyle: { fontSize: 14, }, },
     // legend: { data: ["Requests", "Requests 2"], left: 0, bottom: 40, },
+    legend: { data: props.metricList, left: 0, bottom: 40 },
   };
 
   const eventHandlers = {
@@ -79,9 +84,9 @@ export function Echarts2(props: {
         // @ts-expect-error ECharts type is not complete
         option={mergeProps(base, {
           dataset: {
-            dimensions: ["time_ms", props.metric],
-            forceSolidRefresh: props.data.length,
+            // dimensions: ["time_ms", ...props.metricList],
             source: props.data,
+            forceSolidRefresh: props.data.length,
           },
           dataZoom: [
             {
@@ -90,6 +95,7 @@ export function Echarts2(props: {
               end: state.range_end,
             },
             {
+              show: false,
               start: state.range_begin,
               end: state.range_end,
             },
