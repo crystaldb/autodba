@@ -13,7 +13,7 @@ cd $SOURCE_DIR/..
 VERSION="0.1.0"
 
 # Define output directories
-OUTPUT_DIR="$SOURCE_DIR/../release_output"
+OUTPUT_DIR="$SOURCE_DIR/../build_output"
 TAR_GZ_DIR="${OUTPUT_DIR}/tar.gz"
 RPM_DIR="${OUTPUT_DIR}/rpm"
 DEB_DIR="${OUTPUT_DIR}/deb"

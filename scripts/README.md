@@ -11,7 +11,7 @@ This directory contains a set of scripts for managing the AutoDBA project. Below
 ```
 ./build.sh [TARGET=all]
 ```
-This will build the AutoDBA binaries for multiple architectures, prepare the web UI, include Prometheus exporters, and generate release packages in the `release_output` directory.
+This will build the AutoDBA binaries for multiple architectures, prepare the web UI, include Prometheus exporters, and generate release packages in the `build_output` directory.
 
 The optional argument to this script can specify the target. The possible choices are:
  - `all` (default)
