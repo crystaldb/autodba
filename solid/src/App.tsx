@@ -23,7 +23,7 @@ import {
 } from "./http";
 import { Dynamic } from "solid-js/web";
 import { DarkmodeSelector } from "./view/darkmode";
-import { EchartsTimebar } from "./view/echarts_timebar";
+import { TimebarSection } from "./view/timebar_section";
 
 export default function App(): JSX.Element {
   const { setState } = useState();
@@ -132,7 +132,7 @@ function PageWrapper(
         </section>
         <Dynamic component={page} />
         <section class="sticky bottom-0 flex flex-col mt-3 z-20 backdrop-blur">
-          <EchartsTimebar class="w-full xs:w-10/12 h-16" />
+          <TimebarSection class="w-full xs:w-10/12" />
         </section>
       </section>
       <DarkmodeSelector class="mt-16 mb-4 self-start" />
