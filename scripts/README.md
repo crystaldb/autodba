@@ -42,6 +42,10 @@ The config file should have this format:
 }
 ```
 
+If a config file is not provided, the script will attempt to read from stdin. If neither is provided, the configuration will be generated from environment variables. Here are the exepected environment variables: `AUTODBA_TARGET_DB`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, and `AWS_RDS_INSTANCE`.
+
+If the input is provided via stdin, it will be validated as valid JSON before use. If invalid JSON is provided, the script will throw an error and exit.
+
 3. **uninstall.sh**: This script uninstalls AutoDBA from the system, removing its binaries, Prometheus exporters, and configuration files.
 
 ### Usage:

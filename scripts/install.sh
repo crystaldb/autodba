@@ -44,8 +44,8 @@ usage() {
     echo "Options:"
     echo "  --package      Path to the package file (.tar.gz, .deb, or .rpm) [REQUIRED]"
     echo "  --system       Install globally under /usr/local/autodba"
-    echo "  --install-dir  Specify a custom installation directory. If not specified, `$HOME/autodba` is used."
-    echo "  --config       Path to the AutoDBA config file (optional)"
+    echo "  --install-dir  Specify a custom installation directory. If not specified, $HOME/autodba is used."
+    echo "  --config       Path to the AutoDBA config file (optional), or use standard input if not provided."
     exit 1
 }
 
@@ -174,15 +174,8 @@ case "$PACKAGE_FILE" in
         ;;
 esac
 
-# Copy the configuration file if provided
+# Handle configuration file or fallback to environment variables
 if [ -n "$CONFIG_FILE" ]; then
-    echo "Copying config file to $AUTODBA_CONFIG_FILE"
-    mkdir -p "$AUTODBA_CONFIG_DIR"
-    cp "$CONFIG_FILE" "$AUTODBA_CONFIG_FILE"
-fi
-
-if [ -n "$CONFIG_FILE" ]; then
-    echo "Using config file: $CONFIG_FILE"
     if [ -f "$CONFIG_FILE" ]; then
         echo "Copying config file to $AUTODBA_CONFIG_FILE"
         mkdir -p "$AUTODBA_CONFIG_DIR"
@@ -191,10 +184,40 @@ if [ -n "$CONFIG_FILE" ]; then
         echo "Error: Config file $CONFIG_FILE does not exist."
         exit 1
     fi
-else
-    echo "No config file provided, generating autodba-config.json from environment variables."
+elif [ ! -t 0 ]; then
+    echo "Reading config from stdin and saving to $AUTODBA_CONFIG_FILE"
 
-# Check if required parameters are provided
+    # Check if jq is installed for JSON validation
+    if ! command_exists "jq"; then
+        echo "Error: jq is required for JSON validation but is not installed."
+        exit 1
+    fi
+
+    # Read from stdin and validate it as JSON using jq
+    mkdir -p "$AUTODBA_CONFIG_DIR"
+    if ! cat > "$AUTODBA_CONFIG_FILE"; then
+        echo "Error: Failed to save stdin input to $AUTODBA_CONFIG_FILE"
+        exit 1
+    fi
+
+    # Validate the JSON file using jq
+    if ! jq empty "$AUTODBA_CONFIG_FILE"; then
+        echo "Error: Input from stdin is not valid JSON."
+        rm -f "$AUTODBA_CONFIG_FILE"
+        exit 1
+    fi
+
+    echo "Valid JSON config saved at $AUTODBA_CONFIG_FILE"
+else
+    echo "No config file provided, and no input from stdin detected. Using environment variables."
+
+    # Remove any existing config file
+    if [ -f "$AUTODBA_CONFIG_FILE" ]; then
+        echo "Removing existing config file: $AUTODBA_CONFIG_FILE"
+        rm -f "$AUTODBA_CONFIG_FILE"
+    fi
+
+    # Check if required parameters are provided
     if [[ -z "$AUTODBA_TARGET_DB" ]]; then
         echo "AUTODBA_TARGET_DB environment variable is not set"
         usage
@@ -242,11 +265,10 @@ After=network.target
 [Service]
 Type=simple
 WorkingDirectory=${AUTODBA_CONFIG_DIR}
-ExecStart=${INSTALL_DIR}/autodba-entrypoint.sh --config ${AUTODBA_CONFIG_FILE}
+ExecStart=${INSTALL_DIR}/autodba-entrypoint.sh
 Restart=on-failure
 User=$USER
 Environment="PARENT_DIR=${PARENT_DIR}"
-Environment="CONFIG_FILE=${AUTODBA_CONFIG_FILE}"
 
 [Install]
 WantedBy=multi-user.target
@@ -259,8 +281,7 @@ else
     echo "System installation not requested or systemctl is unavailable. Skipping systemd service setup."
     echo "Starting AutoDBA..."
     cd "${AUTODBA_CONFIG_DIR}"
-    PARENT_DIR="${PARENT_DIR}" CONFIG_FILE=${AUTODBA_CONFIG_FILE} ${INSTALL_DIR}/autodba-entrypoint.sh --config "${AUTODBA_CONFIG_FILE}"
+    PARENT_DIR="${PARENT_DIR}" CONFIG_FILE=${AUTODBA_CONFIG_FILE} ${INSTALL_DIR}/autodba-entrypoint.sh
 fi
 
 echo "Installation complete."
-
