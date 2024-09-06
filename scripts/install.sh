@@ -2,9 +2,7 @@
 
 # SPDX-Identifier: Apache-2.0
 
-set -x -e
-
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+set -e
 
 # Initialize variables
 SYSTEM_INSTALL=false
