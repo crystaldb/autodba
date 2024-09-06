@@ -20,7 +20,7 @@ export function NavTop(props: {
   return (
     <>
       <nav
-        class={`flex flex-col lg:flex-row items-center justify-between h-16 pe-3 border-b border-zinc-500 ${props.class}`}
+        class={`flex flex-col sm:flex-row items-center justify-between pe-3 border-b border-zinc-500 ${props.class}`}
       >
         <A href="/" class="flex items-center gap-2" end>
           <img src="/logo.svg" alt="logo" class="h-7" />
