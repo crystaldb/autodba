@@ -11,7 +11,7 @@ cd $SOURCE_DIR/..
 # Initialize variables
 IMAGE_NAME="autodba-image"
 DOCKERFILE="Dockerfile"
-AUTODBA_TARGET_DB= # 'postgresql://autodba_db_user:autodba_db_pass@localhost:5432/autodba_db'
+DB_CONN_STRING= # 'postgresql://autodba_db_user:autodba_db_pass@localhost:5432/autodba_db'
 AWS_RDS_INSTANCE="" # 'YOURNAME-rds-EXAMPLE'
 INSTANCE_ID=0  # Default value for instance-id
 DEFAULT_METRIC_COLLECTION_PERIOD_SECONDS=5 # Default value for metric collection period (in seconds)
@@ -42,7 +42,7 @@ while [[ "$#" -gt 0 ]]; do
     case $1 in
         --db-url)
             if [[ -n "$2" ]] && [[ ${2:0:1} != "-" ]]; then
-                AUTODBA_TARGET_DB="$2"
+                DB_CONN_STRING="$2"
                 shift 2
             else
                 echo "Error: Argument for $1 is missing" >&2
@@ -106,7 +106,7 @@ while [[ "$#" -gt 0 ]]; do
 done
 
 # Check if required parameters are provided
-if [[ -z "$AUTODBA_TARGET_DB" ]]; then
+if [[ -z "$DB_CONN_STRING" ]]; then
     echo "Missing required parameters"
     usage
 fi
@@ -187,7 +187,7 @@ echo "=============================================================="
 docker run --name "$CONTAINER_NAME" \
     -p "$PROMETHEUS_PORT":9090 \
     -p "$BFF_PORT":4000 \
-    -e AUTODBA_TARGET_DB="$AUTODBA_TARGET_DB" \
+    -e DB_CONN_STRING="$DB_CONN_STRING" \
     -e AWS_RDS_INSTANCE="$AWS_RDS_INSTANCE" \
     -e DEFAULT_METRIC_COLLECTION_PERIOD_SECONDS=$DEFAULT_METRIC_COLLECTION_PERIOD_SECONDS \
     -e WARM_UP_TIME_SECONDS="$WARM_UP_TIME_SECONDS" \

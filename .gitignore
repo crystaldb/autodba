@@ -176,4 +176,4 @@ devenv.local.nix
 .pre-commit-config.yaml
 autodba_backups_dir
 bff/main
-
+build_output/
