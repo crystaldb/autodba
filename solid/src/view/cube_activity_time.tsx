@@ -70,7 +70,6 @@ export function CubeDimensionTime(props: PropsLegend) {
     xAxis: {
       type: "category", // NOTE: this isn't "time" because we need to stack the bar chats below.
       axisPointer: {
-        type: "shadow",
         label: {
           formatter: function (pointer) {
             let timestamp = parseInt(pointer.value, 10);
