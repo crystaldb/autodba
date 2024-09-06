@@ -247,7 +247,7 @@ const [state, setState]: [State, any] = createStore({
     instance_class: "",
   },
   database_list: [],
-  interval_ms: 50 * 1000, // 5 seconds
+  interval_ms: 5 * 1000, // 5 seconds
   range_begin: 0.0,
   range_end: 100.0,
   time_begin_ms: appZero - 15 * 60 * 1000,
