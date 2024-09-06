@@ -1,4 +1,4 @@
-import { NavTop } from "./NavTop";
+import { NavTop, NavTopConfig1 } from "./NavTop";
 import { A, Navigate } from "@solidjs/router";
 import { ContextState, contextState } from "./context_state";
 import { useState } from "./state";
@@ -220,47 +220,5 @@ function IntervalSelector(props: { class?: string }) {
         </select>
       </div>
     </>
-  );
-}
-
-function NavTopConfig1() {
-  return (
-    <NavTop class="mb-8">
-      <A
-        activeClass="activeTopNav"
-        href="/activity"
-        class="flex items-center justify-center h-16 px-4"
-        end
-      >
-        Activity
-      </A>
-      <A
-        activeClass="activeTopNav"
-        href="/metric"
-        class="flex items-center justify-center h-16 px-4"
-        end
-      >
-        Metrics
-      </A>
-      {/*
-      <div class="h-5 border-s w-1 border-neutral-200 dark:border-neutral-700"></div>
-      <A
-        activeClass="activeTopNav"
-        href="/health"
-        class="flex items-center justify-center h-16 px-4"
-        end
-      >
-        Health
-      </A>
-      <A
-        activeClass="activeTopNav"
-        href="/explorer"
-        class="flex items-center justify-center h-16 px-4"
-        end
-      >
-        Explorer
-      </A>
-      */}
-    </NavTop>
   );
 }
