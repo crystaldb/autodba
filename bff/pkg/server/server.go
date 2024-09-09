@@ -269,7 +269,8 @@ func activity_handler(metrics_service metrics.Service) http.HandlerFunc {
 		dim := r.URL.Query().Get("dim")
 		filterdim := r.URL.Query().Get("filterdim")
 		filterdimselected := r.URL.Query().Get("filterdimselected")
-		limit := r.URL.Query().Get("limit")
+		limitDim := r.URL.Query().Get("limitdim")
+		limitLegend := r.URL.Query().Get("limitlegend")
 
 		requiredParamMap := map[string]string{
 			"database_list": database_list,
@@ -287,8 +288,16 @@ func activity_handler(metrics_service metrics.Service) http.HandlerFunc {
 			}
 		}
 
-		if limit != "" {
-			_, err := parseAndValidateInt(limit, "limit")
+		if limitDim != "" {
+			_, err := parseAndValidateInt(limitDim, "limitdim")
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+		}
+
+		if limitLegend != "" {
+			_, err := parseAndValidateInt(limitLegend, "limitlegend")
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusBadRequest)
 				return
@@ -304,7 +313,8 @@ func activity_handler(metrics_service metrics.Service) http.HandlerFunc {
 			Dim:               dim,
 			FilterDim:         filterdim,
 			FilterDimSelected: filterdimselected,
-			Limit:             limit,
+			Limit:             limitDim,
+			LimitLegend:       limitLegend,
 			Offset:            "", // TODO not in query
 		}
 

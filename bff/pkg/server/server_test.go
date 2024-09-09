@@ -255,8 +255,9 @@ func TestActivityValidationLogic(t *testing.T) {
 		expectedStatus int
 		expectedError  string
 	}{
-		{map[string]string{"start": "10", "end": "5", "limit": "10"}, http.StatusBadRequest, "Parameter 'end' must be greater than 'start'"},
-		{map[string]string{"start": "10", "end": "20", "limit": "0"}, http.StatusBadRequest, "limit must be a positive integer"},
+		{map[string]string{"start": "10", "end": "5", "limitdim": "10"}, http.StatusBadRequest, "Parameter 'end' must be greater than 'start'"},
+		{map[string]string{"start": "10", "end": "20", "limitdim": "0"}, http.StatusBadRequest, "limitdim must be a positive integer"},
+		{map[string]string{"start": "10", "end": "20", "limitlegend": "0"}, http.StatusBadRequest, "limitlegend must be a positive integer"},
 	}
 
 	defaultParams := map[string]string{"database_list": "postgres", "step": "5000ms", "legend": "wait_event_name", "dim": "time", "filterdim": ""}
