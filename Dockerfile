@@ -31,7 +31,11 @@ FROM base as go_builder
 USER root
 RUN apt-get install -y --no-install-recommends \
     git             \
-    make
+    unzip             \
+    make \
+    libc-dev \
+    gcc \
+    tar
 
 # Install golang
 ENV GOLANG_VERSION="1.22.1"
@@ -49,6 +53,13 @@ RUN mkdir -p /usr/local/autodba/share/prometheus_exporters/rds_exporter && \
     cd /usr/local/autodba/share/prometheus_exporters/rds_exporter && \
     make build
 
+FROM go_builder as pgcollector_builder
+RUN mkdir -p /usr/local/autodba/share/pgcollector && \
+    git clone --recurse-submodules https://github.com/crystaldb/pgcollector.git /usr/local/autodba/share/pgcollector && \
+    cd /usr/local/autodba/share/pgcollector && \
+    wget https://github.com/protocolbuffers/protobuf/releases/download/v3.14.0/protoc-3.14.0-linux-x86_64.zip && unzip protoc-3.14.0-linux-x86_64.zip -d protoc && \
+    make build
+
 FROM go_builder as bff_builder
 # Build bff
 WORKDIR /home/autodba/bff
@@ -62,6 +73,7 @@ RUN cp main /usr/local/autodba/bin/autodba-bff
 FROM base AS builder
 COPY --from=solid_builder /home/autodba/solid/dist /usr/local/autodba/share/webapp
 COPY --from=rdsexporter_builder /usr/local/autodba/share/prometheus_exporters/rds_exporter /usr/local/autodba/share/prometheus_exporters/rds_exporter
+COPY --from=pgcollector_builder /usr/local/autodba/share/pgcollector /usr/local/autodba/share/pgcollector
 COPY --from=bff_builder /usr/local/autodba/bin/autodba-bff /usr/local/autodba/bin/autodba-bff
 COPY --from=bff_builder /home/autodba/bff/config.json /usr/local/autodba/config/autodba/config.json
 COPY entrypoint.sh /usr/local/autodba/bin/autodba-entrypoint.sh
