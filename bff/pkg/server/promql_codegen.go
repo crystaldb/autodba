@@ -19,6 +19,7 @@ type PromQLInput struct {
 	FilterDim         string `json:"filterdim"`
 	FilterDimSelected string `json:"filterdimselected"`
 	Limit             string `json:"limit"`
+	LimitLegend       string `json:"limit_legend"`
 	Offset            string `json:"offset"`
 }
 
