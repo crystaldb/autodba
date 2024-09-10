@@ -121,14 +121,14 @@ export function CubeDimensionTime(props: PropsLegend) {
     yAxis: {
       type: "value",
     },
-    legend: {
-      // selectedMode: true,
-      orient: "vertical",
-      left: 0,
-      // top: 70,
-      // bottom: 20,
-      textStyle: { color: true },
-    },
+    // legend: {
+    //   // selectedMode: true,
+    //   orient: "vertical",
+    //   left: 0,
+    //   // top: 70,
+    //   // bottom: 20,
+    //   textStyle: { color: true },
+    // },
   };
 
   const dataset = createMemo(() => {
