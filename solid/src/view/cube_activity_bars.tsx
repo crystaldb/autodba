@@ -27,7 +27,7 @@ export function DimensionBars(props: IDimensionBars) {
   }, 0);
 
   const [resourceChanged] = createResource(changed, () => {
-    queryCube(state, setState);
+    return queryCube(state, setState);
   });
 
   const cubeDataGrouped = createMemo(

@@ -34,7 +34,7 @@ export function CubeDimensionTime(props: PropsLegend) {
   }, 0);
 
   const [resourceChanged] = createResource(changed, () => {
-    queryCubeIfLive(state, setState);
+    return queryCubeIfLive(state, setState);
   });
 
   const timezone = moment.tz.guess();
@@ -163,7 +163,7 @@ export function CubeDimensionTime(props: PropsLegend) {
         // move CPU to the end of the list iff it exists
         fixedOrder((row) => row.out, ["CPU"], { position: "end" }),
       ]),
-      slice(0, 15),
+      // slice(0, 15),
       map((val) => val.out),
     ) as string[];
   });
@@ -171,7 +171,10 @@ export function CubeDimensionTime(props: PropsLegend) {
   return (
     <>
       <section class="h-[35rem]">
-        <Show when={resourceChanged} keyed>
+        <Show
+          when={JSON.stringify(resourceChanged) + JSON.stringify(props.legend)}
+          keyed
+        >
           <EChartsAutoSize
             // @ts-expect-error
             option={mergeProps(base, {

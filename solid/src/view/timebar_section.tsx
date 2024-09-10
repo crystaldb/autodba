@@ -16,7 +16,6 @@ export function TimebarSection(props: ITimebarSectionProps) {
     <section class={`flex items-center gap-4 ${props.class}`}>
       <TimeframeSelector />
 
-      <IntervalSelector2 />
       <IntervalSelector />
       <LiveIndicator />
       {/*
@@ -56,6 +55,7 @@ function TimeframeSelector() {
   return (
     <>
       <ViewSelector
+        name="Timeframe"
         property="timeframe_ms"
         id={id}
         options={options}
@@ -116,6 +116,7 @@ interface RecordClickHandler {
 }
 
 interface PropsViewSelector {
+  name: Element;
   property: "timeframe_ms" | "interval_ms";
   onClick: (
     arg0: RecordClickHandler,
@@ -134,7 +135,7 @@ function ViewSelector(props: PropsViewSelector) {
         id={id}
         class={`flex gap-2 text-sm px-2.5 py-2 border-s rounded-lg ${cssThingy}`}
       >
-        <span class="whitespace-pre me-2">Timeframe:</span>
+        <span class="whitespace-pre me-2">{props.name}:</span>
         <span class="text-fuchsia-500 w-16">
           {props.options.find(({ ms }) => ms === state[props.property])?.label}
         </span>
@@ -166,67 +167,67 @@ function ViewSelector(props: PropsViewSelector) {
   );
 }
 
-function IntervalSelector(props: { class?: string }) {
-  const { state, setState } = contextState();
-  // const [openGet, openSet] = createSignal(false);
+// function IntervalSelector(props: { class?: string }) {
+//   const { state, setState } = contextState();
+//   // const [openGet, openSet] = createSignal(false);
+//
+//   // <Show
+//   //   when={openGet()}
+//   //   fallback={<HiOutlineChevronLeft size="1rem" class="inline ms-1" />}
+//   // >
+//   //   <HiOutlineChevronDown size="1rem" class="inline ms-1" />
+//   // </Show>
+//   // <button
+//   //   onClick={() => openSet((v) => !v)}
+//   //   class={`inline ${props.class}`}
+//   // >
+//   //   Interval: {state.interval_ms} ms
+//   // </button>
+//   return (
+//     <>
+//       <div class={`flex items-center gap-x-3 text-sm ${props.class}`}>
+//         <label>Interval</label>
+//         <select
+//           onChange={(e) => setState({ interval_ms: +e.currentTarget.value })}
+//           class="bg-transparent rounded border border-neutral-200 dark:border-neutral-700 text-fuchsia-500 ps-2 pe-8 py-1.5 hover:border-gray-400 focus:outline-none"
+//         >
+//           <option
+//             value="5000"
+//             class="appearance-none bg-neutral-100 dark:bg-neutral-800"
+//           >
+//             Auto
+//           </option>
+//           <For
+//             each={[
+//               [1000, "1s"],
+//               [5000, "5s"],
+//               [10000, "10s"],
+//               [20000, "20s"],
+//               [30000, "30s"],
+//               [60000, "60s"],
+//               [300000, "5m"],
+//               [900000, "15m"],
+//               [1800000, "30m"],
+//               [3600000, "60m"],
+//             ]}
+//           >
+//             {([value, label]) => (
+//               <option
+//                 value={value}
+//                 {...(value === state.interval_ms && { selected: true })}
+//                 class="appearance-none bg-neutral-100 dark:bg-neutral-800"
+//               >
+//                 {label}
+//               </option>
+//             )}
+//           </For>
+//         </select>
+//       </div>
+//     </>
+//   );
+// }
 
-  // <Show
-  //   when={openGet()}
-  //   fallback={<HiOutlineChevronLeft size="1rem" class="inline ms-1" />}
-  // >
-  //   <HiOutlineChevronDown size="1rem" class="inline ms-1" />
-  // </Show>
-  // <button
-  //   onClick={() => openSet((v) => !v)}
-  //   class={`inline ${props.class}`}
-  // >
-  //   Interval: {state.interval_ms} ms
-  // </button>
-  return (
-    <>
-      <div class={`flex items-center gap-x-3 text-sm ${props.class}`}>
-        <label>Interval</label>
-        <select
-          onChange={(e) => setState({ interval_ms: +e.currentTarget.value })}
-          class="bg-transparent rounded border border-neutral-200 dark:border-neutral-700 text-fuchsia-500 ps-2 pe-8 py-1.5 hover:border-gray-400 focus:outline-none"
-        >
-          <option
-            value="5000"
-            class="appearance-none bg-neutral-100 dark:bg-neutral-800"
-          >
-            Auto
-          </option>
-          <For
-            each={[
-              [1000, "1s"],
-              [5000, "5s"],
-              [10000, "10s"],
-              [20000, "20s"],
-              [30000, "30s"],
-              [60000, "60s"],
-              [300000, "5m"],
-              [900000, "15m"],
-              [1800000, "30m"],
-              [3600000, "60m"],
-            ]}
-          >
-            {([value, label]) => (
-              <option
-                value={value}
-                {...(value === state.interval_ms && { selected: true })}
-                class="appearance-none bg-neutral-100 dark:bg-neutral-800"
-              >
-                {label}
-              </option>
-            )}
-          </For>
-        </select>
-      </div>
-    </>
-  );
-}
-
-function IntervalSelector2() {
+function IntervalSelector() {
   const { setState } = contextState();
   const id = "intervalSelector";
   const options = [
@@ -244,6 +245,7 @@ function IntervalSelector2() {
   return (
     <>
       <ViewSelector
+        name="Interval"
         property="interval_ms"
         id={id}
         options={options}

@@ -32,20 +32,26 @@ export function CubeActivity() {
   const { state } = contextState();
 
   const legendDistinct = createMemo((): ILegend => {
+    state.range_begin;
+    state.range_end;
+    state.database_instance.dbidentifier;
     state.cubeActivity.uiLegend;
+    state.cubeActivity.uiDimension1;
+    state.cubeActivity.uiFilter1;
+    state.cubeActivity.uiFilter1Value;
     return tidy(
       state.cubeActivity.cubeData,
       distinct((row) => row.metric[state.cubeActivity.uiLegend]),
       map((row) => ({
         item: row.metric[state.cubeActivity.uiLegend],
       })),
-      filter(({ item }) => !!item),
+      // filter(({ item }) => !!item),
       arrange(["item"]),
       arrange([
         // move CPU to the end of the list iff it exists
         fixedOrder((row) => row.item, ["CPU"], { position: "end" }),
       ]),
-      slice(0, 15),
+      // slice(0, 15),
       map((item, index) => ({
         item: item.item!,
         colorText: listColors[index]?.text || "",
