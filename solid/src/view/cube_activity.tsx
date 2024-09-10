@@ -19,7 +19,7 @@ import {
 import { CubeDimensionTime } from "./cube_activity_time";
 import { DimensionBars } from "./cube_activity_bars";
 
-const cssThingy =
+export const cssThingy =
   "border border-zinc-200 bg-zinc-100 dark:border-zinc-600 dark:bg-zinc-800 dark:hover:bg-zinc-700 hover:bg-zinc-300 first:rounded-s-lg last:rounded-e-lg";
 
 export type ILegend = {

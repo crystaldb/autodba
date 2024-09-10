@@ -150,6 +150,7 @@ export async function queryCube(
       if (!state.window_end_ms || state.range_end == 100)
         setState("window_end_ms", Math.max(timeNewest, dateNow));
     });
+    return json;
   }
   return true;
 }
