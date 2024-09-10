@@ -116,7 +116,7 @@ interface RecordClickHandler {
 }
 
 interface PropsViewSelector {
-  name: Element;
+  name: string;
   property: "timeframe_ms" | "interval_ms";
   onClick: (
     arg0: RecordClickHandler,
@@ -155,6 +155,9 @@ function ViewSelector(props: PropsViewSelector) {
             {(record) => (
               <button
                 class={`flex justify-center gap-2 text-sm px-2.5 py-2 border-s rounded-lg ${cssThingy}`}
+                classList={{
+                  "text-fuchsia-500": state[props.property] === record.ms,
+                }}
                 onClick={props.onClick(record)}
               >
                 {record.label}
