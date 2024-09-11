@@ -28,7 +28,7 @@ jobs:
           docker cp autodba-release-container:/home/autodba/release_output ./release_output
 
       - name: Create GitHub release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           files: ./release_output/*
           body: "Automated release for tag ${{ github.ref }}"
