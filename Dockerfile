@@ -53,10 +53,10 @@ RUN mkdir -p /usr/local/autodba/share/prometheus_exporters/rds_exporter && \
     cd /usr/local/autodba/share/prometheus_exporters/rds_exporter && \
     make build
 
-FROM go_builder as pgcollector_builder
-RUN mkdir -p /usr/local/autodba/share/pgcollector && \
-    git clone --recurse-submodules https://github.com/crystaldb/pgcollector.git /usr/local/autodba/share/pgcollector && \
-    cd /usr/local/autodba/share/pgcollector && \
+FROM go_builder as collector_builder
+RUN mkdir -p /usr/local/autodba/share/collector && \
+    git clone --recurse-submodules https://github.com/crystaldb/collector.git /usr/local/autodba/share/collector && \
+    cd /usr/local/autodba/share/collector && \
     wget https://github.com/protocolbuffers/protobuf/releases/download/v3.14.0/protoc-3.14.0-linux-x86_64.zip && unzip protoc-3.14.0-linux-x86_64.zip -d protoc && \
     make build
 
@@ -73,7 +73,7 @@ RUN cp main /usr/local/autodba/bin/autodba-bff
 FROM base AS builder
 COPY --from=solid_builder /home/autodba/solid/dist /usr/local/autodba/share/webapp
 COPY --from=rdsexporter_builder /usr/local/autodba/share/prometheus_exporters/rds_exporter /usr/local/autodba/share/prometheus_exporters/rds_exporter
-COPY --from=pgcollector_builder /usr/local/autodba/share/pgcollector /usr/local/autodba/share/pgcollector
+COPY --from=collector_builder /usr/local/autodba/share/collector /usr/local/autodba/share/collector
 COPY --from=bff_builder /usr/local/autodba/bin/autodba-bff /usr/local/autodba/bin/autodba-bff
 COPY --from=bff_builder /home/autodba/bff/config.json /usr/local/autodba/config/autodba/config.json
 COPY entrypoint.sh /usr/local/autodba/bin/autodba-entrypoint.sh
