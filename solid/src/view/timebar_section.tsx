@@ -4,6 +4,7 @@ import { isLiveQueryCube } from "../http";
 import { Popover } from "solid-simple-popover";
 import { flip } from "@floating-ui/dom";
 import { cssThingy } from "./cube_activity";
+import { EchartsTimebar } from "./echarts_timebar";
 
 let debugZero = +new Date();
 
@@ -13,14 +14,17 @@ interface ITimebarSectionProps {
 
 export function TimebarSection(props: ITimebarSectionProps) {
   return (
-    <section class={`flex items-center gap-4 ${props.class}`}>
-      <TimeframeSelector />
-
-      <IntervalSelector />
+    <section
+      class={`flex flex-col sm:flex-row items-center gap-4 ${props.class}`}
+    >
       <LiveIndicator />
+      <div class="flex flex-col lg:flex-row items-center gap-4">
+        <TimeframeSelector />
+        <IntervalSelector />
+      </div>
+      <EchartsTimebar class="h-12 min-w-[calc(16rem)] max-w-[calc(1280px-38rem)] w-[calc(100vw-38rem)] xs:w-[calc(100vw-25rem)]" />
       {/*
       <TimebarDebugger />
-      <EchartsTimebar class="h-12" />
       */}
     </section>
   );
@@ -34,13 +38,10 @@ function TimeframeSelector() {
       ms: 24 * 60 * 60 * 1000,
       label: "last 1d",
       ms2: 30 * 60 * 1000,
-      // "1 day",
-      // "30m",
-      // "30 minutes",
     },
-    { ms: 60 * 60 * 1000, label: "last 1h", ms2: 60 * 1000 }, //"1 hour",      "1m", "1 minute"],
-    { ms: 15 * 60 * 1000, label: "last 15m", ms2: 10 * 1000 }, //"15 minutes",  "10s", "10 seconds"],
-    { ms: 2 * 60 * 1000, label: "last 2m", ms2: 5 * 1000 }, //"2 minutes",  "5s", "5 seconds"],
+    { ms: 60 * 60 * 1000, label: "last 1h", ms2: 60 * 1000 },
+    { ms: 15 * 60 * 1000, label: "last 15m", ms2: 10 * 1000 },
+    { ms: 2 * 60 * 1000, label: "last 2m", ms2: 5 * 1000 },
   ];
 
   createEffect(() => {
@@ -93,7 +94,7 @@ function ViewSelector(props: PropsViewSelector) {
     <>
       <button
         id={id}
-        class={`flex gap-2 text-sm px-2.5 py-2 border-s rounded-lg ${cssThingy}`}
+        class={`flex gap-2 text-sm px-2.5 py-2 rounded-lg ${cssThingy}`}
       >
         <span class="whitespace-pre me-2">{props.name}:</span>
         <span class="text-fuchsia-500 w-16">
@@ -114,7 +115,7 @@ function ViewSelector(props: PropsViewSelector) {
           <For each={props.options}>
             {(record) => (
               <button
-                class={`flex justify-center gap-2 text-sm px-2.5 py-2 border-s rounded-lg ${cssThingy}`}
+                class={`flex justify-center gap-2 text-sm px-2.5 py-2 rounded-lg ${cssThingy}`}
                 classList={{
                   "text-fuchsia-500": state[props.property] === record.ms,
                 }}
@@ -152,7 +153,7 @@ function IntervalSelector() {
         property="interval_ms"
         id={id}
         options={options}
-        onClick={(record) => (event) =>
+        onClick={(record) => () =>
           batch(() => {
             setState("interval_ms", record.ms);
           })}

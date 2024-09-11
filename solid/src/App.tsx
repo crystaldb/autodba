@@ -1,16 +1,13 @@
-import { NavTop, NavTopConfig1 } from "./NavTop";
-import { A, Navigate } from "@solidjs/router";
+import { NavTopConfig1 } from "./NavTop";
+import { Navigate } from "@solidjs/router";
 import { ContextState, contextState } from "./context_state";
 import { useState } from "./state";
-import { PageHealth } from "./page/health";
 import { PageActivity } from "./page/activity";
 import { PageMetric } from "./page/metric";
-import { PageExplorer } from "./page/explorer";
 import { Router, Route } from "@solidjs/router";
 import {
   createEffect,
   createResource,
-  For,
   getOwner,
   JSX,
   onCleanup,
@@ -39,16 +36,6 @@ export default function App(): JSX.Element {
         <Router>
           <Route path="/" component={() => <Navigate href="/activity" />} />
           <Route
-            path="/health"
-            component={PageWrapper.bind(
-              null,
-              "health",
-              "pageHealth",
-              PageHealth,
-              databaseIsReady,
-            )}
-          />
-          <Route
             path="/activity"
             component={PageWrapper.bind(
               null,
@@ -65,16 +52,6 @@ export default function App(): JSX.Element {
               "metric",
               "pageMetric",
               PageMetric,
-              databaseIsReady,
-            )}
-          />
-          <Route
-            path="/explorer"
-            component={PageWrapper.bind(
-              null,
-              "explorer",
-              "pageExplorer",
-              PageExplorer,
               databaseIsReady,
             )}
           />
@@ -129,7 +106,7 @@ function PageWrapper(
         <DatabaseHeader class="" />
         <Dynamic component={page} />
         <section class="sticky bottom-0 flex flex-col mt-3 z-20 backdrop-blur">
-          <TimebarSection class="w-full xs:w-10/12" />
+          <TimebarSection />
         </section>
       </section>
       <DarkmodeSelector class="mt-16 mb-4 self-start" />
