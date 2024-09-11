@@ -23,6 +23,7 @@ interface PropsLegend {
 export function CubeDimensionTime(props: PropsLegend) {
   const { state, setState } = contextState();
   const changed = createMemo((changeCount: number) => {
+    // state.timeframe_ms; // handled by createEffect locally
     state.database_instance.dbidentifier;
     state.cubeActivity.uiLegend;
     state.cubeActivity.uiDimension1;
@@ -32,8 +33,8 @@ export function CubeDimensionTime(props: PropsLegend) {
     return changeCount + 1;
   }, 0);
 
-  createResource(changed, () => {
-    queryCubeIfLive(state, setState);
+  const [resourceChanged] = createResource(changed, () => {
+    return queryCubeIfLive(state, setState);
   });
 
   const timezone = moment.tz.guess();
@@ -67,7 +68,6 @@ export function CubeDimensionTime(props: PropsLegend) {
           value: { [x: string]: any };
         }[],
       ) {
-        console.log("Params", params);
         const createTooltipRow = (item: {
           color: any;
           seriesName: string | number;
@@ -121,7 +121,14 @@ export function CubeDimensionTime(props: PropsLegend) {
     yAxis: {
       type: "value",
     },
-    // legend: { selectedMode: true, orient: "vertical", left: 0, top: 70, bottom: 20, textStyle: { color: true, }, },
+    // legend: {
+    //   // selectedMode: true,
+    //   orient: "vertical",
+    //   left: 0,
+    //   // top: 70,
+    //   // bottom: 20,
+    //   textStyle: { color: true },
+    // },
   };
 
   const dataset = createMemo(() => {
@@ -156,7 +163,7 @@ export function CubeDimensionTime(props: PropsLegend) {
         // move CPU to the end of the list iff it exists
         fixedOrder((row) => row.out, ["CPU"], { position: "end" }),
       ]),
-      slice(0, 15),
+      // slice(0, 15),
       map((val) => val.out),
     ) as string[];
   });
@@ -164,7 +171,10 @@ export function CubeDimensionTime(props: PropsLegend) {
   return (
     <>
       <section class="h-[35rem]">
-        <Show when={`${state.cubeActivity.uiLegend}${state.interval_ms}`} keyed>
+        <Show
+          when={JSON.stringify(resourceChanged) + JSON.stringify(props.legend)}
+          keyed
+        >
           <EChartsAutoSize
             // @ts-expect-error
             option={mergeProps(base, {

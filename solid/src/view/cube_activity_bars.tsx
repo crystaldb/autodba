@@ -1,5 +1,5 @@
 import { contextState } from "../context_state";
-import { createMemo, createResource, For, JSX } from "solid-js";
+import { createMemo, createResource, For, JSX, Show } from "solid-js";
 import { DimensionName, CubeData } from "../state";
 import { first, groupBy, sum, summarize, tidy } from "@tidyjs/tidy";
 import { ILegend } from "./cube_activity";
@@ -14,6 +14,7 @@ interface IDimensionBars {
 export function DimensionBars(props: IDimensionBars) {
   const { state, setState } = contextState();
   const changed = createMemo((changeCount: number) => {
+    // state.timeframe_ms; // handled by createEffect locally
     state.range_begin;
     state.range_end;
     state.database_instance.dbidentifier;
@@ -25,8 +26,8 @@ export function DimensionBars(props: IDimensionBars) {
     return changeCount + 1;
   }, 0);
 
-  createResource(changed, () => {
-    queryCube(state, setState);
+  const [resourceChanged] = createResource(changed, () => {
+    return queryCube(state, setState);
   });
 
   const cubeDataGrouped = createMemo(
@@ -71,16 +72,18 @@ export function DimensionBars(props: IDimensionBars) {
 
   return (
     <section class={`flex flex-col gap-4 ${props.class}`}>
-      <For each={cubeDataGrouped()}>
-        {({ total, dimensionValue, records }) => (
-          <DimensionRowGrouped
-            len={total}
-            txt={dimensionValue}
-            records={records}
-            legend={props.legend}
-          />
-        )}
-      </For>
+      <Show when={resourceChanged} keyed>
+        <For each={cubeDataGrouped()}>
+          {({ total, dimensionValue, records }) => (
+            <DimensionRowGrouped
+              len={total}
+              txt={dimensionValue}
+              records={records}
+              legend={props.legend}
+            />
+          )}
+        </For>
+      </Show>
     </section>
   );
 }

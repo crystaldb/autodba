@@ -11,7 +11,7 @@ interface IProps {
 
 export function EchartsTimeseries1(props: IProps) {
   let ref: import("@solid-primitives/refs").Ref<HTMLDivElement>;
-  const { state, setState } = contextState();
+  const { state } = contextState();
 
   const base = {
     tooltip: {

@@ -225,7 +225,8 @@ export const listColors = [
 ];
 
 const appZero = +new Date();
-const initialTimeframe = 15 * 60 * 1000; // 15 minutes
+const initial_timeframe_ms = 15 * 60 * 1000; // 15 minutes
+const initial_interval_ms = 10 * 1000; // 10 seconds
 
 const [state, setState]: [State, any] = createStore({
   cubeActivity: {
@@ -250,13 +251,13 @@ const [state, setState]: [State, any] = createStore({
     instance_class: "",
   },
   database_list: [],
-  timeframe_ms: initialTimeframe,
-  interval_ms: 5 * 1000, // 5 seconds
+  timeframe_ms: initial_timeframe_ms,
+  interval_ms: initial_interval_ms,
   range_begin: 0.0,
   range_end: 100.0,
-  time_begin_ms: appZero - initialTimeframe,
+  time_begin_ms: appZero - initial_timeframe_ms,
   time_end_ms: appZero,
-  window_begin_ms: appZero - initialTimeframe,
+  window_begin_ms: appZero - initial_timeframe_ms,
   window_end_ms: appZero,
 });
 

@@ -126,10 +126,7 @@ function PageWrapper(
     <>
       <section data-testid={testid} class="flex flex-col mx-1 xs:mx-8">
         <NavTopConfig1 />
-        <section class="flex flex-wrap justify-between gap-4 mb-8">
-          <DatabaseHeader class="" />
-          <IntervalSelector class="self-start" />
-        </section>
+        <DatabaseHeader class="" />
         <Dynamic component={page} />
         <section class="sticky bottom-0 flex flex-col mt-3 z-20 backdrop-blur">
           <TimebarSection class="w-full xs:w-10/12" />
@@ -160,65 +157,5 @@ function DatabaseHeader(props: PropsDatabaseHeader) {
         <span>{state.database_instance.instance_class}</span>
       </p>
     </section>
-  );
-}
-
-function IntervalSelector(props: { class?: string }) {
-  const { state, setState } = contextState();
-  // const [openGet, openSet] = createSignal(false);
-
-  // <Show
-  //   when={openGet()}
-  //   fallback={<HiOutlineChevronLeft size="1rem" class="inline ms-1" />}
-  // >
-  //   <HiOutlineChevronDown size="1rem" class="inline ms-1" />
-  // </Show>
-  // <button
-  //   onClick={() => openSet((v) => !v)}
-  //   class={`inline ${props.class}`}
-  // >
-  //   Interval: {state.interval_ms} ms
-  // </button>
-  return (
-    <>
-      <div class={`flex items-center gap-x-3 text-sm ${props.class}`}>
-        <label>Interval</label>
-        <select
-          onChange={(e) => setState({ interval_ms: +e.currentTarget.value })}
-          class="bg-transparent rounded border border-neutral-200 dark:border-neutral-700 text-fuchsia-500 ps-2 pe-8 py-1.5 hover:border-gray-400 focus:outline-none"
-        >
-          <option
-            value="5000"
-            class="appearance-none bg-neutral-100 dark:bg-neutral-800"
-          >
-            Auto
-          </option>
-          <For
-            each={[
-              [1000, "1s"],
-              [5000, "5s"],
-              [10000, "10s"],
-              [20000, "20s"],
-              [30000, "30s"],
-              [60000, "60s"],
-              [300000, "5m"],
-              [900000, "15m"],
-              [1800000, "30m"],
-              [3600000, "60m"],
-            ]}
-          >
-            {([value, label]) => (
-              <option
-                value={value}
-                {...(value === state.interval_ms && { selected: true })}
-                class="appearance-none bg-neutral-100 dark:bg-neutral-800"
-              >
-                {label}
-              </option>
-            )}
-          </For>
-        </select>
-      </div>
-    </>
   );
 }

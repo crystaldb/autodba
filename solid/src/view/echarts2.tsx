@@ -31,7 +31,7 @@ export function Echarts2(props: PropsEcharts2) {
     },
     tooltip: {
       trigger: "axis",
-      valueFormatter: (value: number) => value.toFixed(1),
+      valueFormatter: (value: number) => value?.toFixed(1),
       axisPointer: {
         type: "cross",
         animation: false,
