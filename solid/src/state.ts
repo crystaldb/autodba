@@ -2,6 +2,39 @@ import {init} from "echarts";
 import { batch } from "solid-js";
 import { createStore } from "solid-js/store";
 
+export type State = {
+  cubeActivity: {
+    cubeData: CubeData;
+    uiLegend: DimensionName;
+    uiDimension1: DimensionName;
+
+    uiFilter1: DimensionName;
+    uiFilter1Value?: string;
+    limit: number;
+  };
+  database_instance: {
+    dbidentifier: string;
+    engine: string;
+    engine_version: string;
+    instance_class: string;
+  };
+  database_list: string[];
+  healthData: {
+    cpu: number[];
+    time: number[];
+  };
+  metricData: any[];
+
+  timeframe_ms: number;
+  interval_ms: number;
+  range_begin: number;
+  range_end: number;
+  time_begin_ms: number;
+  time_end_ms: number;
+  window_begin_ms: number;
+  window_end_ms: number;
+};
+
 export enum DimensionName {
   none = "none",
   query = "query",
@@ -36,39 +69,6 @@ export type CubeData = {
   metric: Partial<Record<DimensionName, string>>;
   values: { timestamp: number; value: number }[];
 }[];
-
-export type State = {
-  cubeActivity: {
-    cubeData: CubeData;
-    uiLegend: DimensionName;
-    uiDimension1: DimensionName;
-
-    uiFilter1: DimensionName;
-    uiFilter1Value?: string;
-    limit: number;
-  };
-  database_instance: {
-    dbidentifier: string;
-    engine: string;
-    engine_version: string;
-    instance_class: string;
-  };
-  database_list: string[];
-  healthData: {
-    cpu: number[];
-    time: number[];
-  };
-  metricData: any[];
-
-  timeframe_ms: number;
-  interval_ms: number;
-  range_begin: number;
-  range_end: number;
-  time_begin_ms: number;
-  time_end_ms: number;
-  window_begin_ms: number;
-  window_end_ms: number;
-};
 
 export const listColors = [
   {

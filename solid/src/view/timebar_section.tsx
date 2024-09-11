@@ -39,7 +39,10 @@ function TimeframeSelector() {
       label: "last 1d",
       ms2: 30 * 60 * 1000,
     },
-    { ms: 60 * 60 * 1000, label: "last 1h", ms2: 60 * 1000 },
+    { ms: 12 * 60 * 60 * 1000, label: "last 12h", ms2: 30 * 60 * 1000 },
+    { ms: 6 * 60 * 60 * 1000, label: "last 6h", ms2: 10 * 60 * 1000 },
+    { ms: 3 * 60 * 60 * 1000, label: "last 3h", ms2: 5 * 60 * 1000 },
+    { ms: 1 * 60 * 60 * 1000, label: "last 1h", ms2: 60 * 1000 },
     { ms: 15 * 60 * 1000, label: "last 15m", ms2: 10 * 1000 },
     { ms: 2 * 60 * 1000, label: "last 2m", ms2: 5 * 1000 },
   ];
@@ -146,9 +149,10 @@ function IntervalSelector(props: PropsIntervalSelector) {
     { ms: 30 * 1000, label: "30s", ms2: 0 },
     { ms: 1 * 60 * 1000, label: "1m", ms2: 0 },
     { ms: 5 * 60 * 1000, label: "5m", ms2: 0 },
+    { ms: 10 * 60 * 1000, label: "10m", ms2: 0 },
     { ms: 15 * 60 * 1000, label: "15m", ms2: 0 },
     { ms: 30 * 60 * 1000, label: "30m", ms2: 0 },
-    { ms: 60 * 60 * 1000, label: "1h", ms2: 0 },
+    { ms: 1 * 60 * 60 * 1000, label: "1h", ms2: 0 },
   ];
 
   return (
