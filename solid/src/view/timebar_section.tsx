@@ -3,7 +3,7 @@ import { batch, createEffect, For, JSX } from "solid-js";
 import { isLiveQueryCube } from "../http";
 import { Popover } from "solid-simple-popover";
 import { flip } from "@floating-ui/dom";
-import { cssThingy } from "./cube_activity";
+import { cssSelectorGeneral } from "./cube_activity";
 import { EchartsTimebar } from "./echarts_timebar";
 
 let debugZero = +new Date();
@@ -20,7 +20,7 @@ export function TimebarSection(props: ITimebarSectionProps) {
       <LiveIndicator />
       <div class="flex flex-col lg:flex-row items-center gap-4">
         <TimeframeSelector />
-        <IntervalSelector />
+        <IntervalSelector class="self-stretch" />
       </div>
       <EchartsTimebar class="h-12 min-w-[calc(16rem)] max-w-[calc(1280px-38rem)] w-[calc(100vw-38rem)] xs:w-[calc(100vw-25rem)]" />
       {/*
@@ -84,6 +84,7 @@ interface PropsViewSelector {
   ) => JSX.EventHandlerUnion<HTMLButtonElement, MouseEvent>;
   options: RecordClickHandler[];
   id: any;
+  class?: string;
 }
 
 function ViewSelector(props: PropsViewSelector) {
@@ -94,7 +95,7 @@ function ViewSelector(props: PropsViewSelector) {
     <>
       <button
         id={id}
-        class={`flex gap-2 text-sm px-2.5 py-2 rounded-lg ${cssThingy}`}
+        class={`flex gap-2 text-sm px-2.5 py-2 rounded-lg ${cssSelectorGeneral} ${props.class}`}
       >
         <span class="whitespace-pre me-2">{props.name}:</span>
         <span class="text-fuchsia-500 w-16">
@@ -115,7 +116,7 @@ function ViewSelector(props: PropsViewSelector) {
           <For each={props.options}>
             {(record) => (
               <button
-                class={`flex justify-center gap-2 text-sm px-2.5 py-2 rounded-lg ${cssThingy}`}
+                class={`flex justify-center gap-2 text-sm px-2.5 py-2 rounded-lg ${cssSelectorGeneral}`}
                 classList={{
                   "text-fuchsia-500": state[props.property] === record.ms,
                 }}
@@ -131,7 +132,11 @@ function ViewSelector(props: PropsViewSelector) {
   );
 }
 
-function IntervalSelector() {
+interface PropsIntervalSelector {
+  class?: string;
+}
+
+function IntervalSelector(props: PropsIntervalSelector) {
   const { setState } = contextState();
   const id = "intervalSelector";
   const options = [
@@ -157,6 +162,7 @@ function IntervalSelector() {
           batch(() => {
             setState("interval_ms", record.ms);
           })}
+        class={props.class}
       />
     </>
   );

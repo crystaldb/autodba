@@ -114,7 +114,12 @@ export function CubeDimensionTime(props: PropsLegend) {
         formatter: function (value: string) {
           let timestamp = parseInt(value, 10);
           let date = moment(timestamp);
-          return date.format(timeFormat) + "(" + timezoneAbbreviation + ")";
+          return (
+            date.format(timeFormat).replace(/ /, "\n") +
+            "(" +
+            timezoneAbbreviation +
+            ")"
+          );
         },
       },
     },

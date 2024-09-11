@@ -7,19 +7,11 @@ import {
   listDimensionTabNames,
   CubeData,
 } from "../state";
-import {
-  arrange,
-  distinct,
-  filter,
-  fixedOrder,
-  map,
-  tidy,
-  slice,
-} from "@tidyjs/tidy";
+import { arrange, distinct, fixedOrder, map, tidy } from "@tidyjs/tidy";
 import { CubeDimensionTime } from "./cube_activity_time";
 import { DimensionBars } from "./cube_activity_bars";
 
-export const cssThingy =
+export const cssSelectorGeneral =
   "border border-zinc-200 bg-zinc-100 dark:border-zinc-600 dark:bg-zinc-800 dark:hover:bg-zinc-700 hover:bg-zinc-300 first:rounded-s-lg last:rounded-e-lg";
 
 export type ILegend = {
@@ -67,7 +59,7 @@ export function CubeActivity() {
       <section class={cssSectionHeading}>
         <h2 class="font-medium text-lg">Legend</h2>
         <div
-          class={`flex text-sm px-2.5 py-2 border-s rounded-lg ${cssThingy}`}
+          class={`flex text-sm px-2.5 py-2 border-s rounded-lg ${cssSelectorGeneral}`}
         >
           <label class="whitespace-pre">Slice By:</label>
           <SelectSliceBy dimension={DimensionField.uiLegend} />
@@ -204,7 +196,7 @@ function Tab(props: { value: string; txt: string; selected: boolean }) {
   return (
     <button
       value={props.value}
-      class={`tracking-wider flex text-sm px-6 py-2 font-normala ${cssThingy}`}
+      class={`tracking-wider flex text-sm px-6 py-2 font-normala ${cssSelectorGeneral}`}
       classList={{
         "font-semibold text-fuchsia-500 bg-zinc-300 dark:bg-zinc-700":
           props.selected,

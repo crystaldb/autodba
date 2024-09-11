@@ -75,6 +75,7 @@ function PageWrapper(
 
   function queryData() {
     runWithOwner(owner, () => {
+      // runWithOwner needed because called by setTimeout
       createResource(databaseIsReady, () =>
         queryEndpointData(apiEndpoint, state, setState),
       );
