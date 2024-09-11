@@ -1,17 +1,25 @@
 # SPDX-License-Identifier: Apache-2.0
 
-FROM ubuntu:24.04 AS base
+FROM ubuntu:20.04 AS base
 
 RUN useradd --system --user-group --home-dir /home/autodba --shell /bin/bash autodba
 
-RUN apt-get update
-RUN apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     curl            \
     jq              \
-    nodejs          \
-    npm             \
     procps          \
-    wget
+    wget            \
+    gnupg           \
+    software-properties-common
+
+# Install nvm
+ENV NVM_DIR /usr/local/nvm
+RUN mkdir -p $NVM_DIR \
+    && curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.4/install.sh | bash \
+    && bash -c "source $NVM_DIR/nvm.sh && nvm install 16.17.0 && nvm use 16.17.0 && nvm alias default 16.17.0"
+
+# Add nvm and node to PATH
+ENV PATH $NVM_DIR/versions/node/v16.17.0/bin:$PATH
 
 USER root
 RUN mkdir -p /usr/local/autodba/config/autodba
