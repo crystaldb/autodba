@@ -24,7 +24,7 @@ export function TimebarSection(props: ITimebarSectionProps) {
         <TimeframeSelector />
         <IntervalSelector class="self-stretch" />
       </div>
-      <EchartsTimebar class="h-12 min-w-[calc(16rem)] max-w-[calc(1280px-38rem)] w-[calc(100vw-38rem)] xs:w-[calc(100vw-25rem)]" />
+      <EchartsTimebar class="h-12 min-w-[calc(16rem)] max-w-[calc(1280px-39rem)] w-[calc(100vw-39rem)] xs:w-[calc(100vw-25rem)]" />
       <Show when={debug}>
         <section class="flex flex-col leading-none text-2xs">
           <p>{JSON.stringify(state.api.needDataFor)}</p>

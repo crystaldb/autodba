@@ -62,7 +62,7 @@ export function CubeDimensionTime(props: PropsLegend) {
       left: 0,
       right: 0,
       top: 10,
-      bottom: 25 + 60,
+      bottom: 0,
       containLabel: true,
     },
     tooltip: {
@@ -181,10 +181,7 @@ export function CubeDimensionTime(props: PropsLegend) {
 
   return (
     <section class="flex flex-col">
-      <div class="self-end text-xs text-neutral-500">
-        Number of samples: {dataset().length}
-      </div>
-      <section class="h-[35rem]">
+      <section class="h-[28rem]">
         <Show
           when={JSON.stringify(resourceChanged) + JSON.stringify(props.legend)}
           keyed
@@ -206,13 +203,13 @@ export function CubeDimensionTime(props: PropsLegend) {
               // { name: "vCPUs", type: "line", data: [20, 20, 20, 20, 20], markLine: { data: [{ type: "average", name: "Avg" }], },
               // },
               dataZoom: [
-                // {
-                //   show: true,
-                //   realtime: true,
-                //   start: state.range_begin,
-                //   end: state.range_end,
-                //   xAxisIndex: [0, 1],
-                // },
+                {
+                  show: false,
+                  //   realtime: true,
+                  start: state.range_begin,
+                  end: state.range_end,
+                  //   xAxisIndex: [0, 1],
+                },
                 //
                 // {
                 //   type: "inside",
@@ -227,6 +224,9 @@ export function CubeDimensionTime(props: PropsLegend) {
           />
         </Show>
       </section>
+      <div class="self-end mt-3 text-xs text-neutral-500">
+        Number of samples: {dataset().length}
+      </div>
     </section>
   );
 }

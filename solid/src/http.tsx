@@ -44,6 +44,16 @@ export async function queryEndpointData(
   return queryStandardEndpoint(apiEndpoint, state, setState);
 }
 
+export async function queryEndpointDataIfLive(
+  apiEndpoint: string,
+  state: State,
+  setState: (arg0: string, arg1: any, arg2?: any) => void,
+): Promise<boolean> {
+  if (!isLiveQueryCube(state)) return false;
+  if (apiEndpoint === "activity") return queryCubeIfLive(state, setState);
+  return queryStandardEndpoint(apiEndpoint, state, setState);
+}
+
 export function isLiveQueryCube(state: State): boolean {
   // if (!state.database_instance.dbidentifier) return false;
   if (!state.database_list.length) return false;

@@ -17,6 +17,7 @@ import {
   queryEndpointData,
   queryDatabaseInstanceInfo,
   queryDatabaseList,
+  queryEndpointDataIfLive,
 } from "./http";
 import { Dynamic } from "solid-js/web";
 import { DarkmodeSelector } from "./view/darkmode";
@@ -77,7 +78,7 @@ function PageWrapper(
     runWithOwner(owner, () => {
       // runWithOwner needed because called by setTimeout
       createResource(databaseIsReady, () =>
-        queryEndpointData(apiEndpoint, state, setState),
+        queryEndpointDataIfLive(apiEndpoint, state, setState),
       );
     });
     if (!destroyed) {
