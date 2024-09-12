@@ -8,8 +8,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl            \
     jq              \
     procps          \
-    wget            \
-    gnupg           \
+    wget           \
     software-properties-common
 
 # Install nvm
@@ -104,7 +103,6 @@ USER root
 # Install Prometheus
 RUN apt-get install -y --no-install-recommends \
     apt-transport-https \
-    software-properties-common \
     sqlite3
 
 RUN wget -qO- https://github.com/prometheus/prometheus/releases/download/v2.42.0/prometheus-2.42.0.linux-amd64.tar.gz | tar -xzf - -C /tmp/

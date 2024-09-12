@@ -116,7 +116,8 @@ fi
 BFF_PID=$!
 
 # Wait for a process to exit
-wait -n -p EXITED_PID # wait for any job to exit
+wait -n # wait for any job to exit
+EXITED_PID=$!
 retcode=$? # store error code so we can propagate it to the container environment
 
 if (( $EXITED_PID == $PROMETHEUS_PID ))
