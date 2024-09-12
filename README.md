@@ -51,14 +51,42 @@ However, the following *temporary limitations* are presently in place:
 
 Follow these instructions to install AutoDBA on Linux.
 
-1. Download the latest release of AutoDBA from the [releases page](https://github.com/crystaldb/autodba/releases).
+1. Download the latest release of AutoDBA and the installation script `install.sh` from the [releases page](https://github.com/crystaldb/autodba/releases).
+Choose the version appropriate to your architecture and operating system.
+For example:
 
 ```bash
-tar -xzf autodba-<version>-linux-amd64.tar.gz
+wget https://github.com/crystaldb/autodba/releases/download/v0.1.0/autodba-0.1.0.tar.gz
+wget https://github.com/crystaldb/autodba/releases/download/v0.1.0/install.sh
 ```
 
-TODO - more to put here
+2. Create a configuration file `autodba_config.json` and populate it with values appropriate to your environment.
 
+```json
+{
+    "DB_CONN_STRING": "<CONNECTION_STRING_TO_YOUR_POSTGRES_DB>",
+    "AWS_ACCESS_KEY_ID": "<YOUR_AWS_ACCESS_KEY_ID>",
+    "AWS_SECRET_ACCESS_KEY": "<YOUR_AWS_SECRET_ACCESS_KEY>",
+    "AWS_REGION": "<YOUR_AWS_REGION>",
+    "AWS_RDS_INSTANCE": "<YOUR_RDS_POSTGRES_INSTANCE_NAME>"
+}
+```
+
+PostgreSQL connection strings (`<CONNECTION_STRING_TO_YOUR_POSTGRES_DB>`) should be of the form `postgres://<POSTGRES_USERNAME>:<POSTGRES_PASSWORD>@<HOST>:<PORT>/<DATABASE_NAME>`.
+
+3. Run the installation script
+
+```bash
+sudo ./autodba/scripts/install.sh --system --package autodba-0.1.0.tar.gz --config autodba_config.json
+```
+
+4. Verify the AutoDBA service is running
+
+```bash
+sudo systemctl status autodba
+```
+
+5. Connect to the AutoDBA web portal on port 4000. If you have installed AutoDBA on a remote server you can use [ssh tunneling](https://www.ssh.com/academy/ssh/tunneling-example) to access it.
 
 ## 🗺️ Roadmap
 
