@@ -1,6 +1,12 @@
 import { EChartsAutoSize } from "echarts-solid";
 import { contextState } from "../context_state";
-import { createMemo, createResource, mergeProps, Show } from "solid-js";
+import {
+  createMemo,
+  createResource,
+  getOwner,
+  mergeProps,
+  Show,
+} from "solid-js";
 import { datazoomEventHandler, listColors } from "../state";
 import {
   arrange,
@@ -8,7 +14,6 @@ import {
   fixedOrder,
   map,
   pivotWider,
-  slice,
   tidy,
 } from "@tidyjs/tidy";
 import { ILegend } from "./cube_activity";
@@ -22,6 +27,7 @@ interface PropsLegend {
 
 export function CubeDimensionTime(props: PropsLegend) {
   const { state, setState } = contextState();
+  setState("api", "needDataFor", ["cube_time"]);
   const changed = createMemo((changeCount: number) => {
     // state.timeframe_ms; // handled by createEffect locally
     state.database_instance.dbidentifier;
@@ -174,7 +180,10 @@ export function CubeDimensionTime(props: PropsLegend) {
   });
 
   return (
-    <>
+    <section class="flex flex-col">
+      <div class="self-end text-xs text-neutral-500">
+        Number of samples: {dataset().length}
+      </div>
       <section class="h-[35rem]">
         <Show
           when={JSON.stringify(resourceChanged) + JSON.stringify(props.legend)}
@@ -218,6 +227,6 @@ export function CubeDimensionTime(props: PropsLegend) {
           />
         </Show>
       </section>
-    </>
+    </section>
   );
 }

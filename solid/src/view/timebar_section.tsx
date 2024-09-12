@@ -1,11 +1,12 @@
 import { contextState } from "../context_state";
-import { batch, createEffect, For, JSX } from "solid-js";
+import { batch, createEffect, For, JSX, Show } from "solid-js";
 import { isLiveQueryCube } from "../http";
 import { Popover } from "solid-simple-popover";
 import { flip } from "@floating-ui/dom";
 import { cssSelectorGeneral } from "./cube_activity";
 import { EchartsTimebar } from "./echarts_timebar";
 
+let debug = true;
 let debugZero = +new Date();
 
 interface ITimebarSectionProps {
@@ -13,6 +14,7 @@ interface ITimebarSectionProps {
 }
 
 export function TimebarSection(props: ITimebarSectionProps) {
+  const { state } = contextState();
   return (
     <section
       class={`flex flex-col sm:flex-row items-center gap-4 ${props.class}`}
@@ -23,6 +25,15 @@ export function TimebarSection(props: ITimebarSectionProps) {
         <IntervalSelector class="self-stretch" />
       </div>
       <EchartsTimebar class="h-12 min-w-[calc(16rem)] max-w-[calc(1280px-38rem)] w-[calc(100vw-38rem)] xs:w-[calc(100vw-25rem)]" />
+      <Show when={debug}>
+        <section class="flex flex-col leading-none text-2xs">
+          <p>{JSON.stringify(state.api.needDataFor)}</p>
+          <p>{JSON.stringify(state.api.inFlight)}</p>
+          <p>
+            {state.api.busyWaiting}, {state.api.busyWaitingCount}
+          </p>
+        </section>
+      </Show>
       {/*
       <TimebarDebugger />
       */}
@@ -140,7 +151,7 @@ interface PropsIntervalSelector {
 }
 
 function IntervalSelector(props: PropsIntervalSelector) {
-  const { setState } = contextState();
+  const { state, setState } = contextState();
   const id = "intervalSelector";
   const options = [
     { ms: 1 * 1000, label: "1s", ms2: 0 },
@@ -161,7 +172,9 @@ function IntervalSelector(props: PropsIntervalSelector) {
         name="Interval"
         property="interval_ms"
         id={id}
-        options={options}
+        options={options.filter(
+          (record) => state.timeframe_ms / record.ms <= 350,
+        )}
         onClick={(record) => () =>
           batch(() => {
             setState("interval_ms", record.ms);

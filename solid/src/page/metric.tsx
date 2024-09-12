@@ -3,7 +3,8 @@ import { contextState } from "../context_state";
 import { Echarts2 } from "../view/echarts2";
 
 export function PageMetric() {
-  const { state } = contextState();
+  const { state, setState } = contextState();
+  setState("api", "needDataFor", ["metric"]);
 
   return (
     <>

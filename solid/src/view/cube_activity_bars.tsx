@@ -1,5 +1,5 @@
 import { contextState } from "../context_state";
-import { createMemo, createResource, For, JSX, Show } from "solid-js";
+import { createMemo, createResource, For, getOwner, JSX, Show } from "solid-js";
 import { DimensionName, CubeData } from "../state";
 import { first, groupBy, sum, summarize, tidy } from "@tidyjs/tidy";
 import { ILegend } from "./cube_activity";
@@ -13,6 +13,7 @@ interface IDimensionBars {
 
 export function DimensionBars(props: IDimensionBars) {
   const { state, setState } = contextState();
+  setState("api", "needDataFor", ["cube_bar"]);
   const changed = createMemo((changeCount: number) => {
     // state.timeframe_ms; // handled by createEffect locally
     state.range_begin;

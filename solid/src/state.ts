@@ -1,8 +1,21 @@
-import {init} from "echarts";
+import { init } from "echarts";
 import { batch } from "solid-js";
-import { createStore } from "solid-js/store";
+import { createStore, produce } from "solid-js/store";
+import {queryCube, queryEndpointData} from "./http";
+
+let dateZero = +new Date();
+
+export type ApiType = {
+  needDataFor: ("metric" | "cube_time" | "cube_bar")[];
+  inFlight: Record<string, number>;
+  busyWaiting?: ApiEndpoint;
+  busyWaitingCount?: number;
+};
+
+export type ApiEndpoint = "metric" | "activity";
 
 export type State = {
+  api: ApiType;
   cubeActivity: {
     cubeData: CubeData;
     uiLegend: DimensionName;
@@ -229,6 +242,10 @@ const initial_timeframe_ms = 15 * 60 * 1000; // 15 minutes
 const initial_interval_ms = 10 * 1000; // 10 seconds
 
 const [state, setState]: [State, any] = createStore({
+  api: {
+    needDataFor: [],
+    inFlight: {},
+  },
   cubeActivity: {
     cubeData: [],
     limit: 15,
@@ -289,3 +306,54 @@ export const datazoomEventHandler = (event: any) => {
     setState("window_end_ms", window_end_ms);
   });
 };
+
+export function setBusyWaiting(endpoint: ApiEndpoint) {
+  setState(
+    "api",
+    produce((api: ApiType) => {
+      api.busyWaiting = endpoint;
+      api.busyWaitingCount = (api.busyWaitingCount || 0) + 1;
+    }),
+  );
+}
+export function clearBusyWaiting() {
+  const busyWaiting = state.api.busyWaiting;
+  // const busyWaitingCount = state.api.busyWaitingCount;
+  setState(
+    "api",
+    produce((api: ApiType) => {
+      api.busyWaiting = undefined!;
+      api.busyWaitingCount = undefined!;
+    }),
+  );
+  if (busyWaiting) {
+    // console.log("Querying now", busyWaitingCount || 0, busyWaiting);
+    queryEndpointData(busyWaiting, state, setState);
+  }
+}
+
+export function allowInFlight(endpoint: ApiEndpoint): boolean {
+  if (state.api.inFlight[endpoint] || state.api.busyWaiting) {
+    setBusyWaiting(endpoint);
+    return false;
+  }
+  return true
+}
+
+export function setInFlight(endpoint: ApiEndpoint) {
+  setState(
+    "api",
+    produce((api: ApiType) => {
+      api.inFlight[endpoint] = +new Date() - dateZero;
+    }),
+  );
+}
+
+export function clearInFlight(endpoint: ApiEndpoint) {
+  setState(
+    "api",
+    produce((api: ApiType) => {
+      api.inFlight[endpoint] = undefined!;
+    }),
+  );
+}
