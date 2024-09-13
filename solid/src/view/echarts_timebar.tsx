@@ -10,6 +10,10 @@ interface IEchartsTimebarProps {
 export function EchartsTimebar(props: IEchartsTimebarProps) {
   const { state } = contextState();
   const base = {
+    grid: {
+      left: 0,
+      right: 7,
+    },
     xAxis: [
       {
         type: "category",
@@ -44,7 +48,6 @@ export function EchartsTimebar(props: IEchartsTimebarProps) {
           ],
         })}
         eventHandlers={eventHandlers}
-        class="border border-red-500"
       />
     </div>
   );

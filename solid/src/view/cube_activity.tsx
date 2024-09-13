@@ -7,19 +7,11 @@ import {
   listDimensionTabNames,
   CubeData,
 } from "../state";
-import {
-  arrange,
-  distinct,
-  filter,
-  fixedOrder,
-  map,
-  tidy,
-  slice,
-} from "@tidyjs/tidy";
+import { arrange, distinct, fixedOrder, map, tidy } from "@tidyjs/tidy";
 import { CubeDimensionTime } from "./cube_activity_time";
 import { DimensionBars } from "./cube_activity_bars";
 
-export const cssThingy =
+export const cssSelectorGeneral =
   "border border-zinc-200 bg-zinc-100 dark:border-zinc-600 dark:bg-zinc-800 dark:hover:bg-zinc-700 hover:bg-zinc-300 first:rounded-s-lg last:rounded-e-lg";
 
 export type ILegend = {
@@ -32,13 +24,6 @@ export function CubeActivity() {
   const { state } = contextState();
 
   const legendDistinct = createMemo((): ILegend => {
-    state.range_begin;
-    state.range_end;
-    state.database_instance.dbidentifier;
-    state.cubeActivity.uiLegend;
-    state.cubeActivity.uiDimension1;
-    state.cubeActivity.uiFilter1;
-    state.cubeActivity.uiFilter1Value;
     return tidy(
       state.cubeActivity.cubeData,
       distinct((row) => row.metric[state.cubeActivity.uiLegend]),
@@ -51,7 +36,6 @@ export function CubeActivity() {
         // move CPU to the end of the list iff it exists
         fixedOrder((row) => row.item, ["CPU"], { position: "end" }),
       ]),
-      // slice(0, 15),
       map((item, index) => ({
         item: item.item!,
         colorText: listColors[index]?.text || "",
@@ -67,7 +51,7 @@ export function CubeActivity() {
       <section class={cssSectionHeading}>
         <h2 class="font-medium text-lg">Legend</h2>
         <div
-          class={`flex text-sm px-2.5 py-2 border-s rounded-lg ${cssThingy}`}
+          class={`flex text-sm px-2.5 py-2 border-s rounded-lg ${cssSelectorGeneral}`}
         >
           <label class="whitespace-pre">Slice By:</label>
           <SelectSliceBy dimension={DimensionField.uiLegend} />
@@ -126,7 +110,7 @@ function Dimension1(props: IDimension1) {
       <Switch>
         <Match when={state.cubeActivity.uiDimension1 === DimensionName.time}>
           <div class={`${props.class}`}>
-            <CubeDimensionTime legend={props.legend} />
+            <CubeDimensionTime />
           </div>
         </Match>
         <Match when={true}>
@@ -204,7 +188,7 @@ function Tab(props: { value: string; txt: string; selected: boolean }) {
   return (
     <button
       value={props.value}
-      class={`tracking-wider flex text-sm px-6 py-2 font-normala ${cssThingy}`}
+      class={`tracking-wider flex text-sm px-6 py-2 font-normala ${cssSelectorGeneral}`}
       classList={{
         "font-semibold text-fuchsia-500 bg-zinc-300 dark:bg-zinc-700":
           props.selected,

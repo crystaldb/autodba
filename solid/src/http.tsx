@@ -1,5 +1,13 @@
 import { produce } from "solid-js/store";
-import { DimensionName, type State } from "./state";
+import {
+  allowInFlight,
+  ApiEndpoint,
+  clearBusyWaiting,
+  clearInFlight,
+  DimensionName,
+  setInFlight,
+  type State,
+} from "./state";
 import { batch } from "solid-js";
 
 let debugFirstTimestamp: number = 0;
@@ -29,28 +37,28 @@ export async function queryDatabaseList(
 }
 
 export async function queryEndpointData(
-  apiEndpoint: string,
+  apiEndpoint: ApiEndpoint,
   state: State,
   setState: (arg0: string, arg1: any, arg2?: any) => void,
 ): Promise<boolean> {
-  if (apiEndpoint === "activity") return queryCubeIfLive(state, setState);
+  if (apiEndpoint === ApiEndpoint.activity) return queryCube(state, setState);
   return queryStandardEndpoint(apiEndpoint, state, setState);
 }
 
 export function isLiveQueryCube(state: State): boolean {
-  // if (!state.database_instance.dbidentifier) return false;
   if (!state.database_list.length) return false;
   if (state.range_end !== 100) return false;
   return true;
 }
 
-let queryCubeBusy = false;
-export async function queryCubeIfLive(
+export async function queryEndpointDataIfLive(
+  apiEndpoint: ApiEndpoint,
   state: State,
   setState: (arg0: string, arg1: any, arg2?: any) => void,
 ): Promise<boolean> {
   if (!isLiveQueryCube(state)) return false;
-  return queryCube(state, setState);
+  if (apiEndpoint === ApiEndpoint.activity) return queryCube(state, setState);
+  return queryStandardEndpoint(apiEndpoint, state, setState);
 }
 
 export async function queryCube(
@@ -59,9 +67,8 @@ export async function queryCube(
   time_begin?: number,
   time_end?: number,
 ): Promise<boolean> {
-  if (queryCubeBusy) return false;
-  // if (!state.database_instance.dbidentifier) return false;
   if (!state.database_list.length) return false;
+  if (!allowInFlight(ApiEndpoint.activity)) return false;
 
   const safe_prometheus_11kSampleLimit_ms = 10950 * state.interval_ms;
   const dateNow = +new Date();
@@ -85,7 +92,7 @@ export async function queryCube(
     ) ||
     dateNow;
 
-  queryCubeBusy = true;
+  setInFlight(ApiEndpoint.activity);
   const response = await fetch(
     `/api/v1/activity?a=${
       (request_time_start - debugZero).toString() +
@@ -120,39 +127,53 @@ export async function queryCube(
       method: "GET",
     },
   );
-  queryCubeBusy = false;
+  clearInFlight(ApiEndpoint.activity);
 
-  if (response.ok) {
-    const json = await response.json();
-    if (!json) return false;
-    let timeOldest = request_time_start;
-    let timeNewest = request_time_start;
-    json.data.forEach((row: { values: { timestamp: number }[] }) => {
-      for (let i = 0; i < row.values.length; ++i) {
-        const timestamp = row.values[i]?.timestamp;
-        if (timestamp < timeOldest) timeOldest = timestamp;
-        if (timestamp > timeNewest) timeNewest = timestamp;
-      }
-    });
-
-    batch(() => {
-      setState(
-        "cubeActivity",
-        produce((cubeActivity: State["cubeActivity"]) => {
-          cubeActivity.cubeData = json.data;
-        }),
-      );
-      if (!state.time_begin_ms)
-        setState("time_begin_ms", Math.min(state.time_begin_ms, timeOldest));
-      if (!state.window_begin_ms) setState("window_begin_ms", timeOldest);
-
-      setState("time_end_ms", Math.max(timeNewest, dateNow));
-      if (!state.window_end_ms || state.range_end == 100)
-        setState("window_end_ms", Math.max(timeNewest, dateNow));
-    });
-    return json;
+  if (!response.ok) {
+    clearBusyWaiting();
+    return true;
   }
-  return true;
+  const json = await response.json();
+  if (!json) {
+    clearBusyWaiting();
+    return false;
+  }
+
+  let timeOldest = request_time_start;
+  let timeNewest = request_time_start;
+  json.data.forEach((row: { values: { timestamp: number }[] }) => {
+    for (let i = 0; i < row.values.length; ++i) {
+      const timestamp = row.values[i]?.timestamp;
+      if (timestamp < timeOldest) timeOldest = timestamp;
+      if (timestamp > timeNewest) timeNewest = timestamp;
+    }
+  });
+  batch(() => {
+    // console.log(
+    //   "render1: ",
+    //   json.data.length,
+    //   json.data.reduce((acc: any, row: any) => {
+    //     return acc + row.values.length;
+    //   }, 0),
+    // );
+    // // 2000/3000
+    // // 3000/4000: crash
+    setState(
+      "cubeActivity",
+      produce((cubeActivity: State["cubeActivity"]) => {
+        cubeActivity.cubeData = json.data;
+      }),
+    );
+    if (!state.time_begin_ms)
+      setState("time_begin_ms", Math.min(state.time_begin_ms, timeOldest));
+    if (!state.window_begin_ms) setState("window_begin_ms", timeOldest);
+
+    setState("time_end_ms", Math.max(timeNewest, dateNow));
+    if (!state.window_end_ms || state.range_end == 100)
+      setState("window_end_ms", Math.max(timeNewest, dateNow));
+    clearBusyWaiting();
+  });
+  return json;
 }
 
 async function queryStandardEndpoint(
@@ -160,14 +181,15 @@ async function queryStandardEndpoint(
   state: State,
   setState: (arg0: string, arg1: any, arg2?: any) => void,
 ): Promise<boolean> {
-  if (apiEndpoint !== "health" && apiEndpoint !== "metric") return false;
-  // if (!state.database_instance.dbidentifier) return false;
+  if (apiEndpoint !== ApiEndpoint.metric) return false;
   if (!state.database_list.length) return false;
+  if (!allowInFlight(ApiEndpoint.metric)) return false;
   const safe_prometheus_11kSampleLimit_ms = 10950 * state.interval_ms;
   const request_time_start = Math.max(
     +new Date() - state.timeframe_ms, // query 15 minutes of data max
     +new Date() - safe_prometheus_11kSampleLimit_ms, // ensure we do not query too much data.
   );
+  setInFlight(ApiEndpoint.metric);
   const response = await fetch(
     `/api/v1/${
       apiEndpoint //
@@ -187,11 +209,14 @@ async function queryStandardEndpoint(
     },
   );
 
-  const { data, server_now } = await response.json();
+  clearInFlight(ApiEndpoint.metric);
   if (!response.ok) {
     console.log("Response not ok", response);
+    clearBusyWaiting();
     return false;
   }
+
+  const { data, server_now } = await response.json();
 
   let max_time = 0;
   for (let i = data.length - 1; i >= 0; --i) {
@@ -213,6 +238,7 @@ async function queryStandardEndpoint(
       // let newData = spliceArraysTogetherSkippingDuplicateTimestamps(data, data);
       return data;
     });
+    clearBusyWaiting();
   });
   return true;
 }
