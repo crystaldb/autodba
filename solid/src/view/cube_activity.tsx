@@ -10,7 +10,6 @@ import {
 import { arrange, distinct, fixedOrder, map, tidy } from "@tidyjs/tidy";
 import { CubeDimensionTime } from "./cube_activity_time";
 import { DimensionBars } from "./cube_activity_bars";
-import { isLiveQueryCube } from "../http";
 
 export const cssSelectorGeneral =
   "border border-zinc-200 bg-zinc-100 dark:border-zinc-600 dark:bg-zinc-800 dark:hover:bg-zinc-700 hover:bg-zinc-300 first:rounded-s-lg last:rounded-e-lg";
@@ -26,10 +25,10 @@ export function CubeActivity() {
 
   const legendDistinct = createMemo((): ILegend => {
     return tidy(
-      state.cubeActivity.cubeData,
-      distinct((row) => row.metric[state.cubeActivity.uiLegend]),
+      state.activityCube.cubeData,
+      distinct((row) => row.metric[state.activityCube.uiLegend]),
       map((row) => ({
-        item: row.metric[state.cubeActivity.uiLegend],
+        item: row.metric[state.activityCube.uiLegend],
       })),
       // filter(({ item }) => !!item),
       arrange(["item"]),
@@ -66,13 +65,13 @@ export function CubeActivity() {
           <div class="flex items-baseline gap-3 text-sm">
             <DimensionTabs
               dimension="uiDimension1"
-              cubeData={state.cubeActivity.cubeData}
+              cubeData={state.activityCube.cubeData}
             />
           </div>
 
           <aside
             class={`text-2xs text-neutral-700 dark:text-neutral-300 ${
-              Object.getOwnPropertyNames(state.api.requestInFlight).length
+              Object.getOwnPropertyNames(state.apiThrottle.requestInFlight).length
                 ? "visible"
                 : "invisible"
             }`}
@@ -81,7 +80,7 @@ export function CubeActivity() {
           </aside>
         </section>
         <Dimension1
-          cubeData={state.cubeActivity.cubeData}
+          cubeData={state.activityCube.cubeData}
           legend={legendDistinct()}
         />
       </section>
@@ -127,7 +126,7 @@ function Dimension1(props: IDimension1) {
   return (
     <>
       <Switch>
-        <Match when={state.cubeActivity.uiDimension1 === DimensionName.time}>
+        <Match when={state.activityCube.uiDimension1 === DimensionName.time}>
           <div class={`${props.class}`}>
             <CubeDimensionTime />
           </div>
@@ -158,14 +157,14 @@ function DimensionTabs(props: IDimensionTabs) {
         <Tab
           value={DimensionName.time}
           txt="Time"
-          selected={state.cubeActivity[props.dimension] === DimensionName.time}
+          selected={state.activityCube[props.dimension] === DimensionName.time}
         />
         <For each={listDimensionTabNames()}>
           {(value) => (
             <Tab
               value={value[0]}
               txt={`${value[1]}`}
-              selected={state.cubeActivity[props.dimension] === value[0]}
+              selected={state.activityCube[props.dimension] === value[0]}
             />
           )}
         </For>
@@ -178,7 +177,7 @@ function DimensionTabs(props: IDimensionTabs) {
             dimension={DimensionField.uiFilter1}
             list={[["none", "No filter"], ...listDimensionTabNames()]}
           />
-          <Show when={state.cubeActivity.uiFilter1 !== DimensionName.none}>
+          <Show when={state.activityCube.uiFilter1 !== DimensionName.none}>
             <div class="self-end flex flex-wrap items-center gap-x-3 text-sm">
               <SelectSliceBy
                 dimension="uiFilter1Value"
@@ -188,7 +187,7 @@ function DimensionTabs(props: IDimensionTabs) {
               <button
                 class="hover:underline underline-offset-4 me-4"
                 onClick={() => {
-                  setState("cubeActivity", "uiFilter1Value", "");
+                  setState("activityCube", "uiFilter1Value", "");
                 }}
               >
                 clear
@@ -212,7 +211,7 @@ function Tab(props: { value: string; txt: string; selected: boolean }) {
         "font-semibold text-fuchsia-500 bg-zinc-300 dark:bg-zinc-700":
           props.selected,
       }}
-      onClick={() => setState("cubeActivity", "uiDimension1", props.value)}
+      onClick={() => setState("activityCube", "uiDimension1", props.value)}
     >
       {props.txt}
     </button>
@@ -230,7 +229,7 @@ function SelectSliceBy(props: {
     <select
       onChange={(event) => {
         const value = event.target.value;
-        setState("cubeActivity", props.dimension, value);
+        setState("activityCube", props.dimension, value);
       }}
       class={`bg-transparent text-fuchsia-500 px-2 focus:outline-none ${props.class}`}
     >
@@ -239,7 +238,7 @@ function SelectSliceBy(props: {
           <Option
             value={value[0]}
             txt={value[1]}
-            selected={state.cubeActivity[props.dimension] === value[0]}
+            selected={state.activityCube[props.dimension] === value[0]}
           />
         )}
       </For>

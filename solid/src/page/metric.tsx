@@ -5,7 +5,7 @@ import { ApiEndpoint } from "../state";
 
 export function PageMetric() {
   const { state, setState } = contextState();
-  setState("api", "needDataFor", ApiEndpoint.metric);
+  setState("apiThrottle", "needDataFor", ApiEndpoint.metric);
 
   return (
     <>

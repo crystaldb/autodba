@@ -10,7 +10,6 @@ import {
 } from "./state";
 import { batch } from "solid-js";
 
-let debugFirstTimestamp: number = 0;
 let debugZero = +new Date();
 
 export async function queryDatabaseInstanceInfo(
@@ -36,16 +35,7 @@ export async function queryDatabaseList(
   return true;
 }
 
-export async function queryEndpointData(
-  apiEndpoint: ApiEndpoint,
-  state: State,
-  setState: (arg0: string, arg1: any, arg2?: any) => void,
-): Promise<boolean> {
-  if (apiEndpoint === ApiEndpoint.activity) return queryCube(state, setState);
-  return queryStandardEndpoint(apiEndpoint, state, setState);
-}
-
-export function isLiveQueryCube(state: State): boolean {
+export function isLive(state: State): boolean {
   if (!state.database_list.length) return false;
   if (state.range_end !== 100) return false;
   return true;
@@ -56,12 +46,135 @@ export async function queryEndpointDataIfLive(
   state: State,
   setState: (arg0: string, arg1: any, arg2?: any) => void,
 ): Promise<boolean> {
-  if (!isLiveQueryCube(state)) return false;
-  if (apiEndpoint === ApiEndpoint.activity) return queryCube(state, setState);
-  return queryStandardEndpoint(apiEndpoint, state, setState);
+  if (!isLive(state)) return false;
+  return queryEndpointData(apiEndpoint, state, setState);
 }
 
-export async function queryCube(
+export async function queryEndpointData(
+  apiEndpoint: ApiEndpoint,
+  state: State,
+  setState: (arg0: string, arg1: any, arg2?: any) => void,
+): Promise<boolean> {
+  return apiEndpoint === ApiEndpoint.activity
+    ? queryActivityCube(state, setState)
+    : queryStandardEndpoint(apiEndpoint, state, setState);
+}
+
+async function queryActivityCube(
+  state: State,
+  setState: (arg0: string, arg1: any, arg2?: any) => void,
+): Promise<boolean> {
+  return state.activityCube.uiDimension1 === DimensionName.time
+    ? queryActivityCubeFullTimeframe(state, setState)
+    : queryActivityCubeTimeWindow(state, setState);
+}
+
+async function queryActivityCubeFullTimeframe(
+  state: State,
+  setState: (arg0: string, arg1: any, arg2?: any) => void,
+): Promise<boolean> {
+  if (!state.database_list.length) return false;
+  if (!allowInFlight(ApiEndpoint.activity)) return false;
+
+  const safe_prometheus_11kSampleLimit_ms = (11000 - 50) * state.interval_ms;
+  const dateNow = +new Date();
+
+  const request_time_start = Math.max(
+    0,
+    dateNow - state.timeframe_ms, // query max of 15 minutes of data
+    dateNow - safe_prometheus_11kSampleLimit_ms, // ensure we do not query too much data.
+  );
+  const request_time_stop =
+    Math.max(0, state.range_end === 100 ? dateNow : 0) || dateNow;
+
+  const url = `/api/v1/activity?${
+    true
+      ? ""
+      : `t=${Math.floor(
+          (request_time_start - debugZero) / 1000 / 60,
+        ).toString()}_${Math.floor(
+          (request_time_stop - debugZero) / 1000 / 60,
+        ).toString()}_${Math.floor(
+          (request_time_start - debugZero) / 1000,
+        ).toString()}_${Math.floor(
+          (request_time_stop - debugZero) / 1000,
+        ).toString()}&`
+    //
+  }database_list=(${
+    state.database_list.join("|") //
+  })&start=${
+    request_time_start //
+  }&end=${
+    request_time_stop //
+  }&step=${
+    state.interval_ms //
+  }ms&limitdim=${
+    state.activityCube.limit //
+  }&limitlegend=${
+    state.activityCube.limit //
+  }&legend=${
+    state.activityCube.uiLegend //
+  }&dim=${
+    state.activityCube.uiDimension1 //
+  }&filterdim=${
+    state.activityCube.uiFilter1 !== DimensionName.none
+      ? state.activityCube.uiFilter1
+      : ""
+  }&filterdimselected=${encodeURIComponent(
+    state.activityCube.uiFilter1 !== DimensionName.none
+      ? state.activityCube.uiFilter1Value || ""
+      : "",
+  )}`;
+  setInFlight(ApiEndpoint.activity, url);
+  const response = await fetch(url, { method: "GET" });
+  clearInFlight(ApiEndpoint.activity);
+
+  if (!response.ok) {
+    clearBusyWaiting();
+    return true;
+  }
+  const { data, server_now } = await response.json();
+  if (!data) {
+    clearBusyWaiting();
+    return false;
+  }
+
+  // let timeOldest = request_time_start;
+  // let timeNewest = request_time_start;
+  // json.data.forEach((row: { values: { timestamp: number }[] }) => {
+  //   for (let i = 0; i < row.values.length; ++i) {
+  //     const timestamp = row.values[i]?.timestamp;
+  //     if (timestamp < timeOldest) timeOldest = timestamp;
+  //     if (timestamp > timeNewest) timeNewest = timestamp;
+  //   }
+  // });
+  batch(() => {
+    setState("server_now", server_now);
+    // console.log(
+    //   "render1: ",
+    //   json.data.length,
+    //   json.data.reduce((acc: any, row: any) => {
+    //     return acc + row.values.length;
+    //   }, 0),
+    // );
+    // // 2000/3000
+    // // 3000/4000: crash
+    setState(
+      "activityCube",
+      produce((activityCube: State["activityCube"]) => {
+        activityCube.cubeData = data;
+      }),
+    );
+    // if (!state.time_begin_ms) setState("time_begin_ms", Math.min(state.time_begin_ms, timeOldest));
+    // if (!state.window_begin_ms) setState("window_begin_ms", timeOldest);
+    // setState("time_end_ms", Math.max(timeNewest, dateNow));
+    // if (!state.window_end_ms || state.range_end == 100) setState("window_end_ms", Math.max(timeNewest, dateNow));
+    clearBusyWaiting();
+  });
+  return data;
+}
+
+async function queryActivityCubeTimeWindow(
   state: State,
   setState: (arg0: string, arg1: any, arg2?: any) => void,
   time_begin?: number,
@@ -114,20 +227,20 @@ export async function queryCube(
   }&step=${
     state.interval_ms //
   }ms&limitdim=${
-    state.cubeActivity.limit //
+    state.activityCube.limit //
   }&limitlegend=${
-    state.cubeActivity.limit //
+    state.activityCube.limit //
   }&legend=${
-    state.cubeActivity.uiLegend //
+    state.activityCube.uiLegend //
   }&dim=${
-    state.cubeActivity.uiDimension1 //
+    state.activityCube.uiDimension1 //
   }&filterdim=${
-    state.cubeActivity.uiFilter1 !== DimensionName.none
-      ? state.cubeActivity.uiFilter1
+    state.activityCube.uiFilter1 !== DimensionName.none
+      ? state.activityCube.uiFilter1
       : ""
   }&filterdimselected=${encodeURIComponent(
-    state.cubeActivity.uiFilter1 !== DimensionName.none
-      ? state.cubeActivity.uiFilter1Value || ""
+    state.activityCube.uiFilter1 !== DimensionName.none
+      ? state.activityCube.uiFilter1Value || ""
       : "",
   )}`;
   setInFlight(ApiEndpoint.activity, url);
@@ -144,15 +257,15 @@ export async function queryCube(
     return false;
   }
 
-  let timeOldest = request_time_start;
-  let timeNewest = request_time_start;
-  json.data.forEach((row: { values: { timestamp: number }[] }) => {
-    for (let i = 0; i < row.values.length; ++i) {
-      const timestamp = row.values[i]?.timestamp;
-      if (timestamp < timeOldest) timeOldest = timestamp;
-      if (timestamp > timeNewest) timeNewest = timestamp;
-    }
-  });
+  // let timeOldest = request_time_start;
+  // let timeNewest = request_time_start;
+  // json.data.forEach((row: { values: { timestamp: number }[] }) => {
+  //   for (let i = 0; i < row.values.length; ++i) {
+  //     const timestamp = row.values[i]?.timestamp;
+  //     if (timestamp < timeOldest) timeOldest = timestamp;
+  //     if (timestamp > timeNewest) timeNewest = timestamp;
+  //   }
+  // });
   batch(() => {
     // console.log(
     //   "render1: ",
@@ -164,18 +277,15 @@ export async function queryCube(
     // // 2000/3000
     // // 3000/4000: crash
     setState(
-      "cubeActivity",
-      produce((cubeActivity: State["cubeActivity"]) => {
-        cubeActivity.cubeData = json.data;
+      "activityCube",
+      produce((activityCube: State["activityCube"]) => {
+        activityCube.cubeData = json.data;
       }),
     );
-    if (!state.time_begin_ms)
-      setState("time_begin_ms", Math.min(state.time_begin_ms, timeOldest));
-    if (!state.window_begin_ms) setState("window_begin_ms", timeOldest);
-
-    setState("time_end_ms", Math.max(timeNewest, dateNow));
-    if (!state.window_end_ms || state.range_end == 100)
-      setState("window_end_ms", Math.max(timeNewest, dateNow));
+    // if (!state.time_begin_ms) setState("time_begin_ms", Math.min(state.time_begin_ms, timeOldest));
+    // if (!state.window_begin_ms) setState("window_begin_ms", timeOldest);
+    // setState("time_end_ms", Math.max(timeNewest, dateNow));
+    // if (!state.window_end_ms || state.range_end == 100) setState("window_end_ms", Math.max(timeNewest, dateNow));
     clearBusyWaiting();
   });
   return json;
@@ -228,18 +338,10 @@ async function queryStandardEndpoint(
   }
   // ++max_time; // do not query the same data again
   batch(() => {
-    if (!debugFirstTimestamp) debugFirstTimestamp = data[0].time_ms;
-
-    // console.log( "json",
-    //   (json || []).map((row: { time_ms: any }) => row.time_ms - debugFirstTimestamp),
-    //   json,
-    // );
+    setState("server_now", server_now);
 
     const dataBucketName = apiEndpoint + "Data";
-    setState(dataBucketName, () => {
-      // let newData = spliceArraysTogetherSkippingDuplicateTimestamps(data, data);
-      return data;
-    });
+    setState(dataBucketName, data);
     clearBusyWaiting();
   });
   return true;

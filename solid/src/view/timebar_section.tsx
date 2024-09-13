@@ -12,11 +12,7 @@ import {
   Show,
   untrack,
 } from "solid-js";
-import {
-  isLiveQueryCube,
-  queryEndpointData,
-  queryEndpointDataIfLive,
-} from "../http";
+import { isLive, queryEndpointData, queryEndpointDataIfLive } from "../http";
 import { Popover } from "solid-simple-popover";
 import { flip } from "@floating-ui/dom";
 import { cssSelectorGeneral } from "./cube_activity";
@@ -38,14 +34,14 @@ export function TimebarSection(props: ITimebarSectionProps) {
 
   const eventForceAnUpdateEvenIfNotLive = createMemo((changeCount: number) => {
     state.force_refresh_count;
-    state.api.needDataFor;
+    state.apiThrottle.needDataFor;
     state.interval_ms;
     state.timeframe_ms;
     state.database_instance.dbidentifier;
-    state.cubeActivity.uiLegend;
-    state.cubeActivity.uiDimension1;
-    state.cubeActivity.uiFilter1;
-    state.cubeActivity.uiFilter1Value;
+    state.activityCube.uiLegend;
+    state.activityCube.uiDimension1;
+    state.activityCube.uiFilter1;
+    state.activityCube.uiFilter1Value;
     console.log("changed_timebar_FORCE", changeCount);
     return changeCount + 1;
   }, 0);
@@ -53,7 +49,7 @@ export function TimebarSection(props: ITimebarSectionProps) {
   const eventSomethingChangedSoUpdateIfLive = createMemo(
     (changeCount: number) => {
       // NOTE: TODO by 2024.09.18: nothing is passive here, but likely changing the time window or something may be added in the next couple of days
-      // state.cubeActivity.uiFilter1Value;
+      // state.activityCube.uiFilter1Value;
       console.log("changed_timebar", changeCount);
       return changeCount + 1;
     },
@@ -87,9 +83,9 @@ export function TimebarSection(props: ITimebarSectionProps) {
     eventTimeoutOccurred();
 
     untrack(() => {
-      if (state.api.needDataFor) {
+      if (state.apiThrottle.needDataFor) {
         // console.log("queryEndpointDataIfLive");
-        queryEndpointDataIfLive(state.api.needDataFor, state, setState);
+        queryEndpointDataIfLive(state.apiThrottle.needDataFor, state, setState);
       }
     });
   });
@@ -98,9 +94,9 @@ export function TimebarSection(props: ITimebarSectionProps) {
     eventForceAnUpdateEvenIfNotLive();
 
     untrack(() => {
-      if (state.api.needDataFor) {
+      if (state.apiThrottle.needDataFor) {
         // console.log("FORCE queryEndpointData");
-        queryEndpointData(state.api.needDataFor, state, setState);
+        queryEndpointData(state.apiThrottle.needDataFor, state, setState);
       }
     });
   });
@@ -124,12 +120,12 @@ export function TimebarSection(props: ITimebarSectionProps) {
         <IntervalSelector class="self-stretch" />
       </div>
       <EchartsTimebar class="h-12 min-w-[calc(16rem)] max-w-[calc(1280px-39rem)] w-[calc(100vw-39rem)] xs:w-[calc(100vw-25rem)]" />
-      <Show when={debug && state.api.requestWaitingCount}>
+      <Show when={debug && state.apiThrottle.requestWaitingCount}>
         <section class="flex flex-col leading-none text-2xs">
-          <p>{JSON.stringify(state.api.needDataFor)}</p>
-          <p>{JSON.stringify(state.api.requestInFlight)}</p>
+          <p>{JSON.stringify(state.apiThrottle.needDataFor)}</p>
+          <p>{JSON.stringify(state.apiThrottle.requestInFlight)}</p>
           <p>
-            {state.api.requestWaiting}, {state.api.requestWaitingCount}
+            {state.apiThrottle.requestWaiting}, {state.apiThrottle.requestWaitingCount}
           </p>
         </section>
       </Show>
@@ -290,13 +286,13 @@ function LiveIndicator() {
   return (
     <div
       class="border border-yellow-300 dark:border-0 dark:border-green-500 px-2.5 py-2.5 rounded-md bg-yellow-200 text-black font-semibold leading-none"
-      classList={{ invisible: !isLiveQueryCube(state) }}
+      classList={{ invisible: !isLive(state) }}
     >
       <span class="invisible">.</span>
       LIVE
       <span
         class={
-          Object.getOwnPropertyNames(state.api.requestInFlight).length
+          Object.getOwnPropertyNames(state.apiThrottle.requestInFlight).length
             ? "visible"
             : "invisible"
         }
