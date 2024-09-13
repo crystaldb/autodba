@@ -35,7 +35,7 @@ export function CubeActivity() {
       arrange(["item"]),
       arrange([
         // move CPU to the end of the list iff it exists
-        fixedOrder((row) => row.item, ["CPU"], { position: "end" }),
+        fixedOrder((row) => row.item, ["CPU", "other"], { position: "end" }),
       ]),
       map((item, index) => ({
         item: item.item!,
@@ -101,9 +101,13 @@ function Legend(props: PropsLegend) {
           <div class="flex items-center gap-x-3 max-w-48">
             <div class={`rounded-md size-4 shrink-0 ${item.colorBg}`} />
             <p
-              class={`line-clamp-4 hover:line-clamp-none hover:dark:bg-black hover:bg-zinc-100 hover:z-10 hover:rounded-md hover:p-2 ${item.colorText}`}
+              class={item.colorText}
+              classList={{
+                "line-clamp-4 hover:line-clamp-none hover:dark:bg-black hover:bg-zinc-100 hover:z-10 hover:rounded-md hover:p-2 hover:ps-0":
+                  (item.item || "").length > 50,
+              }}
             >
-              {item.item}{" "}
+              {item.item}
             </p>
           </div>
         )}

@@ -46,7 +46,7 @@ export function TimebarSection(props: ITimebarSectionProps) {
     state.cubeActivity.uiDimension1;
     state.cubeActivity.uiFilter1;
     state.cubeActivity.uiFilter1Value;
-    console.log("changed timebar FORCE", changeCount);
+    console.log("changed_timebar_FORCE", changeCount);
     return changeCount + 1;
   }, 0);
 
@@ -54,7 +54,7 @@ export function TimebarSection(props: ITimebarSectionProps) {
     (changeCount: number) => {
       // NOTE: TODO by 2024.09.18: nothing is passive here, but likely changing the time window or something may be added in the next couple of days
       // state.cubeActivity.uiFilter1Value;
-      console.log("changed timebar", changeCount);
+      console.log("changed_timebar", changeCount);
       return changeCount + 1;
     },
     0,
@@ -63,7 +63,6 @@ export function TimebarSection(props: ITimebarSectionProps) {
   const doRestartTheTimeout = () => {
     const interval_ms = state.interval_ms;
 
-    console.log("SETUP TIMEOUT", interval_ms);
     if (timeout) {
       clearTimeout(timeout);
       timeout = null;
@@ -71,7 +70,6 @@ export function TimebarSection(props: ITimebarSectionProps) {
     if (destroyed) return;
     timeout = setTimeout(() => {
       runWithOwner(owner, () => {
-        console.log("TIMEOUT", interval_ms);
         setTimeoutOccurred((prev) => prev + 1);
         doRestartTheTimeout();
       });
@@ -90,7 +88,7 @@ export function TimebarSection(props: ITimebarSectionProps) {
 
     untrack(() => {
       if (state.api.needDataFor) {
-        console.log("queryEndpointDataIfLive");
+        // console.log("queryEndpointDataIfLive");
         queryEndpointDataIfLive(state.api.needDataFor, state, setState);
       }
     });
@@ -101,14 +99,14 @@ export function TimebarSection(props: ITimebarSectionProps) {
 
     untrack(() => {
       if (state.api.needDataFor) {
-        console.log("FORCE queryEndpointData");
+        // console.log("FORCE queryEndpointData");
         queryEndpointData(state.api.needDataFor, state, setState);
       }
     });
   });
 
   onCleanup(() => {
-    console.log("CLEANUP interval");
+    // console.log("CLEANUP interval");
     destroyed = true;
     if (timeout) {
       clearTimeout(timeout);

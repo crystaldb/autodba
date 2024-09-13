@@ -145,7 +145,7 @@ export function CubeDimensionTime() {
       arrange(["out"]),
       arrange([
         // move CPU to the end of the list iff it exists
-        fixedOrder((row) => row.out, ["CPU"], { position: "end" }),
+        fixedOrder((row) => row.out, ["CPU", "other"], { position: "end" }),
       ]),
       map((val) => val.out),
     ) as string[];

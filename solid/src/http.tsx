@@ -92,15 +92,18 @@ export async function queryCube(
     ) ||
     dateNow;
 
-  const url = `/api/v1/activity?a=${
-    Math.floor((request_time_start - debugZero) / 1000 / 60).toString() +
-    ":" +
-    Math.floor((request_time_stop - debugZero) / 1000 / 60).toString() +
-    "=" +
-    Math.floor((request_time_start - debugZero) / 1000).toString() +
-    ":" +
-    Math.floor((request_time_stop - debugZero) / 1000).toString() +
-    "&"
+  const url = `/api/v1/activity?${
+    true
+      ? ""
+      : `t=${Math.floor(
+          (request_time_start - debugZero) / 1000 / 60,
+        ).toString()}_${Math.floor(
+          (request_time_stop - debugZero) / 1000 / 60,
+        ).toString()}_${Math.floor(
+          (request_time_start - debugZero) / 1000,
+        ).toString()}_${Math.floor(
+          (request_time_stop - debugZero) / 1000,
+        ).toString()}&`
     //
   }database_list=(${
     state.database_list.join("|") //
@@ -110,7 +113,9 @@ export async function queryCube(
     request_time_stop //
   }&step=${
     state.interval_ms //
-  }ms&limit=${
+  }ms&limitdim=${
+    state.cubeActivity.limit //
+  }&limitlegend=${
     state.cubeActivity.limit //
   }&legend=${
     state.cubeActivity.uiLegend //
