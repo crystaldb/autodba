@@ -2,7 +2,6 @@ package prometheus
 
 import (
 	"context"
-	// "encoding/json"
 	"errors"
 	"fmt"
 	"github.com/prometheus/client_golang/api"
@@ -213,7 +212,7 @@ func (r repository) ExecuteRaw(query string, options map[string]string) ([]map[s
 		// 	return nil, err
 		// }
 
-		fmt.Println("Vector result (pretty-printed JSON):")
+		// fmt.Println("Vector result (pretty-printed JSON):")
 		// fmt.Println(string(jsonData))
 		return jsonVector, nil
 	case model.Matrix:
@@ -229,7 +228,7 @@ func (r repository) ExecuteRaw(query string, options map[string]string) ([]map[s
 		// 	return nil, err
 		// }
 
-		fmt.Println("Matrix result (pretty-printed JSON):")
+		// fmt.Println("Matrix result (pretty-printed JSON):")
 		// fmt.Println(string(jsonData))
 
 		return jsonMatrix, nil
@@ -265,104 +264,6 @@ func processVector(vector model.Vector) ([]map[string]interface{}, error) {
 	return jsonVector, nil
 }
 
-// func processMatrix(matrix model.Matrix, isTimeSeriesQuery bool, legend string, limitLegend int) ([]map[string]interface{}, error) {
-// 	if len(matrix) == 0 {
-// 		return []map[string]interface{}{}, nil
-// 	}
-
-// 	metricValueSums := make(map[string]float64)
-// 	metricTimeSeries := make(map[string][]map[string]interface{})
-
-// 	var jsonMatrix []map[string]interface{}
-// 	for _, stream := range matrix {
-// 		metricMap := make(map[string]interface{})
-// 		for k, v := range stream.Metric {
-// 			metricMap[string(k)] = string(v)
-// 		}
-
-// 		values := make([]map[string]interface{}, len(stream.Values))
-// 		for i, sample := range stream.Values {
-// 			values[i] = map[string]interface{}{
-// 				"timestamp": int64(sample.Timestamp),
-// 				"value":     float64(sample.Value),
-// 			}
-
-// 			if !isTimeSeriesQuery {
-// 				break
-// 			}
-// 		}
-
-// 		jsonStream := map[string]interface{}{
-// 			"metric": metricMap,
-// 			"values": values,
-// 		}
-// 		jsonMatrix = append(jsonMatrix, jsonStream)
-// 	}
-
-// 	return jsonMatrix, nil
-// }
-
-// func processMatrix(matrix model.Matrix, isTimeSeriesQuery bool, legend string, limitLegend int) ([]map[string]interface{}, error) {
-// 	if len(matrix) == 0 {
-// 		return []map[string]interface{}{}, nil
-// 	}
-
-// 	// Step 1: Aggregate values for each metric
-// 	metricMap := make(map[string]float64)
-// 	for _, stream := range matrix {
-// 		metricName := string(stream.Metric[model.LabelName(legend)])
-// 		metricMap[metricName] = 0.0
-// 		sum := 0.0
-// 		for _, sample := range stream.Values {
-// 			sum += float64(sample.Value)
-// 		}
-// 		metricMap[metricName] += sum
-// 	}
-
-// 	// Step 2: Sort metrics by aggregated value
-// 	type metricEntry struct {
-// 		Name  string
-// 		Value float64
-// 	}
-// 	var entries []metricEntry
-// 	for name, value := range metricMap {
-// 		entries = append(entries, metricEntry{Name: name, Value: value})
-// 	}
-
-// 	sort.Slice(entries, func(i, j int) bool {
-// 		return entries[i].Value > entries[j].Value
-// 	})
-
-// 	// Step 3: Prepare the output with limit_legend
-// 	var jsonMatrix []map[string]interface{}
-// 	limit := limitLegend
-// 	if limit == -1 || limit > len(entries) {
-// 		limit = len(entries)
-// 	}
-
-// 	// Add top metrics
-// 	for i := 0; i < limit-1 && i < len(entries); i++ {
-// 		jsonStream := map[string]interface{}{
-// 			"metric": entries[i].Name,
-// 			"value":  entries[i].Value,
-// 		}
-// 		jsonMatrix = append(jsonMatrix, jsonStream)
-// 	}
-
-// 	// Step 4: Aggregate remaining metrics into "other"
-// 	if limit < len(entries) {
-// 		var otherSum float64
-// 		for i := limit - 1; i < len(entries); i++ {
-// 			otherSum += entries[i].Value
-// 		}
-// 		jsonMatrix = append(jsonMatrix, map[string]interface{}{
-// 			"metric": "other",
-// 			"value":  otherSum,
-// 		})
-// 	}
-
-//		return jsonMatrix, nil
-//	}
 func processMatrix(matrix model.Matrix, isTimeSeriesQuery bool, legend string, limitLegend int) ([]map[string]interface{}, error) {
 
 	if len(matrix) == 0 {
@@ -441,8 +342,6 @@ func processMatrix(matrix model.Matrix, isTimeSeriesQuery bool, legend string, l
 		jsonMatrix = append(jsonMatrix, jsonStream)
 	}
 
-	// so now we need all the timestamps for others and sums
-	// So loop through and for every timestamp, add it to map and update its sum
 	otherTimestampSums := make(map[int64]float64)
 
 	for i := limitLegend - 1; i < len(metricsSums); i++ {
