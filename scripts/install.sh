@@ -253,9 +253,9 @@ if $SYSTEM_INSTALL && command_exists "systemctl"; then
     if ! id -u autodba >/dev/null 2>&1; then
         echo "Creating 'autodba' user..."
 
-        if command -v useradd >/dev/null 2>&1; then
+        if command_exists "useradd"; then
             useradd --system --user-group --home-dir /usr/local/autodba --shell /bin/bash autodba
-        elif command -v adduser >/dev/null 2>&1; then
+        elif command_exists "adduser"; then
             adduser --system --group --home /usr/local/autodba --shell /bin/bash autodba
         else
             echo "Error: Neither 'useradd' nor 'adduser' found. Please create the user manually."
