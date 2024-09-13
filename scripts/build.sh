@@ -9,8 +9,17 @@ SOURCE_DIR=$(dirname "$(readlink -f "$0")")
 
 cd $SOURCE_DIR/..
 
-# Define version
-VERSION="0.1.0"
+# Get the latest git tag as the version
+VERSION=$(git describe --tags --abbrev=0 2>/dev/null)
+if [ -z "$VERSION" ]; then
+  echo "Warning: No git tags found. Please create a tag before building. Using default version v0.1.0."
+  VERSION="v0.1.0"
+fi
+# Remove the leading 'v' if it exists
+VERSION=${VERSION#v}
+
+# Define Prometheus version
+PROMETHEUS_VERSION="2.42.0"
 
 # Define output directories
 OUTPUT_DIR="$SOURCE_DIR/../build_output"
