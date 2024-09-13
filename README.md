@@ -77,16 +77,22 @@ PostgreSQL connection strings (`<CONNECTION_STRING_TO_YOUR_POSTGRES_DB>`) should
 3. Run the installation script
 
 ```bash
-sudo ./autodba/scripts/install.sh --system --package autodba-0.1.0.tar.gz --config autodba_config.json
+sudo bash install.sh --system --package autodba-0.1.0.tar.gz --config autodba_config.json
 ```
 
 4. Verify the AutoDBA service is running
 
 ```bash
-sudo systemctl status autodba
+systemctl is-active autodba
 ```
 
+This command should output `active`.
+
 5. Connect to the AutoDBA web portal on port 4000. If you have installed AutoDBA on a remote server you can use [ssh tunneling](https://www.ssh.com/academy/ssh/tunneling-example) to access it.
+For example:
+```
+ssh -L4000:localhost:4000 <MY_USERNAME>@<MY_HOSTNAME>
+```
 
 ## 🗺️ Roadmap
 
