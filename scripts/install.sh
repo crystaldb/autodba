@@ -63,6 +63,18 @@ else
     PARENT_DIR="$HOME/autodba"
 fi
 
+command_exists() {
+    command -v "$1" >/dev/null 2>&1
+}
+
+# Stop the service if it's already running
+if $SYSTEM_INSTALL && command_exists "systemctl"; then
+    if systemctl is-active --quiet autodba; then
+        echo "Stopping running AutoDBA service..."
+        systemctl stop autodba
+    fi
+fi
+
 # Define paths relative to PARENT_DIR
 INSTALL_DIR="$PARENT_DIR/bin"
 WEBAPP_DIR="$PARENT_DIR/share/webapp"
@@ -148,10 +160,6 @@ install_tar_gz() {
     rm -rf $TMP_DIR/autodba-*
 
     chmod +x "${INSTALL_DIR}/autodba-entrypoint.sh"
-}
-
-command_exists() {
-    command -v "$1" >/dev/null 2>&1
 }
 
 # Install Prometheus in custom path
