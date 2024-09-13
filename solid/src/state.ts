@@ -35,12 +35,14 @@ export type State = {
   force_refresh_count: number;
 };
 
+/** ApiType: State used for handling API request throttling
+  * CONTEXT: It's possible for some data API requests to take multiple seconds to return. Given that we are polling, we do not want multiple requests to be inflight at the same time, which can overload the backend, and slow down the frontend given how many graphs are rendered. As such, we want to throttle API requests such that we drop/skip any requests that are made while another request is inflight; while also making sure that if 1 or more requests are dropped/skipped because another request is inflight, that the last request (the most recent request) is run as soon as the inflight request completes. This enables the user to miss requests, or to change the page (which requires a new request) without incurring the cost of old, useless requests. To implement this, when each request is made, we check `allowInFlight`, and then either execute the query immediately, or we save the request name as `requestWaiting` and return, effectively dropping/skipping the request for now. If new requests are made, we set `requestWaiting` to the new request name and don't worry about what the previous value was; though, we do increment the `requestWaitingCount` for debugging/observability.  As soon as the current inFlight request is completed, whether successfully or with an error, the `requestWaiting` is executed and then set to undefined, along with clearing the `requestWaitingCount`.
+  */
 export type ApiType = {
-  needDataFor?: ApiEndpoint;
-  requestInFlight: Record<string, number>;
-  requestWaiting?: ApiEndpoint;
-  requestWaitingCount?: number;
-  // CONTEXT: It's possible for some data API requests to take multiple seconds to return. Given that we are polling, we do not want multiple requests to be inflight at the same time, which can overload the backend, and slow down the frontend given how many graphs are rendered. As such, we want to throttle API requests such that we drop/skip any requests that are made while another request is inflight; while also making sure that if 1 or more requests are dropped/skipped because another request is inflight, that the last request (the most recent request) is run as soon as the inflight request completes. This enables the user to miss requests, or to change the page (which requires a new request) without incurring the cost of old, useless requests. To implement this, when each request is made, we check `allowInFlight`, and then either execute the query immediately, or we save the request name as `requestWaiting` and return, effectively dropping/skipping the request for now. If new requests are made, we set `requestWaiting` to the new request name and don't worry about what the previous value was; though, we do increment the `requestWaitingCount` for debugging/observability.  As soon as the current inFlight request is completed, whether successfully or with an error, the `requestWaiting` is executed and then set to undefined, along with clearing the `requestWaitingCount`.
+  needDataFor?: ApiEndpoint; /// Defines which endpoint is needed by the UI
+  requestInFlight: Record<string, number>; /// Defines which endpoints are currently in flight
+  requestWaiting?: ApiEndpoint; /// Defines which endpoint is waiting to be executed
+  requestWaitingCount?: number; /// Defines how many requests were skipped while waiting for the requestInFlight to complete
 };
 
 export enum ApiEndpoint {
