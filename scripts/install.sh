@@ -93,19 +93,29 @@ esac
 echo "Detected architecture: $ARCH_SUFFIX"
 echo "Installing AutoDBA under: $PARENT_DIR"
 
+# Set the temporary directory based on system install
+if [ "$SYSTEM_INSTALL" = true ]; then
+    TMP_DIR="/tmp/sysautodba"
+    mkdir -p "$TMP_DIR"
+else
+    TMP_DIR="/tmp"
+fi
+
 # Function to install Prometheus in a custom path
 install_prometheus() {
     if [ -f "$PROMETHEUS_INSTALL_DIR/prometheus" ]; then
         echo "Prometheus is already installed."
     else
         echo "Installing Prometheus in custom path: $PROMETHEUS_INSTALL_DIR..."
-        wget -qO- https://github.com/prometheus/prometheus/releases/download/v${PROMETHEUS_VERSION}/prometheus-${PROMETHEUS_VERSION}.linux-${ARCH_SUFFIX}.tar.gz | tar -xzf - -C /tmp/
+        wget -qO- https://github.com/prometheus/prometheus/releases/download/v${PROMETHEUS_VERSION}/prometheus-${PROMETHEUS_VERSION}.linux-${ARCH_SUFFIX}.tar.gz | tar -xzf - -C $TMP_DIR/
         mkdir -p "$PROMETHEUS_INSTALL_DIR"
-        cp /tmp/prometheus-${PROMETHEUS_VERSION}.linux-${ARCH_SUFFIX}/prometheus "$PROMETHEUS_INSTALL_DIR/"
-        cp /tmp/prometheus-${PROMETHEUS_VERSION}.linux-${ARCH_SUFFIX}/promtool "$PROMETHEUS_INSTALL_DIR/"
+        cp $TMP_DIR/prometheus-${PROMETHEUS_VERSION}.linux-${ARCH_SUFFIX}/prometheus "$PROMETHEUS_INSTALL_DIR/"
+        cp $TMP_DIR/prometheus-${PROMETHEUS_VERSION}.linux-${ARCH_SUFFIX}/promtool "$PROMETHEUS_INSTALL_DIR/"
         mkdir -p ${PROMETHEUS_CONFIG_DIR}
-        cp -r /tmp/prometheus-${PROMETHEUS_VERSION}.linux-${ARCH_SUFFIX}/consoles ${PROMETHEUS_CONFIG_DIR}/
-        cp -r /tmp/prometheus-${PROMETHEUS_VERSION}.linux-${ARCH_SUFFIX}/console_libraries ${PROMETHEUS_CONFIG_DIR}/
+        cp -r $TMP_DIR/prometheus-${PROMETHEUS_VERSION}.linux-${ARCH_SUFFIX}/consoles ${PROMETHEUS_CONFIG_DIR}/
+        cp -r $TMP_DIR/prometheus-${PROMETHEUS_VERSION}.linux-${ARCH_SUFFIX}/console_libraries ${PROMETHEUS_CONFIG_DIR}/
+        # Cleanup
+        rm -rf $TMP_DIR/prometheus-*
     fi
 }
 
@@ -115,28 +125,32 @@ install_tar_gz() {
     echo "Creating directories..."
     mkdir -p "${INSTALL_DIR}" "${WEBAPP_DIR}" "${EXPORTER_DIR}" "${PROMETHEUS_CONFIG_DIR}" "${AUTODBA_CONFIG_DIR}" "${PROMETHEUS_STORAGE_DIR}"
     echo "Extracting .tar.gz package $PACKAGE_FILE..."
-    tar -xzvf "$PACKAGE_FILE" -C /tmp/
+    tar -xzvf "$PACKAGE_FILE" -C $TMP_DIR/
     
-    cp /tmp/autodba-*/bin/autodba-bff-${ARCH_SUFFIX} "${INSTALL_DIR}/autodba-bff"
-    cp -r /tmp/autodba-*/webapp/* "${WEBAPP_DIR}/"
+    cp $TMP_DIR/autodba-*/bin/autodba-bff-${ARCH_SUFFIX} "${INSTALL_DIR}/autodba-bff"
+    cp -r $TMP_DIR/autodba-*/webapp/* "${WEBAPP_DIR}/"
 
     # Copy each exporter into its own directory
     mkdir -p "${EXPORTER_DIR}/postgres_exporter"
     mkdir -p "${EXPORTER_DIR}/sql_exporter"
     mkdir -p "${EXPORTER_DIR}/rds_exporter"
     
-    cp -r /tmp/autodba-*/exporters/${ARCH_SUFFIX}/postgres_exporter/* "${EXPORTER_DIR}/postgres_exporter/"
-    cp -r /tmp/autodba-*/exporters/${ARCH_SUFFIX}/sql_exporter/* "${EXPORTER_DIR}/sql_exporter/"
-    cp -r /tmp/autodba-*/exporters/${ARCH_SUFFIX}/rds_exporter/* "${EXPORTER_DIR}/rds_exporter/"
+    cp -r $TMP_DIR/autodba-*/exporters/${ARCH_SUFFIX}/postgres_exporter/* "${EXPORTER_DIR}/postgres_exporter/"
+    cp -r $TMP_DIR/autodba-*/exporters/${ARCH_SUFFIX}/sql_exporter/* "${EXPORTER_DIR}/sql_exporter/"
+    cp -r $TMP_DIR/autodba-*/exporters/${ARCH_SUFFIX}/rds_exporter/* "${EXPORTER_DIR}/rds_exporter/"
 
-    cp /tmp/autodba-*/monitor/prometheus/prometheus.yml "${PROMETHEUS_CONFIG_DIR}/prometheus.yml"
-    cp -r /tmp/autodba-*/monitor/prometheus/sql_exporter/* "${EXPORTER_DIR}/sql_exporter/"
-    cp -r /tmp/autodba-*/monitor/prometheus/rds_exporter/* "${EXPORTER_DIR}/rds_exporter/"
-    cp /tmp/autodba-*/config/config.json "${AUTODBA_CONFIG_DIR}/config.json"
-    cp /tmp/autodba-*/entrypoint.sh "${INSTALL_DIR}/autodba-entrypoint.sh"
+    cp $TMP_DIR/autodba-*/monitor/prometheus/prometheus.yml "${PROMETHEUS_CONFIG_DIR}/prometheus.yml"
+    cp -r $TMP_DIR/autodba-*/monitor/prometheus/sql_exporter/* "${EXPORTER_DIR}/sql_exporter/"
+    cp -r $TMP_DIR/autodba-*/monitor/prometheus/rds_exporter/* "${EXPORTER_DIR}/rds_exporter/"
+    cp $TMP_DIR/autodba-*/config/config.json "${AUTODBA_CONFIG_DIR}/config.json"
+    cp $TMP_DIR/autodba-*/entrypoint.sh "${INSTALL_DIR}/autodba-entrypoint.sh"
+
+    # Cleanup
+    rm -rf $TMP_DIR/autodba-*
 
     chmod +x "${INSTALL_DIR}/autodba-entrypoint.sh"
 }
+
 
 # Function to install from .deb
 install_deb() {
@@ -281,6 +295,7 @@ ExecStart=${INSTALL_DIR}/autodba-entrypoint.sh
 Restart=on-failure
 User=$USER
 Environment="PARENT_DIR=${PARENT_DIR}"
+Environment="CONFIG_FILE=${AUTODBA_CONFIG_FILE}"
 
 [Install]
 WantedBy=multi-user.target
