@@ -27,7 +27,7 @@ interface PropsLegend {
 
 export function CubeDimensionTime(props: PropsLegend) {
   const { state, setState } = contextState();
-  setState("api", "needDataFor", ["cube_time"]);
+  // setState("api", "needDataFor", ["cube_time"]);
   const changed = createMemo((changeCount: number) => {
     // state.timeframe_ms; // handled by createEffect locally
     state.database_instance.dbidentifier;

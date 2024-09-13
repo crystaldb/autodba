@@ -1,18 +1,8 @@
-import { init } from "echarts";
 import { batch } from "solid-js";
 import { createStore, produce } from "solid-js/store";
-import {queryCube, queryEndpointData} from "./http";
+import {queryEndpointData} from "./http";
 
 let dateZero = +new Date();
-
-export type ApiType = {
-  needDataFor: ("metric" | "cube_time" | "cube_bar")[];
-  inFlight: Record<string, number>;
-  busyWaiting?: ApiEndpoint;
-  busyWaitingCount?: number;
-};
-
-export type ApiEndpoint = "metric" | "activity";
 
 export type State = {
   api: ApiType;
@@ -47,6 +37,19 @@ export type State = {
   window_begin_ms: number;
   window_end_ms: number;
 };
+
+export type ApiType = {
+  // needDataFor: ("metric" | "cube_time" | "cube_bar")[];
+  requestInFlight: Record<string, number>;
+  requestWaiting?: ApiEndpoint;
+  requestWaitingCount?: number;
+  // CONTEXT: It's possible for some data API requests to take multiple seconds to return. Given that we are polling, we do not want multiple requests to be inflight at the same time, which can overload the backend, and slow down the frontend given how many graphs are rendered. As such, we want to throttle API requests such that we drop/skip any requests that are made while another request is inflight; while also making sure that if 1 or more requests are dropped/skipped because another request is inflight, that the last request (the most recent request) is run as soon as the inflight request completes. This enables the user to miss requests, or to change the page (which requires a new request) without incurring the cost of old, useless requests. To implement this, when each request is made, we check `allowInFlight`, and then either execute the query immediately, or we save the request name as `requestWaiting` and return, effectively dropping/skipping the request for now. If new requests are made, we set `requestWaiting` to the new request name and don't worry about what the previous value was; though, we do increment the `requestWaitingCount` for debugging/observability.  As soon as the current inFlight request is completed, whether successfully or with an error, the `requestWaiting` is executed and then set to undefined, along with clearing the `requestWaitingCount`.
+};
+
+export enum ApiEndpoint {
+  activity = "activity",
+  metric = "metric",
+}
 
 export enum DimensionName {
   none = "none",
@@ -243,8 +246,8 @@ const initial_interval_ms = 10 * 1000; // 10 seconds
 
 const [state, setState]: [State, any] = createStore({
   api: {
-    needDataFor: [],
-    inFlight: {},
+    // needDataFor: [],
+    requestInFlight: {},
   },
   cubeActivity: {
     cubeData: [],
@@ -311,29 +314,29 @@ export function setBusyWaiting(endpoint: ApiEndpoint) {
   setState(
     "api",
     produce((api: ApiType) => {
-      api.busyWaiting = endpoint;
-      api.busyWaitingCount = (api.busyWaitingCount || 0) + 1;
+      api.requestWaiting = endpoint;
+      api.requestWaitingCount = (api.requestWaitingCount || 0) + 1;
     }),
   );
 }
 export function clearBusyWaiting() {
-  const busyWaiting = state.api.busyWaiting;
-  // const busyWaitingCount = state.api.busyWaitingCount;
+  const requestWaiting = state.api.requestWaiting;
+  // const requestWaitingCount = state.api.requestWaitingCount;
   setState(
     "api",
     produce((api: ApiType) => {
-      api.busyWaiting = undefined!;
-      api.busyWaitingCount = undefined!;
+      api.requestWaiting = undefined!;
+      api.requestWaitingCount = undefined!;
     }),
   );
-  if (busyWaiting) {
-    // console.log("Querying now", busyWaitingCount || 0, busyWaiting);
-    queryEndpointData(busyWaiting, state, setState);
+  if (requestWaiting) {
+    // console.log("Querying now", requestWaitingCount || 0, requestWaiting);
+    queryEndpointData(requestWaiting, state, setState);
   }
 }
 
 export function allowInFlight(endpoint: ApiEndpoint): boolean {
-  if (state.api.inFlight[endpoint] || state.api.busyWaiting) {
+  if (state.api.requestInFlight[endpoint] || state.api.requestWaiting) {
     setBusyWaiting(endpoint);
     return false;
   }
@@ -344,7 +347,7 @@ export function setInFlight(endpoint: ApiEndpoint) {
   setState(
     "api",
     produce((api: ApiType) => {
-      api.inFlight[endpoint] = +new Date() - dateZero;
+      api.requestInFlight[endpoint] = +new Date() - dateZero;
     }),
   );
 }
@@ -353,7 +356,7 @@ export function clearInFlight(endpoint: ApiEndpoint) {
   setState(
     "api",
     produce((api: ApiType) => {
-      api.inFlight[endpoint] = undefined!;
+      api.requestInFlight[endpoint] = undefined!;
     }),
   );
 }

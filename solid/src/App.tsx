@@ -1,7 +1,7 @@
 import { NavTopConfig1 } from "./NavTop";
 import { Navigate } from "@solidjs/router";
 import { ContextState, contextState } from "./context_state";
-import { useState } from "./state";
+import { ApiEndpoint, useState } from "./state";
 import { PageActivity } from "./page/activity";
 import { PageMetric } from "./page/metric";
 import { Router, Route } from "@solidjs/router";
@@ -40,7 +40,7 @@ export default function App(): JSX.Element {
             path="/activity"
             component={PageWrapper.bind(
               null,
-              "activity",
+              ApiEndpoint.activity,
               "pageActivity",
               PageActivity,
               databaseIsReady,
@@ -50,7 +50,7 @@ export default function App(): JSX.Element {
             path="/metric"
             component={PageWrapper.bind(
               null,
-              "metric",
+              ApiEndpoint.metric,
               "pageMetric",
               PageMetric,
               databaseIsReady,
@@ -64,7 +64,7 @@ export default function App(): JSX.Element {
 }
 
 function PageWrapper(
-  apiEndpoint: string,
+  apiEndpoint: ApiEndpoint,
   testid: string,
   page: any,
   databaseIsReady: any,

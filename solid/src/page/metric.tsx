@@ -4,7 +4,7 @@ import { Echarts2 } from "../view/echarts2";
 
 export function PageMetric() {
   const { state, setState } = contextState();
-  setState("api", "needDataFor", ["metric"]);
+  // setState("api", "needDataFor", ["metric"]);
 
   return (
     <>

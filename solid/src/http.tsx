@@ -1,6 +1,7 @@
 import { produce } from "solid-js/store";
 import {
   allowInFlight,
+  ApiEndpoint,
   clearBusyWaiting,
   clearInFlight,
   DimensionName,
@@ -36,26 +37,27 @@ export async function queryDatabaseList(
 }
 
 export async function queryEndpointData(
-  apiEndpoint: string,
+  apiEndpoint: ApiEndpoint,
   state: State,
   setState: (arg0: string, arg1: any, arg2?: any) => void,
 ): Promise<boolean> {
-  if (apiEndpoint === "activity") return queryCubeIfLive(state, setState);
+  if (apiEndpoint === ApiEndpoint.activity)
+    return queryCubeIfLive(state, setState);
   return queryStandardEndpoint(apiEndpoint, state, setState);
 }
 
 export async function queryEndpointDataIfLive(
-  apiEndpoint: string,
+  apiEndpoint: ApiEndpoint,
   state: State,
   setState: (arg0: string, arg1: any, arg2?: any) => void,
 ): Promise<boolean> {
   if (!isLiveQueryCube(state)) return false;
-  if (apiEndpoint === "activity") return queryCubeIfLive(state, setState);
+  if (apiEndpoint === ApiEndpoint.activity)
+    return queryCubeIfLive(state, setState);
   return queryStandardEndpoint(apiEndpoint, state, setState);
 }
 
 export function isLiveQueryCube(state: State): boolean {
-  // if (!state.database_instance.dbidentifier) return false;
   if (!state.database_list.length) return false;
   if (state.range_end !== 100) return false;
   return true;
@@ -76,7 +78,7 @@ export async function queryCube(
   time_end?: number,
 ): Promise<boolean> {
   if (!state.database_list.length) return false;
-  if (!allowInFlight("activity")) return false;
+  if (!allowInFlight(ApiEndpoint.activity)) return false;
 
   const safe_prometheus_11kSampleLimit_ms = 10950 * state.interval_ms;
   const dateNow = +new Date();
@@ -100,7 +102,7 @@ export async function queryCube(
     ) ||
     dateNow;
 
-  setInFlight("activity");
+  setInFlight(ApiEndpoint.activity);
   const response = await fetch(
     `/api/v1/activity?a=${
       (request_time_start - debugZero).toString() +
@@ -135,7 +137,7 @@ export async function queryCube(
       method: "GET",
     },
   );
-  clearInFlight("activity");
+  clearInFlight(ApiEndpoint.activity);
 
   if (!response.ok) {
     clearBusyWaiting();
@@ -156,8 +158,16 @@ export async function queryCube(
       if (timestamp > timeNewest) timeNewest = timestamp;
     }
   });
-
   batch(() => {
+    // console.log(
+    //   "render1: ",
+    //   json.data.length,
+    //   json.data.reduce((acc: any, row: any) => {
+    //     return acc + row.values.length;
+    //   }, 0),
+    // );
+    // // 2000/3000
+    // // 3000/4000: crash
     setState(
       "cubeActivity",
       produce((cubeActivity: State["cubeActivity"]) => {
@@ -181,16 +191,15 @@ async function queryStandardEndpoint(
   state: State,
   setState: (arg0: string, arg1: any, arg2?: any) => void,
 ): Promise<boolean> {
-  if (apiEndpoint !== "health" && apiEndpoint !== "metric") return false;
+  if (apiEndpoint !== ApiEndpoint.metric) return false;
   if (!state.database_list.length) return false;
-  if (!allowInFlight("metric")) return false;
-  // if (!state.database_instance.dbidentifier) return false;
+  if (!allowInFlight(ApiEndpoint.metric)) return false;
   const safe_prometheus_11kSampleLimit_ms = 10950 * state.interval_ms;
   const request_time_start = Math.max(
     +new Date() - state.timeframe_ms, // query 15 minutes of data max
     +new Date() - safe_prometheus_11kSampleLimit_ms, // ensure we do not query too much data.
   );
-  setInFlight("metric");
+  setInFlight(ApiEndpoint.metric);
   const response = await fetch(
     `/api/v1/${
       apiEndpoint //
@@ -210,7 +219,7 @@ async function queryStandardEndpoint(
     },
   );
 
-  clearInFlight("metric");
+  clearInFlight(ApiEndpoint.metric);
   if (!response.ok) {
     console.log("Response not ok", response);
     clearBusyWaiting();

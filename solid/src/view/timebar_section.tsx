@@ -25,12 +25,14 @@ export function TimebarSection(props: ITimebarSectionProps) {
         <IntervalSelector class="self-stretch" />
       </div>
       <EchartsTimebar class="h-12 min-w-[calc(16rem)] max-w-[calc(1280px-39rem)] w-[calc(100vw-39rem)] xs:w-[calc(100vw-25rem)]" />
-      <Show when={debug}>
+      <Show when={debug && state.api.requestWaitingCount}>
         <section class="flex flex-col leading-none text-2xs">
+          {/*
           <p>{JSON.stringify(state.api.needDataFor)}</p>
-          <p>{JSON.stringify(state.api.inFlight)}</p>
+          */}
+          <p>{JSON.stringify(state.api.requestInFlight)}</p>
           <p>
-            {state.api.busyWaiting}, {state.api.busyWaitingCount}
+            {state.api.requestWaiting}, {state.api.requestWaitingCount}
           </p>
         </section>
       </Show>
@@ -192,7 +194,17 @@ function LiveIndicator() {
       class="border border-yellow-300 dark:border-0 dark:border-green-500 px-2.5 py-2.5 rounded-md bg-yellow-200 text-black font-semibold leading-none"
       classList={{ invisible: !isLiveQueryCube(state) }}
     >
+      <span class="invisible">.</span>
       LIVE
+      <span
+        class={
+          Object.getOwnPropertyNames(state.api.requestInFlight).length
+            ? "visible"
+            : "invisible"
+        }
+      >
+        .
+      </span>
     </div>
   );
 }
