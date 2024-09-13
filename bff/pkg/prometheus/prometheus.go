@@ -201,7 +201,7 @@ func (r repository) ExecuteRaw(query string, options map[string]string) ([]map[s
 	switch r := result.(type) {
 	case model.Vector:
 		fmt.Printf("Vector: %v\n", r)
-		jsonVector, err := processVector(r)
+		jsonVector, err := processVector(r, legend, limitLegend)
 		if err != nil {
 			return nil, err
 		}
@@ -212,7 +212,7 @@ func (r repository) ExecuteRaw(query string, options map[string]string) ([]map[s
 		// 	return nil, err
 		// }
 
-		// fmt.Println("Vector result (pretty-printed JSON):")
+		fmt.Println("Vector result (pretty-printed JSON):")
 		// fmt.Println(string(jsonData))
 		return jsonVector, nil
 	case model.Matrix:
@@ -228,7 +228,7 @@ func (r repository) ExecuteRaw(query string, options map[string]string) ([]map[s
 		// 	return nil, err
 		// }
 
-		// fmt.Println("Matrix result (pretty-printed JSON):")
+		fmt.Println("Matrix result (pretty-printed JSON):")
 		// fmt.Println(string(jsonData))
 
 		return jsonMatrix, nil
@@ -237,30 +237,90 @@ func (r repository) ExecuteRaw(query string, options map[string]string) ([]map[s
 		return nil, errors.New("Failed to parse Prometheus result. Result is of unknown type")
 	}
 }
-func processVector(vector model.Vector) ([]map[string]interface{}, error) {
+func processVector(vector model.Vector, legend string, limitLegend int) ([]map[string]interface{}, error) {
 	if len(vector) == 0 {
 		return []map[string]interface{}{}, nil
 	}
 
+	if legend == "" || limitLegend == -1 || limitLegend > len(vector) {
+		var jsonVector []map[string]interface{}
+		for _, sample := range vector {
+			metricMap := make(map[string]interface{})
+			for k, v := range sample.Metric {
+				metricMap[string(k)] = string(v)
+			}
+
+			jsonSample := map[string]interface{}{
+				"metric": metricMap,
+				"values": []map[string]interface{}{
+					{
+						"timestamp": int64(sample.Timestamp),
+						"value":     float64(sample.Value),
+					},
+				},
+			}
+			jsonVector = append(jsonVector, jsonSample)
+		}
+
+		return jsonVector, nil
+	}
+
+	type metricSum struct {
+		index int
+		sum   float64
+	}
+
+	var metricsSums []metricSum
+
+	for i, sample := range vector {
+		metricsSums = append(metricsSums, metricSum{index: i, sum: float64(sample.Value)})
+	}
+
+	sort.Slice(metricsSums, func(i, j int) bool {
+		return metricsSums[i].sum > metricsSums[j].sum
+	})
+
 	var jsonVector []map[string]interface{}
-	for _, sample := range vector {
-		metricMap := make(map[string]interface{})
-		for k, v := range sample.Metric {
-			metricMap[string(k)] = string(v)
+
+	for i := 0; i <= limitLegend-2; i++ {
+		value := map[string]interface{}{
+			"timestamp": int64(vector[metricsSums[i].index].Timestamp),
+			"value":     float64(vector[metricsSums[i].index].Value),
+		}
+
+		labels := make(map[string]string)
+		for k, v := range vector[metricsSums[i].index].Metric {
+			labels[string(k)] = string(v)
 		}
 
 		jsonSample := map[string]interface{}{
-			"metric": metricMap,
+			"metric": labels,
 			"values": []map[string]interface{}{
-				{
-					"timestamp": int64(sample.Timestamp),
-					"value":     float64(sample.Value),
-				},
+				value,
 			},
 		}
 		jsonVector = append(jsonVector, jsonSample)
 	}
 
+	otherValuesSum := 0.0
+
+	for i := limitLegend - 1; i < len(metricsSums); i++ {
+		otherValuesSum += float64(vector[metricsSums[i].index].Value)
+	}
+
+	jsonSample := map[string]interface{}{
+		"metric": map[string]interface{}{
+			legend: "other",
+		},
+		"values": []map[string]interface{}{
+			map[string]interface{}{
+				"timestamp": int64(vector[metricsSums[limitLegend-1].index].Timestamp),
+				"value":     otherValuesSum,
+			},
+		},
+	}
+
+	jsonVector = append(jsonVector, jsonSample)
 	return jsonVector, nil
 }
 
