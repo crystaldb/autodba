@@ -16,7 +16,6 @@ while [[ $# -gt 0 ]]; do
     case "$1" in
         --system)
             SYSTEM_INSTALL=true
-            PARENT_DIR="/usr/local/autodba"
             shift
             ;;
         --install-dir)
@@ -56,10 +55,10 @@ if [ -z "$PACKAGE_FILE" ]; then
 fi
 
 # Set the parent directory
-if [ "$SYSTEM_INSTALL" = true ]; then
-    PARENT_DIR="/usr/local/autodba"
-elif [ -n "$USER_INSTALL_DIR" ]; then
+if [ -n "$USER_INSTALL_DIR" ]; then
     PARENT_DIR="$USER_INSTALL_DIR"
+elif [ "$SYSTEM_INSTALL" = true ]; then
+    PARENT_DIR="/usr/local/autodba"
 else
     PARENT_DIR="$HOME/autodba"
 fi
@@ -251,6 +250,11 @@ fi
 
 # Systemctl service installation (only if installing as root)
 if $SYSTEM_INSTALL && command_exists "systemctl"; then
+    if ! id -u autodba >/dev/null 2>&1; then
+        echo "Creating 'autodba' user..."
+        useradd --system --user-group --home-dir /usr/local/autodba --shell /bin/bash autodba
+    fi
+    chown -R autodba:autodba "$PARENT_DIR"
     echo "Installing systemd service..."
     cat << EOF | tee /etc/systemd/system/autodba.service
 [Unit]
@@ -262,7 +266,8 @@ Type=simple
 WorkingDirectory=${AUTODBA_CONFIG_DIR}
 ExecStart=${INSTALL_DIR}/autodba-entrypoint.sh
 Restart=on-failure
-User=$USER
+User=autodba
+Group=autodba
 Environment="PARENT_DIR=${PARENT_DIR}"
 Environment="CONFIG_FILE=${AUTODBA_CONFIG_FILE}"
 
