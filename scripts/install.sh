@@ -42,7 +42,7 @@ usage() {
     echo "Usage: $0 --package <path/to/package> [--system] [--install-dir <path>] [--config <config.json>]"
     echo ""
     echo "Options:"
-    echo "  --package      Path to the package file (.tar.gz, .deb, or .rpm) [REQUIRED]"
+    echo "  --package      Path to the package file (.tar.gz) [REQUIRED]"
     echo "  --system       Install globally under /usr/local/autodba"
     echo "  --install-dir  Specify a custom installation directory. If not specified, $HOME/autodba is used."
     echo "  --config       Path to the AutoDBA config file (optional), or use standard input if not provided."
@@ -151,33 +151,8 @@ install_tar_gz() {
     chmod +x "${INSTALL_DIR}/autodba-entrypoint.sh"
 }
 
-
-# Function to install from .deb
-install_deb() {
-    if ! command_exists dpkg; then
-        echo "Warning: 'dpkg' is not installed. To install on Debian-based systems, run:"
-        echo "  sudo apt-get install dpkg"
-        exit 1
-    fi
-
-    echo "Installing .deb package $PACKAGE_FILE..."
-    dpkg -i "$PACKAGE_FILE"
-}
-
 command_exists() {
     command -v "$1" >/dev/null 2>&1
-}
-
-# Function to install from .rpm
-install_rpm() {
-    if ! command_exists rpm; then
-        echo "Warning: 'rpm' is not installed. To install on RedHat-based systems, run:"
-        echo "  sudo apt-get install rpm"
-        exit 1
-    fi
-
-    echo "Installing .rpm package $PACKAGE_FILE..."
-    rpm -i "$PACKAGE_FILE"
 }
 
 # Install Prometheus in custom path
@@ -187,12 +162,6 @@ install_prometheus
 case "$PACKAGE_FILE" in
     *.tar.gz)
         install_tar_gz
-        ;;
-    *.deb)
-        install_deb
-        ;;
-    *.rpm)
-        install_rpm
         ;;
     *)
         echo "Unsupported package format: $PACKAGE_FILE"
