@@ -321,7 +321,7 @@ func processMatrix(matrix model.Matrix, isTimeSeriesQuery bool, legend string, l
 
 	var jsonMatrix []map[string]interface{}
 
-	for i := 0; i < limitLegend-2; i++ {
+	for i := 0; i <= limitLegend-2; i++ {
 		var values []map[string]interface{}
 
 		for _, sample := range matrix[metricsSums[i].index].Values {
