@@ -1,9 +1,8 @@
 import { contextState } from "../context_state";
-import { createMemo, createResource, For, getOwner, JSX, Show } from "solid-js";
-import { DimensionName, CubeData } from "../state";
+import { createMemo, For, JSX } from "solid-js";
+import { DimensionName, CubeData, ApiEndpoint } from "../state";
 import { first, groupBy, sum, summarize, tidy } from "@tidyjs/tidy";
 import { ILegend } from "./cube_activity";
-import { queryCube } from "../http";
 
 interface IDimensionBars {
   cubeData: CubeData;
@@ -13,78 +12,59 @@ interface IDimensionBars {
 
 export function DimensionBars(props: IDimensionBars) {
   const { state, setState } = contextState();
-  setState("api", "needDataFor", ["cube_bar"]);
-  const changed = createMemo((changeCount: number) => {
-    // state.timeframe_ms; // handled by createEffect locally
-    state.range_begin;
-    state.range_end;
-    state.database_instance.dbidentifier;
-    state.cubeActivity.uiLegend;
-    state.cubeActivity.uiDimension1;
-    state.cubeActivity.uiFilter1;
-    state.cubeActivity.uiFilter1Value;
-    console.log("changed", changeCount);
-    return changeCount + 1;
-  }, 0);
+  setState("api", "needDataFor", ApiEndpoint.activity);
 
-  const [resourceChanged] = createResource(changed, () => {
-    return queryCube(state, setState);
-  });
-
-  const cubeDataGrouped = createMemo(
-    (): {
+  const cubeDataGrouped = createMemo<
+    {
       dimensionValue: string;
       total: number;
       records: {
         metric: { [key: string]: string };
         values: { value: any }[];
       }[];
-    }[] => {
-      if (state.cubeActivity.uiDimension1 === DimensionName.time) {
-        return [];
-      }
-      let cubeData = tidy(
-        props.cubeData,
-        // filter( (d) => !!d.metric[state.cubeActivity.uiDimension1] && (d.metric[state.cubeActivity.uiDimension1] === DimensionName.time || !!d.metric[state.cubeActivity.uiDimension1]),),
-        groupBy(
-          (d) => d.metric[state.cubeActivity.uiDimension1],
-          [
-            summarize({
-              dimensionValue: first(
-                (d: {
-                  metric: Record<string, string>;
-                  values: { value: number }[];
-                }) => {
-                  return d.metric[state.cubeActivity.uiDimension1];
-                },
-              ),
-              total: sum(
-                (d: { values: { value: number }[] }) => d.values[0].value,
-              ),
-              records: (d) => d,
-            }),
-          ],
-        ),
-      );
-      // console.log("cubeDataGrouped", cubeData.length);
-      return cubeData;
-    },
-  );
+    }[]
+  >(() => {
+    props.cubeData;
+    if (state.cubeActivity.uiDimension1 === DimensionName.time) {
+      return [];
+    }
+    let cubeData = tidy(
+      props.cubeData,
+      groupBy(
+        (d) => d.metric[state.cubeActivity.uiDimension1],
+        [
+          summarize({
+            dimensionValue: first(
+              (d: {
+                metric: Record<string, string>;
+                values: { value: number }[];
+              }) => {
+                return d.metric[state.cubeActivity.uiDimension1];
+              },
+            ),
+            total: sum(
+              (d: { values: { value: number }[] }) => d.values[0].value,
+            ),
+            records: (d) => d,
+          }),
+        ],
+      ),
+    );
+    return cubeData;
+  });
 
   return (
     <section class={`flex flex-col gap-4 ${props.class}`}>
-      <Show when={resourceChanged} keyed>
-        <For each={cubeDataGrouped()}>
-          {({ total, dimensionValue, records }) => (
-            <DimensionRowGrouped
-              len={total}
-              txt={dimensionValue}
-              records={records}
-              legend={props.legend}
-            />
-          )}
-        </For>
-      </Show>
+      <For each={cubeDataGrouped()}>
+        {({ total, dimensionValue, records }) => (
+          <DimensionRowGrouped
+            len={total}
+            txt={dimensionValue}
+            records={records}
+            legend={props.legend}
+          />
+        )}
+      </For>
     </section>
   );
 }

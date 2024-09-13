@@ -1,13 +1,7 @@
 import { EChartsAutoSize } from "echarts-solid";
 import { contextState } from "../context_state";
-import {
-  createMemo,
-  createResource,
-  getOwner,
-  mergeProps,
-  Show,
-} from "solid-js";
-import { datazoomEventHandler, listColors } from "../state";
+import { createMemo, mergeProps, Show } from "solid-js";
+import { ApiEndpoint, datazoomEventHandler, listColors } from "../state";
 import {
   arrange,
   distinct,
@@ -16,32 +10,12 @@ import {
   pivotWider,
   tidy,
 } from "@tidyjs/tidy";
-import { ILegend } from "./cube_activity";
-import { queryCubeIfLive } from "../http";
 import { truncateString } from "../util";
 import moment from "moment-timezone";
 
-interface PropsLegend {
-  legend: ILegend;
-}
-
-export function CubeDimensionTime(props: PropsLegend) {
+export function CubeDimensionTime() {
   const { state, setState } = contextState();
-  // setState("api", "needDataFor", ["cube_time"]);
-  const changed = createMemo((changeCount: number) => {
-    // state.timeframe_ms; // handled by createEffect locally
-    state.database_instance.dbidentifier;
-    state.cubeActivity.uiLegend;
-    state.cubeActivity.uiDimension1;
-    state.cubeActivity.uiFilter1;
-    state.cubeActivity.uiFilter1Value;
-    console.log("changed", changeCount);
-    return changeCount + 1;
-  }, 0);
-
-  const [resourceChanged] = createResource(changed, () => {
-    return queryCubeIfLive(state, setState);
-  });
+  setState("api", "needDataFor", ApiEndpoint.activity);
 
   const timezone = moment.tz.guess();
   const timezoneAbbreviation = moment.tz(moment(), timezone).format("z");
@@ -149,7 +123,6 @@ export function CubeDimensionTime(props: PropsLegend) {
         Array.prototype.concat(
           ...rows.map((row) =>
             row.values.map((val) => ({
-              // timestamp: val.timestamp, [row.metric[state.cubeActivity.uiLegend]]: val.value,
               ...row.metric,
               ...val,
             })),
@@ -174,7 +147,6 @@ export function CubeDimensionTime(props: PropsLegend) {
         // move CPU to the end of the list iff it exists
         fixedOrder((row) => row.out, ["CPU"], { position: "end" }),
       ]),
-      // slice(0, 15),
       map((val) => val.out),
     ) as string[];
   });
@@ -182,10 +154,7 @@ export function CubeDimensionTime(props: PropsLegend) {
   return (
     <section class="flex flex-col">
       <section class="h-[28rem]">
-        <Show
-          when={JSON.stringify(resourceChanged) + JSON.stringify(props.legend)}
-          keyed
-        >
+        <Show when={state.cubeActivity.cubeData} keyed>
           <EChartsAutoSize
             // @ts-expect-error
             option={mergeProps(base, {
@@ -197,18 +166,13 @@ export function CubeDimensionTime(props: PropsLegend) {
                 type: "bar",
                 barWidth: "50%",
                 stack: "time",
-                // emphasis: { focus: "series", },
               })),
-              // { label: { show: true, formatter: (params: { value: number }) => { //     return `val1: ${params.value.wait_event_name}: ${params.value.value}`; }, }, },
-              // { name: "vCPUs", type: "line", data: [20, 20, 20, 20, 20], markLine: { data: [{ type: "average", name: "Avg" }], },
-              // },
               dataZoom: [
                 {
                   show: false,
-                  //   realtime: true,
+                  realtime: false,
                   start: state.range_begin,
                   end: state.range_end,
-                  //   xAxisIndex: [0, 1],
                 },
                 //
                 // {
@@ -216,7 +180,6 @@ export function CubeDimensionTime(props: PropsLegend) {
                 //   realtime: true,
                 //   start: state.range_begin,
                 //   end: state.range_end,
-                //   // xAxisIndex: [0, 1],
                 // },
               ],
             })}

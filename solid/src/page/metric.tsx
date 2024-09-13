@@ -1,10 +1,11 @@
 import { For } from "solid-js";
 import { contextState } from "../context_state";
 import { Echarts2 } from "../view/echarts2";
+import { ApiEndpoint } from "../state";
 
 export function PageMetric() {
   const { state, setState } = contextState();
-  // setState("api", "needDataFor", ["metric"]);
+  setState("api", "needDataFor", ApiEndpoint.metric);
 
   return (
     <>

@@ -1,20 +1,95 @@
 import { contextState } from "../context_state";
-import { batch, createEffect, For, JSX, Show } from "solid-js";
-import { isLiveQueryCube } from "../http";
+import {
+  batch,
+  createEffect,
+  createMemo,
+  createSignal,
+  For,
+  getOwner,
+  JSX,
+  onCleanup,
+  runWithOwner,
+  Show,
+  untrack,
+} from "solid-js";
+import { isLiveQueryCube, queryEndpointDataIfLive } from "../http";
 import { Popover } from "solid-simple-popover";
 import { flip } from "@floating-ui/dom";
 import { cssSelectorGeneral } from "./cube_activity";
 import { EchartsTimebar } from "./echarts_timebar";
 
 let debug = true;
-let debugZero = +new Date();
 
 interface ITimebarSectionProps {
   class?: string;
 }
 
 export function TimebarSection(props: ITimebarSectionProps) {
-  const { state } = contextState();
+  const { state, setState } = contextState();
+  let owner = getOwner();
+  let timeout: any;
+  let destroyed = false;
+
+  const [eventTimeoutOccurred, setTimeoutOccurred] = createSignal<number>(0);
+
+  const eventSomethingChanged = createMemo((changeCount: number) => {
+    state.force_refresh_count;
+    state.api.needDataFor;
+    state.interval_ms;
+    state.timeframe_ms;
+    state.database_instance.dbidentifier;
+    state.cubeActivity.uiLegend;
+    state.cubeActivity.uiDimension1;
+    state.cubeActivity.uiFilter1;
+    state.cubeActivity.uiFilter1Value;
+    console.log("changed timebar", changeCount);
+    return changeCount + 1;
+  }, 0);
+
+  const doRestartTheTimeout = () => {
+    const interval_ms = state.interval_ms;
+
+    console.log("SETUP TIMEOUT", interval_ms);
+    if (timeout) {
+      clearTimeout(timeout);
+      timeout = null;
+    }
+    if (destroyed) return;
+    timeout = setTimeout(() => {
+      runWithOwner(owner, () => {
+        console.log("TIMEOUT", interval_ms);
+        setTimeoutOccurred((prev) => prev + 1);
+        doRestartTheTimeout();
+      });
+    }, interval_ms);
+  };
+
+  createEffect(() => {
+    eventSomethingChanged();
+    doRestartTheTimeout();
+  });
+
+  createEffect(() => {
+    eventSomethingChanged();
+    eventTimeoutOccurred();
+
+    untrack(() => {
+      if (state.api.needDataFor) {
+        console.log("queryEndpointDataIfLive");
+        queryEndpointDataIfLive(state.api.needDataFor, state, setState);
+      }
+    });
+  });
+
+  onCleanup(() => {
+    console.log("CLEANUP interval");
+    destroyed = true;
+    if (timeout) {
+      clearTimeout(timeout);
+      timeout = null;
+    }
+  });
+
   return (
     <section
       class={`flex flex-col sm:flex-row items-center gap-4 ${props.class}`}
@@ -27,9 +102,7 @@ export function TimebarSection(props: ITimebarSectionProps) {
       <EchartsTimebar class="h-12 min-w-[calc(16rem)] max-w-[calc(1280px-39rem)] w-[calc(100vw-39rem)] xs:w-[calc(100vw-25rem)]" />
       <Show when={debug && state.api.requestWaitingCount}>
         <section class="flex flex-col leading-none text-2xs">
-          {/*
           <p>{JSON.stringify(state.api.needDataFor)}</p>
-          */}
           <p>{JSON.stringify(state.api.requestInFlight)}</p>
           <p>
             {state.api.requestWaiting}, {state.api.requestWaitingCount}
@@ -62,6 +135,7 @@ function TimeframeSelector() {
 
   createEffect(() => {
     const timeframe_ms = state.timeframe_ms;
+
     batch(() => {
       // console.log("update time");
       setState("time_begin_ms", () => state.time_end_ms - timeframe_ms);
@@ -210,6 +284,7 @@ function LiveIndicator() {
 }
 
 function TimebarDebugger() {
+  let debugZero = +new Date();
   const { state } = contextState();
 
   return (

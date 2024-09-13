@@ -22,10 +22,6 @@ export type State = {
     instance_class: string;
   };
   database_list: string[];
-  healthData: {
-    cpu: number[];
-    time: number[];
-  };
   metricData: any[];
 
   timeframe_ms: number;
@@ -36,10 +32,11 @@ export type State = {
   time_end_ms: number;
   window_begin_ms: number;
   window_end_ms: number;
+  force_refresh_count: number;
 };
 
 export type ApiType = {
-  // needDataFor: ("metric" | "cube_time" | "cube_bar")[];
+  needDataFor?: ApiEndpoint;
   requestInFlight: Record<string, number>;
   requestWaiting?: ApiEndpoint;
   requestWaitingCount?: number;
@@ -246,7 +243,6 @@ const initial_interval_ms = 10 * 1000; // 10 seconds
 
 const [state, setState]: [State, any] = createStore({
   api: {
-    // needDataFor: [],
     requestInFlight: {},
   },
   cubeActivity: {
@@ -254,16 +250,10 @@ const [state, setState]: [State, any] = createStore({
     limit: 15,
     uiLegend: DimensionName.wait_event_name,
     uiDimension1: DimensionName.time,
-    // uiDimension1: DimensionName.query,
-    // uiDimension1: DimensionName.usename,
     uiFilter1: DimensionName.none,
     uiFilter1Value: undefined,
   },
   metricData: [],
-  healthData: {
-    cpu: [],
-    time: [],
-  },
   database_instance: {
     dbidentifier: "",
     engine: "",
@@ -279,6 +269,7 @@ const [state, setState]: [State, any] = createStore({
   time_end_ms: appZero,
   window_begin_ms: appZero - initial_timeframe_ms,
   window_end_ms: appZero,
+  force_refresh_count: 0,
 });
 
 export function useState(): { state: State; setState: any } {
@@ -288,6 +279,7 @@ export function useState(): { state: State; setState: any } {
 export const datazoomEventHandler = (event: any) => {
   console.log("Chart2 Data Zoom", event);
   batch(() => {
+    const original_range_end: number = state.range_end;
     const range_begin: number = event.start || event.batch?.at(0)?.start || 0.0;
     const range_end: number = event.end || event.batch?.at(0)?.end || 100.0;
     setState("range_begin", range_begin);
@@ -307,6 +299,11 @@ export const datazoomEventHandler = (event: any) => {
     console.log("windows", window_begin_ms, window_end_ms);
     setState("window_begin_ms", window_begin_ms);
     setState("window_end_ms", window_end_ms);
+
+    if (range_end === 100.0 && original_range_end !== 100.0 && state.api.needDataFor) {
+      console.log("Forcing a refresh", state.force_refresh_count);
+      setState("force_refresh_count", (prev: number) => prev + 1);
+    }
   });
 };
 
@@ -321,7 +318,7 @@ export function setBusyWaiting(endpoint: ApiEndpoint) {
 }
 export function clearBusyWaiting() {
   const requestWaiting = state.api.requestWaiting;
-  // const requestWaitingCount = state.api.requestWaitingCount;
+  const requestWaitingCount = state.api.requestWaitingCount;
   setState(
     "api",
     produce((api: ApiType) => {
@@ -330,7 +327,7 @@ export function clearBusyWaiting() {
     }),
   );
   if (requestWaiting) {
-    // console.log("Querying now", requestWaitingCount || 0, requestWaiting);
+    console.log("requestWaiting now", requestWaitingCount || 0, requestWaiting);
     queryEndpointData(requestWaiting, state, setState);
   }
 }
