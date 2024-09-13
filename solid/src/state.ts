@@ -282,28 +282,21 @@ export function useState(): { state: State; setState: any } {
 export const datazoomEventHandler = (event: any) => {
   console.log("Chart2 Data Zoom", event);
   batch(() => {
-    const original_range_end: number = state.range_end;
+    const wasOriginalRangeEndEqualTo100: boolean = state.range_end === 100.0;
     const range_begin: number = event.start || event.batch?.at(0)?.start || 0.0;
     const range_end: number = event.end || event.batch?.at(0)?.end || 100.0;
+    const window_begin_ms = Math.floor( getTimeAtPercentage(state, range_begin));
+    const window_end_ms = Math.max(
+      window_begin_ms+1,
+      Math.ceil( getTimeAtPercentage(state, range_end)),
+    );
     setState("range_begin", range_begin);
     setState("range_end", range_end);
-    console.log("range", range_begin, range_end);
-    const window_begin_ms = Math.floor(
-      (state.time_end_ms - state.time_begin_ms) * (range_begin / 100) +
-        state.time_begin_ms,
-    );
-    const window_end_ms = Math.max(
-      window_begin_ms,
-      Math.ceil(
-        (state.time_end_ms - state.time_begin_ms) * (range_end / 100) +
-          state.time_begin_ms,
-      ),
-    );
-    console.log("windows", window_begin_ms, window_end_ms);
     setState("window_begin_ms", window_begin_ms);
     setState("window_end_ms", window_end_ms);
+    console.log("range", range_begin, range_end, "window", window_begin_ms, window_end_ms);
 
-    if (range_end === 100.0 && original_range_end !== 100.0 && state.api.needDataFor) {
+    if (range_end === 100.0 && !wasOriginalRangeEndEqualTo100 && state.api.needDataFor) {
       console.log("Forcing a refresh", state.force_refresh_count);
       setState("force_refresh_count", (prev: number) => prev + 1);
     }
@@ -360,4 +353,8 @@ export function clearInFlight(endpoint: ApiEndpoint) {
       api.requestInFlight[endpoint] = undefined!;
     }),
   );
+}
+
+function getTimeAtPercentage(state: {time_end_ms: number; time_begin_ms: number;}, numberBetween0And100: number): number {
+  return ((state.time_end_ms - state.time_begin_ms) * (numberBetween0And100 / 100)) + state.time_begin_ms
 }
