@@ -1,5 +1,5 @@
 import { contextState } from "../context_state";
-import { createMemo, For, JSX } from "solid-js";
+import { createMemo, For, JSX, Show } from "solid-js";
 import { DimensionName, CubeData, ApiEndpoint } from "../state";
 import { first, groupBy, sum, summarize, tidy } from "@tidyjs/tidy";
 import { ILegend } from "./cube_activity";

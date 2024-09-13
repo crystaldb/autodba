@@ -10,6 +10,7 @@ import {
 import { arrange, distinct, fixedOrder, map, tidy } from "@tidyjs/tidy";
 import { CubeDimensionTime } from "./cube_activity_time";
 import { DimensionBars } from "./cube_activity_bars";
+import { isLiveQueryCube } from "../http";
 
 export const cssSelectorGeneral =
   "border border-zinc-200 bg-zinc-100 dark:border-zinc-600 dark:bg-zinc-800 dark:hover:bg-zinc-700 hover:bg-zinc-300 first:rounded-s-lg last:rounded-e-lg";
@@ -48,7 +49,7 @@ export function CubeActivity() {
 
   return (
     <section class="flex flex-col-reverse md:flex-row items-start gap-4">
-      <section class={cssSectionHeading}>
+      <section class={`max-w-90 ${cssSectionHeading}`}>
         <h2 class="font-medium text-lg">Legend</h2>
         <div
           class={`flex text-sm px-2.5 py-2 border-s rounded-lg ${cssSelectorGeneral}`}
@@ -68,6 +69,16 @@ export function CubeActivity() {
               cubeData={state.cubeActivity.cubeData}
             />
           </div>
+
+          <aside
+            class={`text-2xs text-neutral-700 dark:text-neutral-300 ${
+              Object.getOwnPropertyNames(state.api.requestInFlight).length
+                ? "visible"
+                : "invisible"
+            }`}
+          >
+            Updating
+          </aside>
         </section>
         <Dimension1
           cubeData={state.cubeActivity.cubeData}
@@ -87,9 +98,13 @@ function Legend(props: PropsLegend) {
     <section class="flex flex-col gap-4">
       <For each={props.legend}>
         {(item) => (
-          <div class="flex items-center gap-x-3">
-            <div class={`rounded-md size-4 ${item.colorBg}`} />
-            <span class={item.colorText}>{item.item}</span>
+          <div class="flex items-center gap-x-3 max-w-48">
+            <div class={`rounded-md size-4 shrink-0 ${item.colorBg}`} />
+            <p
+              class={`line-clamp-4 hover:line-clamp-none hover:dark:bg-black hover:bg-zinc-100 hover:z-10 hover:rounded-md hover:p-2 ${item.colorText}`}
+            >
+              {item.item}{" "}
+            </p>
           </div>
         )}
       </For>

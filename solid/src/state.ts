@@ -43,6 +43,7 @@ export type ApiType = {
   requestInFlight: Record<string, number>; /// Defines which endpoints are currently in flight
   requestWaiting?: ApiEndpoint; /// Defines which endpoint is waiting to be executed
   requestWaitingCount?: number; /// Defines how many requests were skipped while waiting for the requestInFlight to complete
+  requestInFlightUrl?: string; /// Defines the URL of the request that is currently in flight
 };
 
 export enum ApiEndpoint {
@@ -342,11 +343,12 @@ export function allowInFlight(endpoint: ApiEndpoint): boolean {
   return true
 }
 
-export function setInFlight(endpoint: ApiEndpoint) {
+export function setInFlight(endpoint: ApiEndpoint, url?: string) {
   setState(
     "api",
     produce((api: ApiType) => {
       api.requestInFlight[endpoint] = +new Date() - dateZero;
+      api.requestInFlightUrl = url;
     }),
   );
 }

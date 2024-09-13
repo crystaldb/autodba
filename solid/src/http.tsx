@@ -70,17 +70,17 @@ export async function queryCube(
   if (!state.database_list.length) return false;
   if (!allowInFlight(ApiEndpoint.activity)) return false;
 
-  const safe_prometheus_11kSampleLimit_ms = 10950 * state.interval_ms;
+  const safe_prometheus_11kSampleLimit_ms = (11000 - 50) * state.interval_ms;
   const dateNow = +new Date();
 
   const request_time_start =
-    time_begin ||
+    // time_begin ||
     Math.max(
       0,
       dateNow - state.timeframe_ms, // query max of 15 minutes of data
       dateNow - safe_prometheus_11kSampleLimit_ms, // ensure we do not query too much data.
-      state.time_begin_ms,
-      state.window_begin_ms,
+      // state.time_begin_ms,
+      // state.window_begin_ms,
     );
   const request_time_stop =
     time_end ||
@@ -92,41 +92,41 @@ export async function queryCube(
     ) ||
     dateNow;
 
-  setInFlight(ApiEndpoint.activity);
-  const response = await fetch(
-    `/api/v1/activity?a=${
-      (request_time_start - debugZero).toString() +
-      ":" +
-      (request_time_stop - debugZero).toString() +
-      "&"
-      //
-    }database_list=(${
-      state.database_list.join("|") //
-    })&start=${
-      request_time_start //
-    }&end=${
-      request_time_stop //
-    }&step=${
-      state.interval_ms //
-    }ms&limit=${
-      state.cubeActivity.limit //
-    }&legend=${
-      state.cubeActivity.uiLegend //
-    }&dim=${
-      state.cubeActivity.uiDimension1 //
-    }&filterdim=${
-      state.cubeActivity.uiFilter1 !== DimensionName.none
-        ? state.cubeActivity.uiFilter1
-        : ""
-    }&filterdimselected=${encodeURIComponent(
-      state.cubeActivity.uiFilter1 !== DimensionName.none
-        ? state.cubeActivity.uiFilter1Value || ""
-        : "",
-    )}`,
-    {
-      method: "GET",
-    },
-  );
+  const url = `/api/v1/activity?a=${
+    Math.floor((request_time_start - debugZero) / 1000 / 60).toString() +
+    ":" +
+    Math.floor((request_time_stop - debugZero) / 1000 / 60).toString() +
+    "=" +
+    Math.floor((request_time_start - debugZero) / 1000).toString() +
+    ":" +
+    Math.floor((request_time_stop - debugZero) / 1000).toString() +
+    "&"
+    //
+  }database_list=(${
+    state.database_list.join("|") //
+  })&start=${
+    request_time_start //
+  }&end=${
+    request_time_stop //
+  }&step=${
+    state.interval_ms //
+  }ms&limit=${
+    state.cubeActivity.limit //
+  }&legend=${
+    state.cubeActivity.uiLegend //
+  }&dim=${
+    state.cubeActivity.uiDimension1 //
+  }&filterdim=${
+    state.cubeActivity.uiFilter1 !== DimensionName.none
+      ? state.cubeActivity.uiFilter1
+      : ""
+  }&filterdimselected=${encodeURIComponent(
+    state.cubeActivity.uiFilter1 !== DimensionName.none
+      ? state.cubeActivity.uiFilter1Value || ""
+      : "",
+  )}`;
+  setInFlight(ApiEndpoint.activity, url);
+  const response = await fetch(url, { method: "GET" });
   clearInFlight(ApiEndpoint.activity);
 
   if (!response.ok) {
@@ -184,30 +184,27 @@ async function queryStandardEndpoint(
   if (apiEndpoint !== ApiEndpoint.metric) return false;
   if (!state.database_list.length) return false;
   if (!allowInFlight(ApiEndpoint.metric)) return false;
-  const safe_prometheus_11kSampleLimit_ms = 10950 * state.interval_ms;
+  const safe_prometheus_11kSampleLimit_ms = (11000 - 50) * state.interval_ms;
   const request_time_start = Math.max(
+    0,
     +new Date() - state.timeframe_ms, // query 15 minutes of data max
     +new Date() - safe_prometheus_11kSampleLimit_ms, // ensure we do not query too much data.
   );
-  setInFlight(ApiEndpoint.metric);
-  const response = await fetch(
-    `/api/v1/${
-      apiEndpoint //
-    }?datname=(${
-      state.database_list.join("|") //
-    })&start=${
-      request_time_start //
-    }&end=${
-      +new Date() //
-    }&step=${
-      state.interval_ms //
-    }ms&dbidentifier=${
-      state.database_instance.dbidentifier //
-    }`,
-    {
-      method: "GET",
-    },
-  );
+  const url = `/api/v1/${
+    apiEndpoint //
+  }?datname=(${
+    state.database_list.join("|") //
+  })&start=${
+    request_time_start //
+  }&end=${
+    +new Date() //
+  }&step=${
+    state.interval_ms //
+  }ms&dbidentifier=${
+    state.database_instance.dbidentifier //
+  }`;
+  setInFlight(ApiEndpoint.metric, url);
+  const response = await fetch(url, { method: "GET" });
 
   clearInFlight(ApiEndpoint.metric);
   if (!response.ok) {
