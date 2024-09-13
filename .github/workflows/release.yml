@@ -19,13 +19,9 @@ jobs:
         run: |
           docker build -f Dockerfile . --target release --tag autodbarelease
 
-      - name: Run release container
-        run: |
-          docker run -d --name autodba-release-container autodbarelease tail -f /dev/null
-
       - name: Copy artifacts
         run: |
-          docker cp autodba-release-container:/home/autodba/release_output ./release_output
+          docker run --rm -v ./release_output:/release_output autodbarelease /bin/bash -c "cp /home/autodba/release_output/* /release_output"
 
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
@@ -35,8 +31,3 @@ jobs:
           make_latest: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Cleanup Docker container
-        run: |
-          docker stop autodba-release-container
-          docker rm autodba-release-container
