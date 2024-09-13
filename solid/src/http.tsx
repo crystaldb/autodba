@@ -41,19 +41,7 @@ export async function queryEndpointData(
   state: State,
   setState: (arg0: string, arg1: any, arg2?: any) => void,
 ): Promise<boolean> {
-  if (apiEndpoint === ApiEndpoint.activity)
-    return queryCubeIfLive(state, setState);
-  return queryStandardEndpoint(apiEndpoint, state, setState);
-}
-
-export async function queryEndpointDataIfLive(
-  apiEndpoint: ApiEndpoint,
-  state: State,
-  setState: (arg0: string, arg1: any, arg2?: any) => void,
-): Promise<boolean> {
-  if (!isLiveQueryCube(state)) return false;
-  if (apiEndpoint === ApiEndpoint.activity)
-    return queryCubeIfLive(state, setState);
+  if (apiEndpoint === ApiEndpoint.activity) return queryCube(state, setState);
   return queryStandardEndpoint(apiEndpoint, state, setState);
 }
 
@@ -63,12 +51,14 @@ export function isLiveQueryCube(state: State): boolean {
   return true;
 }
 
-export async function queryCubeIfLive(
+export async function queryEndpointDataIfLive(
+  apiEndpoint: ApiEndpoint,
   state: State,
   setState: (arg0: string, arg1: any, arg2?: any) => void,
 ): Promise<boolean> {
   if (!isLiveQueryCube(state)) return false;
-  return queryCube(state, setState);
+  if (apiEndpoint === ApiEndpoint.activity) return queryCube(state, setState);
+  return queryStandardEndpoint(apiEndpoint, state, setState);
 }
 
 export async function queryCube(

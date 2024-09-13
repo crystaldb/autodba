@@ -12,7 +12,11 @@ import {
   Show,
   untrack,
 } from "solid-js";
-import { isLiveQueryCube, queryEndpointDataIfLive } from "../http";
+import {
+  isLiveQueryCube,
+  queryEndpointData,
+  queryEndpointDataIfLive,
+} from "../http";
 import { Popover } from "solid-simple-popover";
 import { flip } from "@floating-ui/dom";
 import { cssSelectorGeneral } from "./cube_activity";
@@ -32,7 +36,7 @@ export function TimebarSection(props: ITimebarSectionProps) {
 
   const [eventTimeoutOccurred, setTimeoutOccurred] = createSignal<number>(0);
 
-  const eventSomethingChanged = createMemo((changeCount: number) => {
+  const eventForceAnUpdateEvenIfNotLive = createMemo((changeCount: number) => {
     state.force_refresh_count;
     state.api.needDataFor;
     state.interval_ms;
@@ -42,9 +46,19 @@ export function TimebarSection(props: ITimebarSectionProps) {
     state.cubeActivity.uiDimension1;
     state.cubeActivity.uiFilter1;
     state.cubeActivity.uiFilter1Value;
-    console.log("changed timebar", changeCount);
+    console.log("changed timebar FORCE", changeCount);
     return changeCount + 1;
   }, 0);
+
+  const eventSomethingChangedSoUpdateIfLive = createMemo(
+    (changeCount: number) => {
+      // NOTE: TODO by 2024.09.18: nothing is passive here, but likely changing the time window or something may be added in the next couple of days
+      // state.cubeActivity.uiFilter1Value;
+      console.log("changed timebar", changeCount);
+      return changeCount + 1;
+    },
+    0,
+  );
 
   const doRestartTheTimeout = () => {
     const interval_ms = state.interval_ms;
@@ -65,18 +79,30 @@ export function TimebarSection(props: ITimebarSectionProps) {
   };
 
   createEffect(() => {
-    eventSomethingChanged();
+    eventSomethingChangedSoUpdateIfLive();
+    eventForceAnUpdateEvenIfNotLive();
     doRestartTheTimeout();
   });
 
   createEffect(() => {
-    eventSomethingChanged();
+    eventSomethingChangedSoUpdateIfLive();
     eventTimeoutOccurred();
 
     untrack(() => {
       if (state.api.needDataFor) {
         console.log("queryEndpointDataIfLive");
         queryEndpointDataIfLive(state.api.needDataFor, state, setState);
+      }
+    });
+  });
+
+  createEffect(() => {
+    eventForceAnUpdateEvenIfNotLive();
+
+    untrack(() => {
+      if (state.api.needDataFor) {
+        console.log("FORCE queryEndpointData");
+        queryEndpointData(state.api.needDataFor, state, setState);
       }
     });
   });
