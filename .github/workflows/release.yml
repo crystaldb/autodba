@@ -1,0 +1,33 @@
+name: Release
+
+on:
+  create
+
+jobs:
+  build_and_release:
+    runs-on: ubuntu-24.04
+    if: ${{ startsWith(github.ref, 'refs/tags') }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image for release
+        run: |
+          docker build -f Dockerfile . --target release --tag autodbarelease
+
+      - name: Copy artifacts
+        run: |
+          docker run --rm -v ./release_output:/release_output autodbarelease /bin/bash -c "cp /home/autodba/release_output/* /release_output"
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ./release_output/*
+          body: "Automated release for tag ${{ github.ref }}"
+          make_latest: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -84,10 +84,9 @@ RUN apt-get install -y --no-install-recommends rpm ruby ruby-dev rubygems build-
 COPY ./ ./
 RUN ./scripts/build.sh && \
     mkdir -p release_output && \
-    mv build_output/source/autodba-0.1.0-source.tar.gz release_output/ && \
     mv build_output/tar.gz/autodba-0.1.0.tar.gz release_output/  && \
-    mv build_output/rpm/autodba*.rpm release_output/ && \
-    mv build_output/deb/autodba*.deb release_output/ && \
+    cp ./scripts/install.sh release_output/ && \
+    cp ./scripts/uninstall.sh release_output/ && \
     rm -rf build_output
 
 FROM bff_builder AS test
