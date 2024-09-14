@@ -71,7 +71,8 @@ export function CubeActivity() {
 
           <aside
             class={`text-2xs text-neutral-700 dark:text-neutral-300 ${
-              Object.getOwnPropertyNames(state.apiThrottle.requestInFlight).length
+              Object.getOwnPropertyNames(state.apiThrottle.requestInFlight)
+                .length
                 ? "visible"
                 : "invisible"
             }`}
@@ -132,11 +133,7 @@ function Dimension1(props: IDimension1) {
           </div>
         </Match>
         <Match when={true}>
-          <DimensionBars
-            cubeData={props.cubeData}
-            legend={props.legend}
-            // class="min-h-64"
-          />
+          <DimensionBars cubeData={props.cubeData} legend={props.legend} />
         </Match>
       </Switch>
     </>
