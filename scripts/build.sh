@@ -58,54 +58,78 @@ echo "Including Prometheus exporters..."
 EXPORTER_VERSION="0.15.0"
 SQL_EXPORTER_VERSION="0.14.3"
 RDS_EXPORTER_REPO="https://github.com/crystaldb/prometheus-rds-exporter.git"
+TMP_DIR="/tmp"
 
 for arch in amd64 arm64; do
+    # Define paths relative to PARENT_DIR
+    PARENT_DIR="${TAR_GZ_DIR}/autodba-${VERSION}-${arch}"
+    INSTALL_DIR="$PARENT_DIR/bin"
+    WEBAPP_DIR="$PARENT_DIR/share/webapp"
+    EXPORTER_DIR="$PARENT_DIR/share/prometheus_exporters"
+    PROMETHEUS_CONFIG_DIR="$PARENT_DIR/config/prometheus"
+    AUTODBA_CONFIG_DIR="$PARENT_DIR/config/autodba"
+    PROMETHEUS_INSTALL_DIR="$PARENT_DIR/prometheus"
+
     echo "Downloading Prometheus tarball for ${arch}..."
-    PROMETHEUS_DIR="${TAR_GZ_DIR}/autodba-${VERSION}-${arch}/prometheus"
-    mkdir -p "${PROMETHEUS_DIR}"
-    wget -qO "${PROMETHEUS_DIR}/prometheus-${PROMETHEUS_VERSION}.linux-${arch}.tar.gz" "https://github.com/prometheus/prometheus/releases/download/v${PROMETHEUS_VERSION}/prometheus-${PROMETHEUS_VERSION}.linux-${arch}.tar.gz"
+    # Prepare clean
+    rm -rf $TMP_DIR/prometheus-*
+    mkdir -p "${PROMETHEUS_INSTALL_DIR}"
+    wget -qO- https://github.com/prometheus/prometheus/releases/download/v${PROMETHEUS_VERSION}/prometheus-${PROMETHEUS_VERSION}.linux-${arch}.tar.gz | tar -xzf - -C $TMP_DIR/
+    cp $TMP_DIR/prometheus-${PROMETHEUS_VERSION}.linux-${arch}/prometheus "${PROMETHEUS_INSTALL_DIR}/"
+    cp $TMP_DIR/prometheus-${PROMETHEUS_VERSION}.linux-${arch}/promtool "${PROMETHEUS_INSTALL_DIR}/"
+    mkdir -p ${PROMETHEUS_CONFIG_DIR}
+    cp -r $TMP_DIR/prometheus-${PROMETHEUS_VERSION}.linux-${arch}/consoles ${PROMETHEUS_CONFIG_DIR}/
+    cp -r $TMP_DIR/prometheus-${PROMETHEUS_VERSION}.linux-${arch}/console_libraries ${PROMETHEUS_CONFIG_DIR}/
+    # Cleanup
+    rm -rf $TMP_DIR/prometheus-*
 
     # Create separate directories for each exporter
-    mkdir -p "${TAR_GZ_DIR}/autodba-${VERSION}-${arch}/exporters/postgres_exporter"
-    mkdir -p "${TAR_GZ_DIR}/autodba-${VERSION}-${arch}/exporters/sql_exporter"
-    mkdir -p "${TAR_GZ_DIR}/autodba-${VERSION}-${arch}/exporters/rds_exporter"
+    mkdir -p "${EXPORTER_DIR}/postgres_exporter"
+    mkdir -p "${EXPORTER_DIR}/sql_exporter"
+    mkdir -p "${EXPORTER_DIR}/rds_exporter"
 
     # Postgres Exporter
-    wget -qO- https://github.com/prometheus-community/postgres_exporter/releases/download/v${EXPORTER_VERSION}/postgres_exporter-${EXPORTER_VERSION}.linux-${arch}.tar.gz | tar -xzf - -C "${TAR_GZ_DIR}/autodba-${VERSION}-${arch}/exporters/postgres_exporter" --strip-components=1
+    wget -qO- https://github.com/prometheus-community/postgres_exporter/releases/download/v${EXPORTER_VERSION}/postgres_exporter-${EXPORTER_VERSION}.linux-${arch}.tar.gz | tar -xzf - -C "${EXPORTER_DIR}/postgres_exporter" --strip-components=1
 
     # SQL Exporter
-    wget -qO- https://github.com/burningalchemist/sql_exporter/releases/download/${SQL_EXPORTER_VERSION}/sql_exporter-${SQL_EXPORTER_VERSION}.linux-${arch}.tar.gz | tar -xzf - -C "${TAR_GZ_DIR}/autodba-${VERSION}-${arch}/exporters/sql_exporter" --strip-components=1
-    rm "${TAR_GZ_DIR}/autodba-${VERSION}-${arch}/exporters/sql_exporter/mssql_standard.collector.yml"
+    wget -qO- https://github.com/burningalchemist/sql_exporter/releases/download/${SQL_EXPORTER_VERSION}/sql_exporter-${SQL_EXPORTER_VERSION}.linux-${arch}.tar.gz | tar -xzf - -C "${EXPORTER_DIR}/sql_exporter" --strip-components=1
+    rm "${EXPORTER_DIR}/sql_exporter/mssql_standard.collector.yml"
 
     # RDS Exporter (Build from source)
+    # Prepare clean
     rm -rf "/tmp/prometheus_rds_exporter"
     git clone "${RDS_EXPORTER_REPO}" "/tmp/prometheus_rds_exporter"
     cd /tmp/prometheus_rds_exporter
-    GOARCH=${arch} GOOS=linux go build -o "${TAR_GZ_DIR}/autodba-${VERSION}-${arch}/exporters/rds_exporter/prometheus-rds-exporter"
+    GOARCH=${arch} GOOS=linux go build -o "${EXPORTER_DIR}/rds_exporter/prometheus-rds-exporter"
+    # Cleanup
+    rm -rf "/tmp/prometheus_rds_exporter"
     cd -
 
     # Copy configuration files and monitor setup
     echo "Copying configuration and monitor setup files..."
-    mkdir -p "${TAR_GZ_DIR}/autodba-${VERSION}-${arch}/monitor/prometheus/sql_exporter"
-    mkdir -p "${TAR_GZ_DIR}/autodba-${VERSION}-${arch}/monitor/prometheus/rds_exporter"
-    mkdir -p "${TAR_GZ_DIR}/autodba-${VERSION}-${arch}/monitor/prometheus"
+    mkdir -p "${EXPORTER_DIR}/sql_exporter"
+    mkdir -p "${EXPORTER_DIR}/rds_exporter"
+    mkdir -p "${PROMETHEUS_CONFIG_DIR}"
 
-    cp -r monitor/prometheus/sql_exporter/* "${TAR_GZ_DIR}/autodba-${VERSION}-${arch}/monitor/prometheus/sql_exporter/"
-    cp -r monitor/prometheus/rds_exporter/* "${TAR_GZ_DIR}/autodba-${VERSION}-${arch}/monitor/prometheus/rds_exporter/"
-    cp monitor/prometheus/prometheus.yml "${TAR_GZ_DIR}/autodba-${VERSION}-${arch}/monitor/prometheus/"
+    cp -r monitor/prometheus/sql_exporter/* "${EXPORTER_DIR}/sql_exporter/"
+    cp -r monitor/prometheus/rds_exporter/* "${EXPORTER_DIR}/rds_exporter/"
+    cp monitor/prometheus/prometheus.yml "${PROMETHEUS_CONFIG_DIR}/prometheus.yml"
 
     # Prepare directories for install
-    mkdir -p "${TAR_GZ_DIR}/autodba-${VERSION}-${arch}/bin"
-    mkdir -p "${TAR_GZ_DIR}/autodba-${VERSION}-${arch}/webapp"
-    mkdir -p "${TAR_GZ_DIR}/autodba-${VERSION}-${arch}/config"
+    mkdir -p "${INSTALL_DIR}"
+    mkdir -p "${WEBAPP_DIR}"
+    mkdir -p "${AUTODBA_CONFIG_DIR}"
     
-    cp -r ${OUTPUT_DIR}/autodba-bff-${arch} "${TAR_GZ_DIR}/autodba-${VERSION}-${arch}/bin/autodba-bff"
-    cp -r ${OUTPUT_DIR}/config.json "${TAR_GZ_DIR}/autodba-${VERSION}-${arch}/config/config.json"
-    cp -r solid/dist/* "${TAR_GZ_DIR}/autodba-${VERSION}-${arch}/webapp/"
-    cp entrypoint.sh "${TAR_GZ_DIR}/autodba-${VERSION}-${arch}/"
+    cp -r ${OUTPUT_DIR}/autodba-bff-${arch} "${INSTALL_DIR}/autodba-bff"
+    cp -r ${OUTPUT_DIR}/config.json "${AUTODBA_CONFIG_DIR}/config.json"
+    cp -r solid/dist/* "${WEBAPP_DIR}"
+    cp entrypoint.sh "${INSTALL_DIR}/autodba-entrypoint.sh"
+    chmod +x "${INSTALL_DIR}/autodba-entrypoint.sh"
     
-    # Copy the install.sh script into the root of the tarball
-    cp install.sh "${TAR_GZ_DIR}/autodba-${VERSION}-${arch}/"
+    # Copy the `install.sh` and `uninstall.sh` scripts into the root of the tarball
+    cp scripts/install.sh "${PARENT_DIR}/"
+    cp scripts/uninstall.sh "${PARENT_DIR}/"
+    cp scripts/Makefile "${PARENT_DIR}/"
 done
 
 # Function to create tar.gz package for each architecture
@@ -118,3 +142,5 @@ create_tar_gz() {
 
 # Call the function to create the tar.gz
 create_tar_gz
+
+echo "Release build complete. Output located in ${OUTPUT_DIR}."
