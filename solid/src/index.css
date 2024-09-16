@@ -30,7 +30,7 @@
     @apply bg-neutral-100 text-black dark:bg-neutral-700 dark:text-white px-2.5 py-1.5 rounded;
   }
   a.activeTopNav {
-    @apply border-b-2 border-red-500;
+    @apply border-b-2 border-fuchsia-500 text-fuchsia-600 dark:text-fuchsia-400 font-semibold;
   }
   .btn {
     @apply font-bold;

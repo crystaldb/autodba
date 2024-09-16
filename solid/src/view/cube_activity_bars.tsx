@@ -1,5 +1,5 @@
 import { contextState } from "../context_state";
-import { createMemo, For, JSX } from "solid-js";
+import { createMemo, For, JSX, Show } from "solid-js";
 import { DimensionName, CubeData, ApiEndpoint } from "../state";
 import { first, groupBy, sum, summarize, tidy } from "@tidyjs/tidy";
 import { ILegend } from "./cube_activity";
@@ -12,7 +12,7 @@ interface IDimensionBars {
 
 export function DimensionBars(props: IDimensionBars) {
   const { state, setState } = contextState();
-  setState("api", "needDataFor", ApiEndpoint.activity);
+  setState("apiThrottle", "needDataFor", ApiEndpoint.activity);
 
   const cubeDataGrouped = createMemo<
     {
@@ -25,13 +25,13 @@ export function DimensionBars(props: IDimensionBars) {
     }[]
   >(() => {
     props.cubeData;
-    if (state.cubeActivity.uiDimension1 === DimensionName.time) {
+    if (state.activityCube.uiDimension1 === DimensionName.time) {
       return [];
     }
     let cubeData = tidy(
       props.cubeData,
       groupBy(
-        (d) => d.metric[state.cubeActivity.uiDimension1],
+        (d) => d.metric[state.activityCube.uiDimension1],
         [
           summarize({
             dimensionValue: first(
@@ -39,7 +39,7 @@ export function DimensionBars(props: IDimensionBars) {
                 metric: Record<string, string>;
                 values: { value: number }[];
               }) => {
-                return d.metric[state.cubeActivity.uiDimension1];
+                return d.metric[state.activityCube.uiDimension1];
               },
             ),
             total: sum(
@@ -93,7 +93,7 @@ function DimensionRowGrouped(props: IDimensionRow) {
           {(record) => (
             <DimensionRowPart
               len={record.values[0].value}
-              txt={record.metric[state.cubeActivity.uiLegend]}
+              txt={record.metric[state.activityCube.uiLegend]}
               legend={props.legend}
             />
           )}

@@ -160,3 +160,113 @@ func TestExecuteRaw(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, expected, result)
 }
+func TestProcessMatrix(t *testing.T) {
+	tests := []struct {
+		name              string
+		matrix            model.Matrix
+		isTimeSeriesQuery bool
+		legend            string
+		limitLegend       int
+		expected          []map[string]interface{}
+	}{
+		{
+			name:              "Empty Matrix",
+			matrix:            model.Matrix{},
+			isTimeSeriesQuery: true,
+			legend:            "legend",
+			limitLegend:       5,
+			expected:          []map[string]interface{}{},
+		},
+		{
+			name: "Limit Legend",
+			matrix: model.Matrix{
+				{
+					Metric: model.Metric{"legend": "value1"},
+					Values: []model.SamplePair{
+						{
+							Timestamp: model.Time(1),
+							Value:     model.SampleValue(1.0),
+						},
+						{
+							Timestamp: model.Time(2),
+							Value:     model.SampleValue(2.0),
+						},
+					},
+				},
+				{
+					Metric: model.Metric{"legend": "value2"},
+					Values: []model.SamplePair{
+						{
+							Timestamp: model.Time(1),
+							Value:     model.SampleValue(22.0),
+						},
+						{
+							Timestamp: model.Time(2),
+							Value:     model.SampleValue(11.0),
+						},
+					},
+				},
+				{
+					Metric: model.Metric{"legend": "value3"},
+					Values: []model.SamplePair{
+						{
+							Timestamp: model.Time(1),
+							Value:     model.SampleValue(3.0),
+						},
+						{
+							Timestamp: model.Time(2),
+							Value:     model.SampleValue(3.0),
+						},
+					},
+				},
+				{
+					Metric: model.Metric{"legend": "value4"},
+					Values: []model.SamplePair{
+						{
+							Timestamp: model.Time(1),
+							Value:     model.SampleValue(10.0),
+						},
+						{
+							Timestamp: model.Time(2),
+							Value:     model.SampleValue(13.0),
+						},
+					},
+				},
+			},
+			isTimeSeriesQuery: true,
+			legend:            "legend",
+			limitLegend:       2,
+			expected: []map[string]interface{}{
+				{
+					"metric": map[string]string{
+						"legend": "value2",
+					},
+					"values": []map[string]interface{}{
+						{"timestamp": int64(1), "value": 22.0},
+						{"timestamp": int64(2), "value": 11.0},
+					},
+				},
+				{
+					"metric": map[string]interface{}{
+						"legend": "other",
+					},
+					"values": []map[string]interface{}{
+						{"timestamp": int64(1), "value": 14.0},
+						{"timestamp": int64(2), "value": 18.0},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := processMatrix(tt.matrix, tt.isTimeSeriesQuery, tt.legend, tt.limitLegend)
+			if err != nil {
+				t.Fatalf("processMatrix() error = %v", err)
+			}
+
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}

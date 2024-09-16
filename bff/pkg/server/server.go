@@ -358,6 +358,11 @@ func activity_handler(metrics_service metrics.Service) http.HandlerFunc {
 			"dim":   dim,
 		}
 
+		if limitLegend != "" {
+			options["limitlegend"] = limitLegend
+			options["legend"] = legend
+		}
+
 		results, err := metrics_service.ExecuteRaw(query, options)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)

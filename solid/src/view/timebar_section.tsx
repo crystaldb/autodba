@@ -12,11 +12,7 @@ import {
   Show,
   untrack,
 } from "solid-js";
-import {
-  isLiveQueryCube,
-  queryEndpointData,
-  queryEndpointDataIfLive,
-} from "../http";
+import { isLive, queryEndpointData, queryEndpointDataIfLive } from "../http";
 import { Popover } from "solid-simple-popover";
 import { flip } from "@floating-ui/dom";
 import { cssSelectorGeneral } from "./cube_activity";
@@ -37,33 +33,31 @@ export function TimebarSection(props: ITimebarSectionProps) {
   const [eventTimeoutOccurred, setTimeoutOccurred] = createSignal<number>(0);
 
   const eventForceAnUpdateEvenIfNotLive = createMemo((changeCount: number) => {
-    state.force_refresh_count;
-    state.api.needDataFor;
+    state.force_refresh_by_incrementing;
+    state.apiThrottle.needDataFor;
     state.interval_ms;
     state.timeframe_ms;
     state.database_instance.dbidentifier;
-    state.cubeActivity.uiLegend;
-    state.cubeActivity.uiDimension1;
-    state.cubeActivity.uiFilter1;
-    state.cubeActivity.uiFilter1Value;
-    console.log("changed timebar FORCE", changeCount);
+    state.activityCube.uiLegend;
+    state.activityCube.uiDimension1;
+    state.activityCube.uiFilter1;
+    state.activityCube.uiFilter1Value;
+    console.log("changed_timebar_evenIfNotLive", changeCount);
     return changeCount + 1;
   }, 0);
 
-  const eventSomethingChangedSoUpdateIfLive = createMemo(
-    (changeCount: number) => {
-      // NOTE: TODO by 2024.09.18: nothing is passive here, but likely changing the time window or something may be added in the next couple of days
-      // state.cubeActivity.uiFilter1Value;
-      console.log("changed timebar", changeCount);
-      return changeCount + 1;
-    },
-    0,
-  );
+  // const eventSomethingChangedSoUpdateIfLive = createMemo(
+  //   (changeCount: number) => {
+  //     // state.cubeActivity.uiFilter1Value;
+  //     console.log("changed_timebar", changeCount);
+  //     return changeCount + 1;
+  //   },
+  //   0,
+  // );
 
   const doRestartTheTimeout = () => {
     const interval_ms = state.interval_ms;
 
-    console.log("SETUP TIMEOUT", interval_ms);
     if (timeout) {
       clearTimeout(timeout);
       timeout = null;
@@ -71,7 +65,6 @@ export function TimebarSection(props: ITimebarSectionProps) {
     if (destroyed) return;
     timeout = setTimeout(() => {
       runWithOwner(owner, () => {
-        console.log("TIMEOUT", interval_ms);
         setTimeoutOccurred((prev) => prev + 1);
         doRestartTheTimeout();
       });
@@ -79,36 +72,45 @@ export function TimebarSection(props: ITimebarSectionProps) {
   };
 
   createEffect(() => {
-    eventSomethingChangedSoUpdateIfLive();
+    // eventSomethingChangedSoUpdateIfLive();
     eventForceAnUpdateEvenIfNotLive();
     doRestartTheTimeout();
   });
 
-  createEffect(() => {
-    eventSomethingChangedSoUpdateIfLive();
-    eventTimeoutOccurred();
+  let allowOnlyOneInitialQueryToRunAtStartup = true;
+  let blockOtherInitialQueryAtStartup = false;
 
-    untrack(() => {
-      if (state.api.needDataFor) {
-        console.log("queryEndpointDataIfLive");
-        queryEndpointDataIfLive(state.api.needDataFor, state, setState);
-      }
-    });
-  });
-
-  createEffect(() => {
+  createEffect((allow) => {
     eventForceAnUpdateEvenIfNotLive();
 
+    if (!allow) return true; // block first run caused by constructor being initialized, but then allow next run
+
     untrack(() => {
-      if (state.api.needDataFor) {
-        console.log("FORCE queryEndpointData");
-        queryEndpointData(state.api.needDataFor, state, setState);
+      if (state.apiThrottle.needDataFor) {
+        console.log("queryEndpointData_FORCE");
+        queryEndpointData(state.apiThrottle.needDataFor, state, setState);
       }
     });
-  });
+    return true;
+  }, allowOnlyOneInitialQueryToRunAtStartup);
+
+  createEffect((allow) => {
+    // eventSomethingChangedSoUpdateIfLive();
+    eventTimeoutOccurred();
+
+    if (!allow) return true; // block first run caused by constructor being initialized, but then allow next run
+
+    untrack(() => {
+      if (state.apiThrottle.needDataFor) {
+        console.log("queryEndpointData_IfLive");
+        queryEndpointDataIfLive(state.apiThrottle.needDataFor, state, setState);
+      }
+    });
+    return true;
+  }, blockOtherInitialQueryAtStartup);
 
   onCleanup(() => {
-    console.log("CLEANUP interval");
+    // console.log("CLEANUP interval");
     destroyed = true;
     if (timeout) {
       clearTimeout(timeout);
@@ -126,12 +128,13 @@ export function TimebarSection(props: ITimebarSectionProps) {
         <IntervalSelector class="self-stretch" />
       </div>
       <EchartsTimebar class="h-12 min-w-[calc(16rem)] max-w-[calc(1280px-39rem)] w-[calc(100vw-39rem)] xs:w-[calc(100vw-25rem)]" />
-      <Show when={debug && state.api.requestWaitingCount}>
+      <Show when={debug && state.apiThrottle.requestWaitingCount}>
         <section class="flex flex-col leading-none text-2xs">
-          <p>{JSON.stringify(state.api.needDataFor)}</p>
-          <p>{JSON.stringify(state.api.requestInFlight)}</p>
+          <p>{JSON.stringify(state.apiThrottle.needDataFor)}</p>
+          <p>{JSON.stringify(state.apiThrottle.requestInFlight)}</p>
           <p>
-            {state.api.requestWaiting}, {state.api.requestWaitingCount}
+            {state.apiThrottle.requestWaiting},{" "}
+            {state.apiThrottle.requestWaitingCount}
           </p>
         </section>
       </Show>
@@ -158,16 +161,6 @@ function TimeframeSelector() {
     { ms: 15 * 60 * 1000, label: "last 15m", ms2: 10 * 1000 },
     { ms: 2 * 60 * 1000, label: "last 2m", ms2: 5 * 1000 },
   ];
-
-  createEffect(() => {
-    const timeframe_ms = state.timeframe_ms;
-
-    batch(() => {
-      // console.log("update time");
-      setState("time_begin_ms", () => state.time_end_ms - timeframe_ms);
-      setState("window_begin_ms", () => state.time_end_ms - timeframe_ms);
-    });
-  });
 
   return (
     <>
@@ -292,13 +285,13 @@ function LiveIndicator() {
   return (
     <div
       class="border border-yellow-300 dark:border-0 dark:border-green-500 px-2.5 py-2.5 rounded-md bg-yellow-200 text-black font-semibold leading-none"
-      classList={{ invisible: !isLiveQueryCube(state) }}
+      classList={{ invisible: !isLive(state) }}
     >
       <span class="invisible">.</span>
       LIVE
       <span
         class={
-          Object.getOwnPropertyNames(state.api.requestInFlight).length
+          Object.getOwnPropertyNames(state.apiThrottle.requestInFlight).length
             ? "visible"
             : "invisible"
         }
@@ -306,57 +299,5 @@ function LiveIndicator() {
         .
       </span>
     </div>
-  );
-}
-
-function TimebarDebugger() {
-  let debugZero = +new Date();
-  const { state } = contextState();
-
-  return (
-    <section class="flex">
-      <section class="flex border border-green-500 h-6 ms-[5.5rem] me-[5.2rem]">
-        <div
-          class="bg-yellow-500 h-full"
-          style={{
-            width: `${
-              ((state.window_begin_ms! - state.time_begin_ms!) /
-                (state.time_end_ms! - state.time_begin_ms!)) *
-              100
-            }%`,
-          }}
-        ></div>
-        <div
-          class="bg-green-500 h-full"
-          style={{
-            width: `${
-              ((state.window_end_ms! - state.window_begin_ms!) /
-                (state.time_end_ms! - state.time_begin_ms!)) *
-              100
-            }%`,
-          }}
-        ></div>
-        <div
-          class="bg-red-500 h-full"
-          style={{
-            width: `${
-              100 -
-              ((state.window_end_ms! - state.time_begin_ms!) /
-                (state.time_end_ms! - state.time_begin_ms!)) *
-                100
-            }%`,
-          }}
-        ></div>
-      </section>
-      <aside
-        data-testid="DEBUG-timebar"
-        class="flex flex-col text-xs text-gray-600 dark:text-gray-400 w-50 shrink-0"
-      >
-        <p>timeBegin: {state.time_begin_ms - debugZero}</p>
-        <p>timeEnd: {state.time_end_ms - debugZero}</p>
-        <p>windowBegin: {state.window_begin_ms - debugZero}</p>
-        <p>windowEnd: {state.window_end_ms - debugZero}</p>
-      </aside>
-    </section>
   );
 }

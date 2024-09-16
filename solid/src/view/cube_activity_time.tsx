@@ -15,7 +15,7 @@ import moment from "moment-timezone";
 
 export function CubeDimensionTime() {
   const { state, setState } = contextState();
-  setState("api", "needDataFor", ApiEndpoint.activity);
+  setState("apiThrottle", "needDataFor", ApiEndpoint.activity);
 
   const timezone = moment.tz.guess();
   const timezoneAbbreviation = moment.tz(moment(), timezone).format("z");
@@ -118,7 +118,7 @@ export function CubeDimensionTime() {
 
   const dataset = createMemo(() => {
     return tidy(
-      state.cubeActivity.cubeData,
+      state.activityCube.cubeData,
       (rows) =>
         Array.prototype.concat(
           ...rows.map((row) =>
@@ -129,7 +129,7 @@ export function CubeDimensionTime() {
           ),
         ),
       pivotWider({
-        namesFrom: state.cubeActivity.uiLegend,
+        namesFrom: state.activityCube.uiLegend,
         valuesFrom: "value",
       }),
     );
@@ -137,15 +137,15 @@ export function CubeDimensionTime() {
 
   const legendDistinct = createMemo<string[]>(() => {
     return tidy(
-      state.cubeActivity.cubeData,
+      state.activityCube.cubeData,
       map((row) => ({
-        out: row.metric[state.cubeActivity.uiLegend],
+        out: row.metric[state.activityCube.uiLegend],
       })),
       distinct(({ out }) => out),
       arrange(["out"]),
       arrange([
         // move CPU to the end of the list iff it exists
-        fixedOrder((row) => row.out, ["CPU"], { position: "end" }),
+        fixedOrder((row) => row.out, ["CPU", "other"], { position: "end" }),
       ]),
       map((val) => val.out),
     ) as string[];
@@ -154,7 +154,7 @@ export function CubeDimensionTime() {
   return (
     <section class="flex flex-col">
       <section class="h-[28rem]">
-        <Show when={state.cubeActivity.cubeData} keyed>
+        <Show when={state.activityCube.cubeData} keyed>
           <EChartsAutoSize
             // @ts-expect-error
             option={mergeProps(base, {
