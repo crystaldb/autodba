@@ -11,7 +11,7 @@ We all want our production PostgreSQL databases to run well—they should be rel
 If your team is fully staffed with database administrators, then you are in luck.
 If not, you may find yourself working reactively, dealing with problems as they arise and looking up what to do as you go.
 
-Oftentimes, operational responsibility for databases falls to software engineers site reliability engineers, who usually have many other things to do.
+Oftentimes, operational responsibility for databases falls to software engineers and site reliability engineers, who usually have many other things to do.
 They have better ways to spend their time than tuning or troubleshooting databases.
 
 Reliability and security are the top priorities for database operations, and our approach reflects that.
@@ -142,7 +142,7 @@ They will be better able to make high-level design decisions and to analyze trad
 
 ### Do I still need to hire a DBA if I use AutoDBA?
 
-If you do not already have a DBA on staff, then chances are good that AutoDBA can allow you postpone hiring one, particularly if you have platform engineers or site reliability engineers who are interested in applying its recommendations.
+If you do not already have a DBA on staff, then chances are good that AutoDBA can allow you to postpone hiring one, particularly if you have platform engineers or site reliability engineers who are interested in applying its recommendations.
 CrystalDB and others also offer commercial support for PostgreSQL.
 
 
