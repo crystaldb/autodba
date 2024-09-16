@@ -2,13 +2,13 @@ package prometheus
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/prometheus/client_golang/api"
 	v1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/common/model"
 	"local/bff/pkg/metrics"
+	"sort"
 	"strconv"
 	"time"
 )
@@ -168,6 +168,20 @@ func (r repository) ExecuteRaw(query string, options map[string]string) ([]map[s
 		isTimeSeriesQuery = false
 	}
 
+	limitLegend := -1
+	if value, ok := options["limitlegend"]; ok {
+		limitLegend, err = strconv.Atoi(value)
+		if err != nil {
+			fmt.Println("Error parsing limit_legend:", err)
+			return nil, err
+		}
+	}
+
+	legend := ""
+	if value, ok := options["legend"]; ok {
+		legend = value
+	}
+
 	var result model.Value
 	var warnings v1.Warnings
 
@@ -187,35 +201,35 @@ func (r repository) ExecuteRaw(query string, options map[string]string) ([]map[s
 	switch r := result.(type) {
 	case model.Vector:
 		fmt.Printf("Vector: %v\n", r)
-		jsonVector, err := processVector(r)
+		jsonVector, err := processVector(r, legend, limitLegend)
 		if err != nil {
 			return nil, err
 		}
 
-		jsonData, err := json.MarshalIndent(jsonVector, "", "  ")
-		if err != nil {
-			fmt.Println("Error marshaling JSON:", err)
-			return nil, err
-		}
+		// jsonData, err := json.MarshalIndent(jsonVector, "", "  ")
+		// if err != nil {
+		// 	fmt.Println("Error marshaling JSON:", err)
+		// 	return nil, err
+		// }
 
 		fmt.Println("Vector result (pretty-printed JSON):")
-		fmt.Println(string(jsonData))
+		// fmt.Println(string(jsonData))
 		return jsonVector, nil
 	case model.Matrix:
 		fmt.Printf("Matrix: %v\n", r)
-		jsonMatrix, err := processMatrix(r, isTimeSeriesQuery)
+		jsonMatrix, err := processMatrix(r, isTimeSeriesQuery, legend, limitLegend)
 		if err != nil {
 			return nil, err
 		}
 
-		jsonData, err := json.MarshalIndent(jsonMatrix, "", "  ")
-		if err != nil {
-			fmt.Println("Error marshaling JSON:", err)
-			return nil, err
-		}
+		// jsonData, err := json.MarshalIndent(jsonMatrix, "", "  ")
+		// if err != nil {
+		// 	fmt.Println("Error marshaling JSON:", err)
+		// 	return nil, err
+		// }
 
-		fmt.Println("Query result (pretty-printed JSON):")
-		fmt.Println(string(jsonData))
+		fmt.Println("Matrix result (pretty-printed JSON):")
+		// fmt.Println(string(jsonData))
 
 		return jsonMatrix, nil
 	default:
@@ -223,63 +237,203 @@ func (r repository) ExecuteRaw(query string, options map[string]string) ([]map[s
 		return nil, errors.New("Failed to parse Prometheus result. Result is of unknown type")
 	}
 }
-func processVector(vector model.Vector) ([]map[string]interface{}, error) {
+func processVector(vector model.Vector, legend string, limitLegend int) ([]map[string]interface{}, error) {
 	if len(vector) == 0 {
 		return []map[string]interface{}{}, nil
 	}
 
+	if legend == "" || limitLegend == -1 || limitLegend > len(vector) {
+		var jsonVector []map[string]interface{}
+		for _, sample := range vector {
+			metricMap := make(map[string]interface{})
+			for k, v := range sample.Metric {
+				metricMap[string(k)] = string(v)
+			}
+
+			jsonSample := map[string]interface{}{
+				"metric": metricMap,
+				"values": []map[string]interface{}{
+					{
+						"timestamp": int64(sample.Timestamp),
+						"value":     float64(sample.Value),
+					},
+				},
+			}
+			jsonVector = append(jsonVector, jsonSample)
+		}
+
+		return jsonVector, nil
+	}
+
+	type metricSum struct {
+		index int
+		sum   float64
+	}
+
+	var metricsSums []metricSum
+
+	for i, sample := range vector {
+		metricsSums = append(metricsSums, metricSum{index: i, sum: float64(sample.Value)})
+	}
+
+	sort.Slice(metricsSums, func(i, j int) bool {
+		return metricsSums[i].sum > metricsSums[j].sum
+	})
+
 	var jsonVector []map[string]interface{}
-	for _, sample := range vector {
-		metricMap := make(map[string]interface{})
-		for k, v := range sample.Metric {
-			metricMap[string(k)] = string(v)
+
+	for i := 0; i <= limitLegend-2; i++ {
+		value := map[string]interface{}{
+			"timestamp": int64(vector[metricsSums[i].index].Timestamp),
+			"value":     float64(vector[metricsSums[i].index].Value),
+		}
+
+		labels := make(map[string]string)
+		for k, v := range vector[metricsSums[i].index].Metric {
+			labels[string(k)] = string(v)
 		}
 
 		jsonSample := map[string]interface{}{
-			"metric": metricMap,
+			"metric": labels,
 			"values": []map[string]interface{}{
-				{
-					"timestamp": int64(sample.Timestamp),
-					"value":     float64(sample.Value),
-				},
+				value,
 			},
 		}
 		jsonVector = append(jsonVector, jsonSample)
 	}
 
+	otherValuesSum := 0.0
+
+	for i := limitLegend - 1; i < len(metricsSums); i++ {
+		otherValuesSum += float64(vector[metricsSums[i].index].Value)
+	}
+
+	jsonSample := map[string]interface{}{
+		"metric": map[string]interface{}{
+			legend: "other",
+		},
+		"values": []map[string]interface{}{
+			map[string]interface{}{
+				"timestamp": int64(vector[metricsSums[limitLegend-1].index].Timestamp),
+				"value":     otherValuesSum,
+			},
+		},
+	}
+
+	jsonVector = append(jsonVector, jsonSample)
 	return jsonVector, nil
 }
 
-func processMatrix(matrix model.Matrix, isTimeSeriesQuery bool) ([]map[string]interface{}, error) {
+func processMatrix(matrix model.Matrix, isTimeSeriesQuery bool, legend string, limitLegend int) ([]map[string]interface{}, error) {
+
 	if len(matrix) == 0 {
 		return []map[string]interface{}{}, nil
 	}
 
-	var jsonMatrix []map[string]interface{}
-	for _, stream := range matrix {
-		metricMap := make(map[string]interface{})
-		for k, v := range stream.Metric {
-			metricMap[string(k)] = string(v)
+	if legend == "" || limitLegend == -1 || limitLegend > len(matrix) {
+		var jsonMatrix []map[string]interface{}
+		for _, stream := range matrix {
+			metricMap := make(map[string]interface{})
+			for k, v := range stream.Metric {
+				metricMap[string(k)] = string(v)
+			}
+
+			values := make([]map[string]interface{}, len(stream.Values))
+			for i, sample := range stream.Values {
+				values[i] = map[string]interface{}{
+					"timestamp": int64(sample.Timestamp),
+					"value":     float64(sample.Value),
+				}
+
+				if !isTimeSeriesQuery {
+					break
+				}
+			}
+
+			jsonStream := map[string]interface{}{
+				"metric": metricMap,
+				"values": values,
+			}
+			jsonMatrix = append(jsonMatrix, jsonStream)
 		}
 
-		values := make([]map[string]interface{}, len(stream.Values))
-		for i, sample := range stream.Values {
-			values[i] = map[string]interface{}{
-				"timestamp": int64(sample.Timestamp),
-				"value":     float64(sample.Value),
-			}
+		return jsonMatrix, nil
+	}
 
-			if !isTimeSeriesQuery {
-				break
-			}
+	type metricSum struct {
+		index int
+		sum   float64
+	}
+
+	var metricsSums []metricSum
+
+	for i, stream := range matrix {
+		sum := 0.0
+		for _, sample := range stream.Values {
+			sum += float64(sample.Value)
+		}
+		metricsSums = append(metricsSums, metricSum{index: i, sum: sum})
+	}
+
+	sort.Slice(metricsSums, func(i, j int) bool {
+		return metricsSums[i].sum > metricsSums[j].sum
+	})
+
+	var jsonMatrix []map[string]interface{}
+
+	for i := 0; i <= limitLegend-2; i++ {
+		var values []map[string]interface{}
+
+		for _, sample := range matrix[metricsSums[i].index].Values {
+			values = append(values, map[string]interface{}{
+				"timestamp": int64(sample.Timestamp),
+				"value":     float64(sample.Value)})
+		}
+
+		labels := make(map[string]string)
+		for k, v := range matrix[metricsSums[i].index].Metric {
+			labels[string(k)] = string(v)
 		}
 
 		jsonStream := map[string]interface{}{
-			"metric": metricMap,
+			"metric": labels,
 			"values": values,
 		}
 		jsonMatrix = append(jsonMatrix, jsonStream)
 	}
+
+	otherTimestampSums := make(map[int64]float64)
+
+	for i := limitLegend - 1; i < len(metricsSums); i++ {
+		for _, sample := range matrix[metricsSums[i].index].Values {
+			if _, exists := otherTimestampSums[int64(sample.Timestamp)]; !exists {
+				otherTimestampSums[int64(sample.Timestamp)] = float64(sample.Value)
+			} else {
+				otherTimestampSums[int64(sample.Timestamp)] += float64(sample.Value)
+			}
+		}
+	}
+
+	var otherValues []map[string]interface{}
+	for timestamp, sum := range otherTimestampSums {
+		otherValues = append(otherValues, map[string]interface{}{
+			"timestamp": timestamp,
+			"value":     sum,
+		})
+	}
+
+	sort.Slice(otherValues, func(i, j int) bool {
+		return otherValues[i]["timestamp"].(int64) < otherValues[j]["timestamp"].(int64)
+
+	})
+
+	jsonStream := map[string]interface{}{
+		"metric": map[string]interface{}{
+			legend: "other",
+		},
+		"values": otherValues,
+	}
+	jsonMatrix = append(jsonMatrix, jsonStream)
 
 	return jsonMatrix, nil
 }

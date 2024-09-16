@@ -26,6 +26,51 @@ if [ -z "$DB_CONN_STRING" ]; then
   exit 1
 fi
 
+# Function to extract parts from the DB connection string
+function parse_db_conn_string() {
+  local conn_string="$1"
+  
+  db_host=$(echo "$conn_string" | sed -E 's/.*@([^:]+).*/\1/')  # Extract host
+  db_name=$(echo "$conn_string" | sed -E 's/.*\/([^?]+).*/\1/')  # Correct extraction of dbname
+  db_username=$(echo "$conn_string" | sed -E 's/.*\/\/([^:]+):.*/\1/')  # Extract username
+  db_password=$(echo "$conn_string" | sed -E 's/.*\/\/[^:]+:([^@]+)@.*/\1/')  # Extract password
+  db_port=$(echo "$conn_string" | sed -E 's/.*:(543[0-9]{1}).*/\1/')  # Extract port
+  
+  echo "Parsed connection string:"
+  echo "  DB Host: $db_host"
+  echo "  DB Name: $db_name"
+  echo "  DB Username: $db_username"
+  echo "  DB Password: (hidden)"
+  echo "  DB Port: $db_port"
+}
+
+# Parse the DB connection string
+parse_db_conn_string "$DB_CONN_STRING"
+
+# Ensure the directory for the config file exists
+COLLECTOR_CONFIG_DIR="$PARENT_DIR/share/collector"
+mkdir -p "$COLLECTOR_CONFIG_DIR"
+
+# Create Collector config file from parsed values
+COLLECTOR_CONFIG_FILE="$COLLECTOR_CONFIG_DIR/collector.conf"
+cat > "$COLLECTOR_CONFIG_FILE" <<EOL
+[pganalyze]
+#api_key = your_api_key
+
+[server1]
+db_host = $db_host
+db_name = $db_name
+db_username = $db_username
+db_password = $db_password
+db_port = $db_port
+aws_db_instance_id = $AWS_RDS_INSTANCE
+aws_region = $AWS_REGION
+aws_access_key_id = $AWS_ACCESS_KEY_ID
+aws_secret_access_key = $AWS_SECRET_ACCESS_KEY
+EOL
+
+echo "Collector configuration file created at $COLLECTOR_CONFIG_FILE"
+
 function clean_up {
     # Perform program exit housekeeping
     kill $(jobs -p)
@@ -74,6 +119,15 @@ if [ -z "$DISABLE_DATA_COLLECTION" ] || [ "$DISABLE_DATA_COLLECTION" = false ]; 
     RDS_EXPORTER_PID=$!
   else
     echo "AWS environment variables are missing or empty, so not running the RDS Exporter."
+  fi
+  
+  # Start up Collector
+  if [ -f "$COLLECTOR_CONFIG_FILE" ]; then
+    echo "Starting Collector..."
+    $PARENT_DIR/share/collector/collector --config="$COLLECTOR_CONFIG_FILE" --dry-run
+    COLLECTOR_COLLECTOR_PID=$!
+  else
+    echo "Collector configuration file not found, skipping Collector startup."
   fi
 fi
 
@@ -135,6 +189,9 @@ then
 elif (( $EXITED_PID == $RDS_EXPORTER_PID ))
 then
   echo "RDS Exporter exited with return code $retcode - killing all jobs"
+elif (( $EXITED_PID == $COLLECTOR_COLLECTOR_PID ))
+then
+  echo "Collector exited with return code $retcode - killing all jobs"
 else
   echo "An unknown background process (with PID=$EXITED_PID) exited with return code $retcode - killing all jobs"
 fi

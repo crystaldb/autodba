@@ -1,10 +1,11 @@
 import { For } from "solid-js";
 import { contextState } from "../context_state";
 import { Echarts2 } from "../view/echarts2";
+import { ApiEndpoint } from "../state";
 
-export function PageMetric(props: any) {
-  const page = "pageMetric";
-  const { state } = contextState();
+export function PageMetric() {
+  const { state, setState } = contextState();
+  setState("apiThrottle", "needDataFor", ApiEndpoint.metric);
 
   return (
     <>
@@ -32,22 +33,12 @@ export function PageMetric(props: any) {
                     "Transactions",
                     "",
                     [
-                      // "transactions_commit",
                       "transactions_in_progress_active_transactions",
                       "transactions_in_progress_blocked_transactions",
                       "transactions_rollback",
                     ],
                   ],
-                  [
-                    "Transaction commits",
-                    "",
-                    [
-                      "transactions_commit",
-                      // "transactions_in_progress_active_transactions",
-                      // "transactions_in_progress_blocked_transactions",
-                      // "transactions_rollback",
-                    ],
-                  ],
+                  ["Transaction commits", "", ["transactions_commit"]],
                   [
                     "Max time idle in transaction",
                     "",
@@ -91,7 +82,9 @@ export function PageMetric(props: any) {
             >
               {([title, unit, metricList]: [string, string, string[]]) => (
                 <section class="p-4 rounded-lg bg-neutral-100 dark:bg-neutral-950">
-                  <h2 class="break-words">{title}</h2>
+                  <h2 class="break-words">
+                    {title} {unit ? `(${unit})` : ""}
+                  </h2>
                   <Echarts2
                     title={title}
                     metricList={metricList}
