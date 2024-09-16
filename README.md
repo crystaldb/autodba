@@ -56,11 +56,16 @@ Choose the version appropriate to your architecture and operating system.
 For example:
 
 ```bash
-wget https://github.com/crystaldb/autodba/releases/download/v0.1.0/autodba-0.1.0.tar.gz
-wget https://github.com/crystaldb/autodba/releases/download/v0.1.0/install.sh
+wget https://github.com/crystaldb/autodba/releases/download/v0.2.0/autodba-0.2.0.tar.gz
 ```
 
-2. Create a configuration file `autodba_config.json` and populate it with values appropriate to your environment.
+2. Extract the downloaded tar.gz file:
+```bash
+tar -xzvf autodba-0.2.0.tar.gz
+cd autodba-0.2.0
+```
+
+3. Create a configuration file `autodba_config.json` and populate it with values appropriate to your environment.
 
 ```json
 {
@@ -74,13 +79,26 @@ wget https://github.com/crystaldb/autodba/releases/download/v0.1.0/install.sh
 
 PostgreSQL connection strings (`<CONNECTION_STRING_TO_YOUR_POSTGRES_DB>`) should be of the form `postgres://<POSTGRES_USERNAME>:<POSTGRES_PASSWORD>@<HOST>:<PORT>/<DATABASE_NAME>`.
 
-3. Run the installation script
+4. Run the make command to install AutoDBA.
+
+For system-wide installation:
 
 ```bash
-sudo bash install.sh --system --package autodba-0.1.0.tar.gz --config autodba_config.json
+sudo make install config=autodba_config.json system=1
 ```
 
-4. Verify the AutoDBA service is running
+Or for a user-specific installation, specify your preferred install directory:
+
+```bash
+make install config=autodba_config.json install_dir=$HOME/autodba
+```
+
+Or to install in the same extracted directory:
+```bash
+make install config=autodba_config.json
+```
+
+5. Verify the AutoDBA service is running
 
 ```bash
 systemctl is-active autodba
