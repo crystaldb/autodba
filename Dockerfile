@@ -58,7 +58,11 @@ RUN mkdir -p /usr/local/autodba/share/collector && \
     git clone --recurse-submodules https://github.com/crystaldb/collector.git /usr/local/autodba/share/collector && \
     cd /usr/local/autodba/share/collector && \
     wget https://github.com/protocolbuffers/protobuf/releases/download/v3.14.0/protoc-3.14.0-linux-x86_64.zip && unzip protoc-3.14.0-linux-x86_64.zip -d protoc && \
-    make build
+    make build && \
+    mv pganalyze-collector collector && \
+    mv pganalyze-collector-helper collector-helper && \
+    mv pganalyze-collector-setup collector-setup
+
 
 FROM go_builder as bff_builder
 # Build bff
@@ -138,6 +142,7 @@ RUN mkdir -p /usr/local/autodba/share/prometheus_exporters/postgres_exporter && 
 # Copy built files from previous stages
 COPY --from=builder /usr/local/autodba/bin /usr/local/autodba/bin
 COPY --from=builder /usr/local/autodba/share/webapp /usr/local/autodba/share/webapp
+COPY --from=builder /usr/local/autodba/share/collector /usr/local/autodba/share/collector
 COPY --from=builder /usr/local/autodba/share/prometheus_exporters /usr/local/autodba/share/prometheus_exporters
 COPY --from=builder /usr/local/autodba/config/autodba/config.json /usr/local/autodba/config/autodba/config.json
 
