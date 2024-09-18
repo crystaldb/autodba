@@ -122,19 +122,24 @@ if [ -z "$DISABLE_DATA_COLLECTION" ] || [ "$DISABLE_DATA_COLLECTION" = false ]; 
     echo "AWS environment variables are missing or empty, so not running the RDS Exporter."
   fi
 
-  echo "Starting Collector API Server..."
-  pushd "$PARENT_DIR/share/collector_api_server"
-  ./collector-api-server &
-  COLLECTOR_API_SERVER_PID=$!
-  popd
-  
-  # Start up Collector
-  if [ -f "$COLLECTOR_CONFIG_FILE" ]; then
+  # Check if collector_api_server exists before starting it. This acts as a feature-flag.
+  if [ -d "$PARENT_DIR/share/collector_api_server" ]; then
+    echo "Starting Collector API Server..."
+    pushd "$PARENT_DIR/share/collector_api_server"
+    ./collector-api-server &
+    COLLECTOR_API_SERVER_PID=$!
+    popd
+  else
+    echo "Warning: Skipping Collector API Server. Directory does not exist: $PARENT_DIR/share/collector_api_server"
+  fi
+
+  # Check if collector exists before starting it. This acts as a feature-flag.
+  if [ -d "$PARENT_DIR/share/collector" ]; then
     echo "Starting Collector..."
     $PARENT_DIR/share/collector/collector --config="$COLLECTOR_CONFIG_FILE" &
     COLLECTOR_PID=$!
   else
-    echo "Collector configuration file not found, skipping Collector startup."
+    echo "Warning: Skipping Collector. Directory does not exist: $PARENT_DIR/share/collector"
   fi
 fi
 
