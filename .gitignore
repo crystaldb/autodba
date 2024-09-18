@@ -177,4 +177,4 @@ devenv.local.nix
 autodba_backups_dir
 bff/main
 build_output/
-pganalyze.db
+crystaldb-collector.db
