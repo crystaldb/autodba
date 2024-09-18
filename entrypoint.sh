@@ -136,7 +136,7 @@ if [ -z "$DISABLE_DATA_COLLECTION" ] || [ "$DISABLE_DATA_COLLECTION" = false ]; 
   # Check if collector exists before starting it. This acts as a feature-flag.
   if [ -d "$PARENT_DIR/share/collector" ]; then
     echo "Starting Collector..."
-    $PARENT_DIR/share/collector/collector --config="$COLLECTOR_CONFIG_FILE" &
+    $PARENT_DIR/share/collector/collector --config="$COLLECTOR_CONFIG_FILE" --statefile="$PARENT_DIR/share/collector/state" &
     COLLECTOR_PID=$!
   else
     echo "Warning: Skipping Collector. Directory does not exist: $PARENT_DIR/share/collector"
