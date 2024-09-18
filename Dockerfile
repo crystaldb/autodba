@@ -36,7 +36,7 @@ RUN npm run build
 
 FROM base as go_builder
 USER root
-RUN apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     git             \
     unzip             \
     make \
