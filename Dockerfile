@@ -71,6 +71,12 @@ RUN mkdir -p /usr/local/autodba/share/collector && \
     mv pganalyze-collector-setup collector-setup
 
 
+FROM go_builder as collector_api_server_builder
+RUN mkdir -p /usr/local/autodba/share/collector_api_server
+COPY collector-api/ /usr/local/autodba/share/collector_api_server/
+RUN cd /usr/local/autodba/share/collector_api_server/ && \
+    go build -o collector-api-server ./cmd/server/main.go
+
 FROM go_builder as bff_builder
 # Build bff
 WORKDIR /home/autodba/bff
@@ -85,6 +91,7 @@ FROM base AS builder
 COPY --from=solid_builder /home/autodba/solid/dist /usr/local/autodba/share/webapp
 COPY --from=rdsexporter_builder /usr/local/autodba/share/prometheus_exporters/rds_exporter /usr/local/autodba/share/prometheus_exporters/rds_exporter
 COPY --from=collector_builder /usr/local/autodba/share/collector /usr/local/autodba/share/collector
+COPY --from=collector_api_server_builder  /usr/local/autodba/share/collector_api_server /usr/local/autodba/share/collector_api_server
 COPY --from=bff_builder /usr/local/autodba/bin/autodba-bff /usr/local/autodba/bin/autodba-bff
 COPY --from=bff_builder /home/autodba/bff/config.json /usr/local/autodba/config/autodba/config.json
 COPY entrypoint.sh /usr/local/autodba/bin/autodba-entrypoint.sh
@@ -148,6 +155,7 @@ RUN mkdir -p /usr/local/autodba/share/prometheus_exporters/postgres_exporter && 
 COPY --from=builder /usr/local/autodba/bin /usr/local/autodba/bin
 COPY --from=builder /usr/local/autodba/share/webapp /usr/local/autodba/share/webapp
 COPY --from=builder /usr/local/autodba/share/collector /usr/local/autodba/share/collector
+COPY --from=builder /usr/local/autodba/share/collector_api_server /usr/local/autodba/share/collector_api_server
 COPY --from=builder /usr/local/autodba/share/prometheus_exporters /usr/local/autodba/share/prometheus_exporters
 COPY --from=builder /usr/local/autodba/config/autodba/config.json /usr/local/autodba/config/autodba/config.json
 

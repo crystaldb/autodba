@@ -55,7 +55,8 @@ mkdir -p "$COLLECTOR_CONFIG_DIR"
 COLLECTOR_CONFIG_FILE="$COLLECTOR_CONFIG_DIR/collector.conf"
 cat > "$COLLECTOR_CONFIG_FILE" <<EOL
 [pganalyze]
-#api_key = your_api_key
+api_key = your-secure-api-key
+api_base_url = http://localhost:7080
 
 [server1]
 db_host = $db_host
@@ -120,12 +121,18 @@ if [ -z "$DISABLE_DATA_COLLECTION" ] || [ "$DISABLE_DATA_COLLECTION" = false ]; 
   else
     echo "AWS environment variables are missing or empty, so not running the RDS Exporter."
   fi
+
+  echo "Starting Collector API Server..."
+  pushd "$PARENT_DIR/share/collector_api_server"
+  ./collector-api-server &
+  COLLECTOR_API_SERVER_PID=$!
+  popd
   
   # Start up Collector
   if [ -f "$COLLECTOR_CONFIG_FILE" ]; then
     echo "Starting Collector..."
-    $PARENT_DIR/share/collector/collector --config="$COLLECTOR_CONFIG_FILE" --dry-run
-    COLLECTOR_COLLECTOR_PID=$!
+    $PARENT_DIR/share/collector/collector --config="$COLLECTOR_CONFIG_FILE" &
+    COLLECTOR_PID=$!
   else
     echo "Collector configuration file not found, skipping Collector startup."
   fi
@@ -189,9 +196,12 @@ then
 elif (( $EXITED_PID == $RDS_EXPORTER_PID ))
 then
   echo "RDS Exporter exited with return code $retcode - killing all jobs"
-elif (( $EXITED_PID == $COLLECTOR_COLLECTOR_PID ))
+elif (( $EXITED_PID == $COLLECTOR_PID ))
 then
   echo "Collector exited with return code $retcode - killing all jobs"
+elif (( $EXITED_PID == $COLLECTOR_API_SERVER_PID ))
+then
+  echo "Collector API Server exited with return code $retcode - killing all jobs"
 else
   echo "An unknown background process (with PID=$EXITED_PID) exited with return code $retcode - killing all jobs"
 fi
