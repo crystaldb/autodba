@@ -1,0 +1,8 @@
+{
+    "server_host": "0.0.0.0",
+    "server_port": 8080,
+    "db_path": "./pganalyze.db",
+    "storage_dir": "./storage/",
+    "api_key": "your-secure-api-key",
+    "debug": true
+}
