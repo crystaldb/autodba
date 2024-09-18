@@ -23,3 +23,6 @@ scrape_configs:
     static_configs:
       - targets: ["localhost:9043"]
         # :9043 rds exporter
+
+remote_write:
+  - url: "http://localhost:9090/api/v1/write"
