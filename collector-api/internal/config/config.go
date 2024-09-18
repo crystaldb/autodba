@@ -6,6 +6,8 @@ import (
 	"os"
 )
 
+var globalConfigPath string = "collector-api-config.json" // Default config path
+
 type Config struct {
 	ServerHost string `json:"server_host"`
 	ServerPort int    `json:"server_port"`
@@ -15,10 +17,12 @@ type Config struct {
 	Debug      bool   `json:"debug"` // Enable or disable debug logging
 }
 
-func LoadConfig() (*Config, error) {
-	file, err := os.Open("collector-api-config.json")
+// LoadConfig loads the configuration from the provided file path
+func LoadConfig(configPath string) (*Config, error) {
+	file, err := os.Open(configPath)
 	if err != nil {
-		log.Fatalf("Could not open config file: %v", err)
+		x, _ := os.Getwd()
+		log.Fatalf("Could not open config file: %v in %v", err, x)
 		return nil, err
 	}
 	defer file.Close()
@@ -31,4 +35,14 @@ func LoadConfig() (*Config, error) {
 		return nil, err
 	}
 	return &config, nil
+}
+
+// LoadConfigWithDefaultPath loads the config from the globalConfigPath if no path is provided
+func LoadConfigWithDefaultPath() (*Config, error) {
+	return LoadConfig(globalConfigPath)
+}
+
+// SetGlobalConfigPath allows setting the global config path at application startup
+func SetGlobalConfigPath(configPath string) {
+	globalConfigPath = configPath
 }

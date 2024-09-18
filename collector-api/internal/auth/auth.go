@@ -6,7 +6,7 @@ import (
 )
 
 func Authenticate(r *http.Request) bool {
-	cfg, _ := config.LoadConfig()
+	cfg, _ := config.LoadConfigWithDefaultPath()
 	apiKey := r.Header.Get("Pganalyze-Api-Key")
 	return apiKey == cfg.APIKey
 }

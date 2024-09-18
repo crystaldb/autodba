@@ -10,7 +10,7 @@ import (
 
 // GetLocalStorageDir returns the directory for storing snapshot files
 func GetLocalStorageDir() string {
-	cfg, _ := config.LoadConfig()
+	cfg, _ := config.LoadConfigWithDefaultPath()
 	return cfg.StorageDir
 }
 
