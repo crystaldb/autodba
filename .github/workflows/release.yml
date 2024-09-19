@@ -32,7 +32,9 @@ jobs:
         run: |
           # Strip the 'v' prefix from the tag
           TAG=${{ env.RELEASE_TAG }}
+          echo "TAG=$TAG"
           STRIPPED_TAG=${TAG#v}
+          echo "STRIPPED_TAG=$STRIPPED_TAG"
           # Extract everything between the current tag and the next tag or end of file
           sed -n "/## \[$STRIPPED_TAG\]/,/## \[[0-9]\+\.[0-9]\+\.[0-9]\+\]/p" CHANGELOG.md | sed '$d' | sed '1d' > release_notes.md
           echo "RELEASE_NOTES=$(cat release_notes.md)"
