@@ -57,7 +57,7 @@ command_exists() {
 # Stop the service if it's already running
 if $SYSTEM_INSTALL && command_exists "systemctl"; then
     if systemctl is-active --quiet autodba; then
-        echo "Stopping running AutoDBA service..."
+        echo "Stopping AutoDBA service..."
         systemctl stop autodba
     fi
 fi
@@ -163,6 +163,19 @@ fi
 
 # Systemctl service setup (if needed)
 if $SYSTEM_INSTALL && command_exists "systemctl"; then
+    if ! id -u autodba >/dev/null 2>&1; then
+        echo "Creating 'autodba' user..."
+
+        if command_exists "useradd"; then
+            useradd --system --user-group --home-dir /usr/local/autodba --shell /bin/bash autodba
+        elif command_exists "adduser"; then
+            adduser --system --group --home /usr/local/autodba --shell /bin/bash autodba
+        else
+            echo "Error: Neither 'useradd' nor 'adduser' found. Please create the user manually."
+            exit 1
+        fi
+    fi
+    chown -R autodba:autodba "$PARENT_DIR"
     echo "Setting up systemd service..."
     cat << EOF | tee /etc/systemd/system/autodba.service
 [Unit]
