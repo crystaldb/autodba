@@ -84,18 +84,18 @@ PostgreSQL connection strings (`<CONNECTION_STRING_TO_YOUR_POSTGRES_DB>`) should
 For system-wide installation:
 
 ```bash
-sudo ./install.sh --config sample-config.json --system
+sudo ./install.sh --config autodba_config.json --system
 ```
 
 Or for a user-specific installation, specify your preferred install directory:
 
 ```bash
-./install.sh --config sample-config.json --install-dir "$HOME/autodba"
+./install.sh --config autodba_config.json --install-dir "$HOME/autodba"
 ```
 
 Or to install in the same extracted directory:
 ```bash
-./install.sh --config sample-config.json
+./install.sh --config autodba_config.json
 ```
 
 5. Verify the AutoDBA service is running
