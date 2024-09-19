@@ -17,11 +17,25 @@ jobs:
 
       - name: Build Docker image for release
         run: |
-          docker build -f Dockerfile . --target release --tag autodbarelease
+          # docker build -f Dockerfile . --target release --tag autodbarelease
 
       - name: Copy artifacts
         run: |
-          docker run --rm -v ./release_output:/release_output autodbarelease /bin/bash -c "cp /home/autodba/release_output/* /release_output"
+          # docker run --rm -v ./release_output:/release_output autodbarelease /bin/bash -c "cp /home/autodba/release_output/* /release_output"
+
+      - name: Get current tag
+        id: get_tag
+        run: echo "RELEASE_TAG=${GITHUB_REF##*/}" >> $GITHUB_ENV
+
+      - name: Extract changelog for current release
+        id: extract_changelog
+        run: |
+          # Strip the 'v' prefix from the tag
+          STRIPPED_TAG=${{ env.RELEASE_TAG#v }}
+          # Extract everything between the current tag and the next tag or end of file
+          sed -n "/## \[$STRIPPED_TAG\]/,/## \[[0-9]\+\.[0-9]\+\.[0-9]\+\]/p" CHANGELOG.md | sed '$d' | sed '1d' > release_notes.md
+          echo "RELEASE_NOTES=$(cat release_notes.md)" >> $GITHUB_ENV
+        shell: bash
 
       - name: Get current tag
         id: get_tag
