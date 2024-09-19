@@ -56,13 +56,12 @@ Choose the version appropriate to your architecture and operating system.
 For example:
 
 ```bash
-wget https://github.com/crystaldb/autodba/releases/download/v0.2.0/autodba-0.2.0-amd64.tar.gz
+wget https://github.com/crystaldb/autodba/releases/latest/download/autodba-0.2.0-amd64.tar.gz
 ```
 
 2. Extract the downloaded tar.gz file:
 ```bash
-mkdir -p autodba-0.2.0
-tar -xzvf autodba-0.2.0-amd64.tar.gz -C autodba-0.2.0
+tar -xzvf autodba-0.2.0-amd64.tar.gz
 cd autodba-0.2.0
 ```
 
