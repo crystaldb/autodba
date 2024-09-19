@@ -45,7 +45,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: ./release_output/*
-          body: ${{ env.RELEASE_NOTES }}
+          body: ${{ env.RELEASE_NOTES || 'Automated release for tag ' + github.ref }}
           make_latest: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
