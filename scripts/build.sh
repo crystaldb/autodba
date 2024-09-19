@@ -62,7 +62,7 @@ TMP_DIR="/tmp"
 
 for arch in amd64 arm64; do
     # Define paths relative to PARENT_DIR
-    PARENT_DIR="${TAR_GZ_DIR}/autodba-${VERSION}-${arch}"
+    PARENT_DIR="${TAR_GZ_DIR}/autodba-${VERSION}-${arch}/autodba-${VERSION}"
     INSTALL_DIR="$PARENT_DIR/bin"
     WEBAPP_DIR="$PARENT_DIR/share/webapp"
     EXPORTER_DIR="$PARENT_DIR/share/prometheus_exporters"
