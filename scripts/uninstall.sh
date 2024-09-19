@@ -2,7 +2,7 @@
 
 # SPDX-Identifier: Apache-2.0
 
-set -e -x
+set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -30,12 +30,12 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Set the parent directory
-if [ "$SYSTEM_INSTALL" = true ]; then
-    PARENT_DIR="/usr/local/autodba"
-elif [ -n "$USER_INSTALL_DIR" ]; then
+if [ -n "$USER_INSTALL_DIR" ]; then
     PARENT_DIR="$USER_INSTALL_DIR"
+elif [ "$SYSTEM_INSTALL" = true ]; then
+    PARENT_DIR="/usr/local/autodba"
 else
-    PARENT_DIR="$HOME/autodba"
+    PARENT_DIR="$(pwd)"
 fi
 
 # Define paths under the parent autodba directory
@@ -51,7 +51,7 @@ SYSTEMD_SERVICE="/etc/systemd/system/autodba.service"
 echo "Uninstalling AutoDBA from ${PARENT_DIR}..."
 
 # Stop the service if systemd is used
-if [ $SYSTEM_INSTALL && -f "$SYSTEMD_SERVICE"]; then
+if [ "$SYSTEM_INSTALL" = true ] && [ -f "$SYSTEMD_SERVICE" ]; then
     echo "Stopping and disabling AutoDBA service..."
     sudo systemctl stop autodba
     sudo systemctl disable autodba
@@ -59,37 +59,39 @@ if [ $SYSTEM_INSTALL && -f "$SYSTEMD_SERVICE"]; then
     sudo systemctl daemon-reload
 fi
 
-# Remove binaries and scripts
-echo "Removing binaries and scripts..."
-rm -rf "${INSTALL_DIR}/bin"
+if [ "$PARENT_DIR" != "$(pwd)" ]; then
+    # Remove binaries and scripts
+    echo "Removing binaries and scripts..."
+    [ -d "${INSTALL_DIR}" ] && rm -rf "${INSTALL_DIR}" || true
 
-# Remove web application files
-echo "Removing web application files..."
-rm -rf "${WEBAPP_DIR}"
+    # Remove web application files
+    echo "Removing web application files..."
+    [ -d "${WEBAPP_DIR}" ] && rm -rf "${WEBAPP_DIR}" || true
 
-# Remove Prometheus exporters and directories
-echo "Removing Prometheus exporters and directories..."
-rm -rf "${EXPORTER_DIR}"
+    # Remove Prometheus exporters and directories
+    echo "Removing Prometheus exporters and directories..."
+    [ -d "${EXPORTER_DIR}" ] && rm -rf "${EXPORTER_DIR}" || true
 
-# Remove Prometheus configuration and storage
-echo "Removing Prometheus configuration and storage..."
-rm -rf "${PROMETHEUS_DIR}"
-rm -rf "${PROMETHEUS_CONFIG_DIR}"
-rm -rf "${PROMETHEUS_STORAGE_DIR}"
+    # Remove Prometheus configuration and storage
+    echo "Removing Prometheus configuration and storage..."
+    [ -d "${PROMETHEUS_DIR}" ] && rm -rf "${PROMETHEUS_DIR}" || true
+    [ -d "${PROMETHEUS_CONFIG_DIR}" ] && rm -rf "${PROMETHEUS_CONFIG_DIR}" || true
+    [ -d "${PROMETHEUS_STORAGE_DIR}" ] && rm -rf "${PROMETHEUS_STORAGE_DIR}" || true
 
-# Remove AutoDBA configuration files
-echo "Removing AutoDBA configuration files..."
-rm -rf "${CONFIG_DIR}"
+    # Remove AutoDBA configuration files
+    echo "Removing AutoDBA configuration files..."
+    [ -d "${CONFIG_DIR}" ] && rm -rf "${CONFIG_DIR}" || true
 
-# Remove parent directory if empty
-if [ -d "${PARENT_DIR}" ]; then
-  echo "Removing parent AutoDBA directory..."
-  rm -rf "${PARENT_DIR}"
+    # Remove parent directory if empty
+    if [ -d "${PARENT_DIR}" ]; then
+        echo "Removing parent AutoDBA directory..."
+        rmdir --ignore-fail-on-non-empty "${PARENT_DIR}" || true
+    fi
+
+    echo "Removing tmp directories..."
+    rm -rf /tmp/autodba-* /tmp/prometheus_rds_exporter /tmp/prometheus-* || true
+else
+    echo "Not removing the current directory as it is the installation directory."
 fi
-
-echo "Removing tmp directories..."
-rm -rf /tmp/autodba-0.1.0
-rm -rf /tmp/prometheus_rds_exporter
-rm -rf /tmp/prometheus-2.42.0.linux-amd64
 
 echo "AutoDBA has been successfully uninstalled."
