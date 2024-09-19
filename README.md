@@ -79,7 +79,7 @@ cd autodba-0.2.0
 
 PostgreSQL connection strings (`<CONNECTION_STRING_TO_YOUR_POSTGRES_DB>`) should be of the form `postgres://<POSTGRES_USERNAME>:<POSTGRES_PASSWORD>@<HOST>:<PORT>/<DATABASE_NAME>`.
 
-4. Run the make command to install AutoDBA.
+4. Run the `install.sh` script to install AutoDBA.
 
 For system-wide installation:
 
