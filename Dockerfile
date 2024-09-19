@@ -36,7 +36,7 @@ RUN npm run build
 
 FROM base as go_builder
 USER root
-RUN apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     git             \
     unzip             \
     make \
@@ -95,6 +95,8 @@ RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/i
 
 FROM go_builder as release
 WORKDIR /home/autodba
+RUN apt-get update && apt-get install -y --no-install-recommends rpm ruby ruby-dev rubygems build-essential && \
+    gem install fpm
 COPY ./ ./
 RUN ./scripts/build.sh && \
     mkdir -p release_output && \

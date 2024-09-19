@@ -120,14 +120,16 @@ export function TimebarSection(props: ITimebarSectionProps) {
 
   return (
     <section
-      class={`flex flex-col sm:flex-row items-center gap-4 ${props.class}`}
+      class={`flex flex-col lg:flex-row items-center gap-4 ${props.class}`}
     >
-      <LiveIndicator />
-      <div class="flex flex-col lg:flex-row items-center gap-4">
-        <TimeframeSelector />
-        <IntervalSelector class="self-stretch" />
+      <div class="flex flex-row items-center gap-4">
+        <LiveIndicator />
+        <div class="flex flex-col xs:flex-row items-center gap-4">
+          <TimeframeSelector />
+          <IntervalSelector class="self-stretch" />
+        </div>
       </div>
-      <EchartsTimebar class="h-12 min-w-[calc(16rem)] max-w-[calc(1280px-39rem)] w-[calc(100vw-39rem)] xs:w-[calc(100vw-25rem)]" />
+      <EchartsTimebar class="h-12 min-w-[18rem] max-w-[calc(1280px - 39rem)] w-[18rem] xs:w-[24rem] sm:w-[36rem]" />
       <Show when={debug && state.apiThrottle.requestWaitingCount}>
         <section class="flex flex-col leading-none text-2xs">
           <p>{JSON.stringify(state.apiThrottle.needDataFor)}</p>
