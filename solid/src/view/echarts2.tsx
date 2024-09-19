@@ -91,9 +91,9 @@ export function Echarts2(props: PropsEcharts2) {
         // @ts-expect-error ECharts type is not complete
         option={mergeProps(base, {
           dataset: {
-            // dimensions: ["time_ms", ...props.metricList],
             source: props.data,
-            forceSolidRefresh: props.data.length,
+            // dimensions: ["time_ms", ...props.metricList],
+            // forceSolidRefresh: props.data.length,
           },
           dataZoom: [
             // {
