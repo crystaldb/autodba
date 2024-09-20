@@ -2,11 +2,9 @@ import { CubeActivity } from "../view/cube_activity";
 
 export function PageActivity() {
   return (
-    <section class="flex flex-col gap-y-8">
-      <section class="flex flex-col p-4 gap-y-4">
-        <Header />
-        <CubeActivity />
-      </section>
+    <section class="flex flex-col py-4 gap-y-4">
+      <Header />
+      <CubeActivity />
     </section>
   );
 }

@@ -1,15 +1,33 @@
 import { contextState } from "../context_state";
-import { createMemo, For, Match, Switch } from "solid-js";
+import {
+  createEffect,
+  createMemo,
+  createSignal,
+  For,
+  JSX,
+  Match,
+  onCleanup,
+  onMount,
+  Show,
+  Switch,
+  untrack,
+} from "solid-js";
 import {
   DimensionField,
   listColors,
   DimensionName,
   listDimensionTabNames,
   CubeData,
+  State,
+  ActivityCube,
 } from "../state";
-import { arrange, distinct, fixedOrder, map, tidy } from "@tidyjs/tidy";
+import { arrange, distinct, filter, fixedOrder, map, tidy } from "@tidyjs/tidy";
 import { CubeDimensionTime } from "./cube_activity_time";
 import { DimensionBars } from "./cube_activity_bars";
+import { queryFilterOptions } from "../http";
+import { produce } from "solid-js/store";
+
+const MAX_WIDTH = 500;
 
 export const cssSelectorGeneral =
   "border border-zinc-200 bg-zinc-100 dark:border-zinc-600 dark:bg-zinc-800 dark:hover:bg-zinc-700 hover:bg-zinc-300 first:rounded-s-lg last:rounded-e-lg";
@@ -21,7 +39,7 @@ export type ILegend = {
 }[];
 
 export function CubeActivity() {
-  const { state } = contextState();
+  const { state, setState } = contextState();
 
   const legendDistinct = createMemo((): ILegend => {
     return tidy(
@@ -44,30 +62,29 @@ export function CubeActivity() {
     );
   });
 
+  createEffect((enabled) => {
+    state.activityCube.uiFilter1;
+    if (!enabled) return true;
+    untrack(() => queryFilterOptions(state, setState));
+    return true;
+  }, false);
+
   const cssSectionHeading = "flex flex-col gap-y-3.5";
 
   return (
-    <section class="flex flex-col-reverse md:flex-row items-start gap-4">
-      <section class={`max-w-90 ${cssSectionHeading}`}>
+    <section class="flex flex-col-reverse md:flex-row items-start gap-8">
+      <section class={`max-w-[24rem] ${cssSectionHeading}`}>
         <h2 class="font-medium text-lg">Legend</h2>
-        <div
-          class={`flex text-sm px-2.5 py-2 border-s rounded-lg ${cssSelectorGeneral}`}
-        >
-          <label class="whitespace-pre">Slice By:</label>
-          <SelectSliceBy dimension={DimensionField.uiLegend} />
-        </div>
+        <SelectButton label="Slice By:" dimension={DimensionField.uiLegend} />
         <Legend legend={legendDistinct()} />
       </section>
-
-      <section class="flex flex-col gap-5">
+      <section class="flex flex-col gap-5 w-full">
         <section class={cssSectionHeading}>
           <h2 class="font-medium text-lg">Dimensions</h2>
-          <div class="flex items-baseline gap-3 text-sm">
-            <DimensionTabs
-              dimension="uiDimension1"
-              cubeData={state.activityCube.cubeData}
-            />
-          </div>
+          <DimensionTabs
+            dimension="uiDimension1"
+            cubeData={state.activityCube.cubeData}
+          />
 
           <aside
             class={`text-2xs text-neutral-700 dark:text-neutral-300 ${
@@ -128,7 +145,7 @@ function Dimension1(props: IDimension1) {
     <>
       <Switch>
         <Match when={state.activityCube.uiDimension1 === DimensionName.time}>
-          <div class={`${props.class}`}>
+          <div class={props.class}>
             <CubeDimensionTime />
           </div>
         </Match>
@@ -140,17 +157,47 @@ function Dimension1(props: IDimension1) {
   );
 }
 
-interface IDimensionTabs {
+interface PropsDimensionTabs {
   dimension: "uiDimension1";
   cubeData: CubeData;
 }
 
-function DimensionTabs(props: IDimensionTabs) {
-  const { state } = contextState();
+function DimensionTabs(props: PropsDimensionTabs) {
+  const [rect, setRect] = createSignal({
+    height: window.innerHeight,
+    width: window.innerWidth,
+  });
+
+  const handlerResize = (event: Event) => {
+    setRect({ height: window.innerHeight, width: window.innerWidth });
+  };
+
+  onMount(() => {
+    window.addEventListener("resize", handlerResize);
+  });
+
+  onCleanup(() => {
+    window.removeEventListener("resize", handlerResize);
+  });
 
   return (
-    <section class="flex flex-col gap-3">
-      <section class="flex flex-wrap gap-y-2">
+    <>
+      <Show
+        when={rect().width < MAX_WIDTH}
+        fallback={DimensionTabsHorizontal(props)}
+      >
+        {DimensionTabsVertical(props)}
+      </Show>
+    </>
+  );
+}
+
+function DimensionTabsHorizontal(props: PropsDimensionTabs) {
+  const { state, setState } = contextState();
+
+  return (
+    <section class="flex flex-col gap-y-2">
+      <section data-name="dimensionTabsHoriz" class="flex">
         <Tab
           value={DimensionName.time}
           txt="Time"
@@ -166,35 +213,54 @@ function DimensionTabs(props: IDimensionTabs) {
           )}
         </For>
       </section>
-      {/*
-      <section>
-        <section class="flex gap-x-3 text-sm">
-          <label class="font-medium me-6">Filter by</label>
-          <SelectSliceBy
-            dimension={DimensionField.uiFilter1}
-            list={[["none", "No filter"], ...listDimensionTabNames()]}
-          />
-          <Show when={state.activityCube.uiFilter1 !== DimensionName.none}>
-            <div class="self-end flex flex-wrap items-center gap-x-3 text-sm">
-              <SelectSliceBy
-                dimension="uiFilter1Value"
-                list={listFor(DimensionField.uiFilter1, props.cubeData)}
-                class="grow max-w-screen-sm"
-              />
-              <button
-                class="hover:underline underline-offset-4 me-4"
-                onClick={() => {
-                  setState("activityCube", "uiFilter1Value", "");
-                }}
-              >
-                clear
-              </button>
-            </div>
-          </Show>
-        </section>
+
+      <section
+        data-name="filterSection"
+        class="flex items-center gap-x-3 text-sm"
+      >
+        <FilterBySelectButton class="self-start" />
+        <ViewFilterOptions cubeData={props.cubeData} class="self-end" />
       </section>
-      */}
     </section>
+  );
+}
+
+function FilterBySelectButton(props: { class?: string }) {
+  const { setState } = contextState();
+  return (
+    <SelectButton
+      label="Filter By:"
+      class={props.class}
+      dimension={DimensionField.uiFilter1}
+      list={[["none", "No filter"], ...listDimensionTabNames()]}
+      fnOnChange={(value) => {
+        setState(
+          "activityCube",
+          produce((dat: ActivityCube) => {
+            dat[DimensionField.uiFilter1] = value;
+            dat.uiFilter1Value = undefined!;
+          }),
+        );
+      }}
+    />
+  );
+}
+function DimensionTabsVertical(props: PropsDimensionTabs) {
+  const { state, setState } = contextState();
+  return (
+    <div data-name="dimensionTabsVert" class="flex flex-col gap-y-4">
+      <div class="flex flex-row gap-x-4">
+        <SelectButton
+          label=""
+          dimension={DimensionField.uiDimension1}
+          list={[["time", "Time"], ...listDimensionTabNames()]}
+        />
+        <div data-name="filterSection" class="text-sm">
+          <FilterBySelectButton />
+        </div>
+      </div>
+      <ViewFilterOptions cubeData={props.cubeData} class="" />
+    </div>
   );
 }
 
@@ -203,7 +269,7 @@ function Tab(props: { value: string; txt: string; selected: boolean }) {
   return (
     <button
       value={props.value}
-      class={`tracking-wider flex text-sm px-6 py-2 font-normala ${cssSelectorGeneral}`}
+      class={`grow justify-center whitespace-pre tracking-wider flex text-sm px-1 py-2 font-normala ${cssSelectorGeneral}`}
       classList={{
         "font-semibold text-fuchsia-500 bg-zinc-300 dark:bg-zinc-700":
           props.selected,
@@ -215,31 +281,96 @@ function Tab(props: { value: string; txt: string; selected: boolean }) {
   );
 }
 
+function ViewFilterOptions(props: { cubeData: CubeData; class?: string }) {
+  const { state, setState } = contextState();
+  return (
+    <Show when={state.activityCube.uiFilter1 !== DimensionName.none}>
+      <div class={`flex items-center gap-x-3 text-sm ${props.class}`}>
+        <SelectSliceBy
+          dimension="uiFilter1Value"
+          list={filterOptions(props.cubeData)}
+          class="defaultOpen grow max-w-screen-sm"
+          defaultOpen={true}
+        />
+        <button
+          class="hover:underline underline-offset-4 me-4"
+          classList={{ invisible: !state.activityCube.uiFilter1Value }}
+          onClick={() => {
+            setState("activityCube", "uiFilter1Value", "");
+          }}
+        >
+          clear
+        </button>
+      </div>
+    </Show>
+  );
+}
+
+interface PropsSelectButton {
+  dimension: DimensionField;
+  label:
+    | number
+    | boolean
+    | Node
+    | JSX.ArrayElement
+    | (string & {})
+    | null
+    | undefined;
+  class?: string;
+  fnOnChange?: (arg0: any) => void;
+  list?: string[][];
+}
+
+function SelectButton(props: PropsSelectButton) {
+  return (
+    <div
+      class={`flex text-sm px-2.5 py-2 border-s rounded-lg ${cssSelectorGeneral} ${props.class}`}
+    >
+      <label class="whitespace-pre">{props.label}</label>
+      <SelectSliceBy
+        dimension={props.dimension}
+        list={props.list}
+        fnOnChange={props.fnOnChange}
+      />
+    </div>
+  );
+}
+
 function SelectSliceBy(props: {
   dimension: DimensionField | "uiFilter1Value";
   class?: string;
+  fnOnChange?: (arg0: any) => void;
   list?: string[][];
+  defaultOpen?: boolean;
 }) {
   const { state, setState } = contextState();
-
+  const defaultOpen = () =>
+    !!props.defaultOpen && !state.activityCube.uiFilter1Value;
+  const each = () => props.list || listDimensionTabNames();
   return (
-    <select
-      onChange={(event) => {
-        const value = event.target.value;
-        setState("activityCube", props.dimension, value);
-      }}
-      class={`bg-transparent text-fuchsia-500 px-2 focus:outline-none ${props.class}`}
-    >
-      <For each={props.list || listDimensionTabNames()}>
-        {(value) => (
-          <Option
-            value={value[0]}
-            txt={value[1]}
-            selected={state.activityCube[props.dimension] === value[0]}
-          />
-        )}
-      </For>
-    </select>
+    <>
+      <select
+        multiple={defaultOpen()}
+        size={defaultOpen() ? Math.min(10, each.length) : 0}
+        onChange={(event) => {
+          const value = event.target.value;
+          props.fnOnChange
+            ? props.fnOnChange(value)
+            : setState("activityCube", props.dimension, value);
+        }}
+        class={`bg-transparent text-fuchsia-500 px-2 focus:outline-none ${props.class}`}
+      >
+        <For each={each()}>
+          {(value) => (
+            <Option
+              value={value[0]}
+              txt={value[1]}
+              selected={state.activityCube[props.dimension] === value[0]}
+            />
+          )}
+        </For>
+      </select>
+    </>
   );
 }
 
@@ -253,4 +384,39 @@ function Option(props: { value: string; txt: string; selected: boolean }) {
       {props.txt}
     </option>
   );
+}
+
+function filterOptions(cubeData: CubeData): [string, string][] {
+  const { state } = contextState();
+  const dimensionName: DimensionName =
+    state.activityCube[DimensionField.uiFilter1];
+
+  const list: [string, string][] = state.activityCube.filter1Options
+    ? state.activityCube.filter1Options
+        .map(
+          (rec) =>
+            [
+              rec.metric[state.activityCube.uiFilter1],
+              rec.values[0]?.value
+                ? rec.values[0].value.toFixed(1) +
+                  ": " +
+                  rec.metric[state.activityCube.uiFilter1]
+                : rec.metric[state.activityCube.uiFilter1],
+            ] as [string, string],
+        )
+        .filter(([v1, v2]) => !!v1 && !!v2)
+    : tidy(
+        cubeData,
+        filter((d) => !!d.metric[dimensionName]),
+        map((d) => ({ result: d.metric[dimensionName] })),
+        distinct((d) => d.result),
+        filter(({ result }) => !!result),
+      )
+        .map(({ result }) => result!)
+        .map((x) => [x, x]);
+
+  // let list: [string, string][] = input.map((x) => [x, x]);
+
+  if (state.activityCube.uiFilter1Value) list.unshift(["", "no filter"]);
+  return list;
 }
