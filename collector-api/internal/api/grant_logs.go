@@ -42,10 +42,31 @@ func GrantLogsHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Logs directory resolved to: %s", logsDir)
 	}
 
+	// Populate GrantConfig with dummy data (replace this with actual server config)
+	grantConfig := models.GrantConfig{
+		ServerID:         "pgServer1",
+		ServerURL:        "http://localhost:7080",
+		SentryDsn:        "",
+		EnableActivity:   true,
+		EnableLogs:       false,
+		SchemaTableLimit: 0,
+		Features: models.GrantFeatures{
+			Logs:                        false,
+			StatementResetFrequency:     0,
+			StatementTimeoutMs:          0,
+			StatementTimeoutMsQueryText: 0,
+		},
+	}
+
 	// Respond with the Logs storage subdirectory
 	grantLogs := models.GrantLogs{
-		Valid:    true,
-		LocalDir: logsDir, // Use the logs subdirectory
+		Valid:  false,
+		Config: grantConfig,
+		EncryptionKey: models.GrantLogsEncryptionKey{
+			CiphertextBlob: "",
+			KeyId:          "",
+			Plaintext:      "",
+		},
 	}
 
 	// Respond with the logs grant
