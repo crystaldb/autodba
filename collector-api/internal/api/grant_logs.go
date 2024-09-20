@@ -8,9 +8,10 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"path/filepath"
 )
 
-func GrantHandler(w http.ResponseWriter, r *http.Request) {
+func GrantLogsHandler(w http.ResponseWriter, r *http.Request) {
 	// Load configuration
 	cfg, err := config.LoadConfigWithDefaultPath()
 	if err != nil {
@@ -31,27 +32,33 @@ func GrantHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if cfg.Debug {
-		log.Printf("Authenticated request from %s", r.RemoteAddr)
+		log.Printf("Authenticated request for logs grant from %s", r.RemoteAddr)
 	}
 
-	// Respond with the Grant storage subdirectory
-	grant := models.Grant{
+	// Define the logs subdirectory dynamically
+	logsDir := filepath.Join(storage.GetLocalStorageDir(), "logs")
+
+	if cfg.Debug {
+		log.Printf("Logs directory resolved to: %s", logsDir)
+	}
+
+	// Respond with the Logs storage subdirectory
+	grantLogs := models.GrantLogs{
 		Valid:    true,
-		LocalDir: storage.GetLocalStorageDir(), // Use the grants subdirectory
-		S3URL:    "",
+		LocalDir: logsDir, // Use the logs subdirectory
 	}
 
-	// Respond with the grant
+	// Respond with the logs grant
 	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(grant); err != nil {
+	if err := json.NewEncoder(w).Encode(grantLogs); err != nil {
 		if cfg.Debug {
-			log.Printf("Error encoding grant response: %v", err)
+			log.Printf("Error encoding grant logs response: %v", err)
 		}
 		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
 		return
 	}
 
 	if cfg.Debug {
-		log.Printf("Grant response successfully sent to %s", r.RemoteAddr)
+		log.Printf("Logs grant response successfully sent to %s", r.RemoteAddr)
 	}
 }

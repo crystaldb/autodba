@@ -4,16 +4,23 @@ import (
 	"collector-api/internal/api"
 	"collector-api/internal/config"
 	"collector-api/internal/db"
+	"collector-api/internal/storage"
 	"fmt"
 	"log"
 	"net/http"
 )
 
 func main() {
-	// Load the configuration
+	// Load the configuration from the global config path
 	cfg, err := config.LoadConfigWithDefaultPath()
 	if err != nil {
 		log.Fatalf("Failed to load configuration: %v", err)
+	}
+
+	// Ensure the required storage directories exist
+	err = storage.EnsureStorageDirectories(cfg.StorageDir)
+	if err != nil {
+		log.Fatalf("Failed to create storage directories: %v", err)
 	}
 
 	// Initialize the SQLite database
