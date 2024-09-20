@@ -72,10 +72,9 @@ RUN mkdir -p /usr/local/autodba/share/collector && \
 
 
 FROM go_builder as collector_api_server_builder
-RUN mkdir -p /usr/local/autodba/share/collector_api_server
+WORKDIR /usr/local/autodba/share/collector_api_server
 COPY collector-api/ /usr/local/autodba/share/collector_api_server/
-RUN cd /usr/local/autodba/share/collector_api_server/ && \
-    go build -o collector-api-server ./cmd/server/main.go
+RUN go build -o collector-api-server ./cmd/server/main.go
 
 FROM go_builder as bff_builder
 # Build bff
@@ -114,6 +113,9 @@ RUN go test ./pkg/server/promql_codegen_test.go -v
 RUN go test ./pkg/server -v
 RUN go test ./pkg/metrics -v
 RUN go test ./pkg/prometheus -v
+
+WORKDIR /home/autodba/collector-api
+RUN go test -v ./...
 
 FROM base AS autodba
 USER root
