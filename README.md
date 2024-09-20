@@ -51,7 +51,7 @@ However, the following *temporary limitations* are presently in place:
 
 Follow these instructions to install AutoDBA on Linux.
 
-1. Download the latest release of AutoDBA and the installation script `install.sh` from the [releases page](https://github.com/crystaldb/autodba/releases).
+1. Download the latest release of AutoDBA from the [releases page](https://github.com/crystaldb/autodba/releases).
 Choose the version appropriate to your architecture and operating system.
 For example:
 
