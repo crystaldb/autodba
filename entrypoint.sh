@@ -132,12 +132,17 @@ if [ -z "$DISABLE_DATA_COLLECTION" ] || [ "$DISABLE_DATA_COLLECTION" = false ]; 
   else
     echo "Warning: Skipping Collector API Server. Directory does not exist: $PARENT_DIR/share/collector_api_server"
   fi
-
+  
   # Check if collector exists before starting it. This acts as a feature-flag.
   if [ -d "$PARENT_DIR/share/collector" ]; then
-    echo "Starting Collector..."
-    $PARENT_DIR/share/collector/collector --config="$COLLECTOR_CONFIG_FILE" --statefile="$PARENT_DIR/share/collector/state" &
-    COLLECTOR_PID=$!
+    # Start up Collector
+    if [ -f "$COLLECTOR_CONFIG_FILE" ]; then
+      echo "Starting Collector..."
+      $PARENT_DIR/share/collector/collector --config="$COLLECTOR_CONFIG_FILE" --dry-run
+      COLLECTOR_COLLECTOR_PID=$!
+    else
+      echo "Collector configuration file not found, skipping Collector startup."
+    fi
   else
     echo "Warning: Skipping Collector. Directory does not exist: $PARENT_DIR/share/collector"
   fi

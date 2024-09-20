@@ -23,11 +23,28 @@ jobs:
         run: |
           docker run --rm -v ./release_output:/release_output autodbarelease /bin/bash -c "cp /home/autodba/release_output/* /release_output"
 
+      - name: Get current tag
+        id: get_tag
+        run: echo "RELEASE_TAG=${GITHUB_REF##*/}" >> $GITHUB_ENV
+
+      - name: Extract changelog for current release
+        id: extract_changelog
+        run: |
+          # Strip the 'v' prefix from the tag
+          TAG=${{ env.RELEASE_TAG }}
+          STRIPPED_TAG=${TAG#v}
+          # Extract everything between the current tag and the next tag or end of file
+          sed -n "/## \[$STRIPPED_TAG\]/,/## \[[0-9]\+\.[0-9]\+\.[0-9]\+\]/p" CHANGELOG.md | sed '$d' | sed '1d' > release_notes.md
+          # If the release_notes.md file is empty, write a default message
+          if [ ! -s release_notes.md ]; then
+            echo "Automated release for tag ${{ github.ref }}" > release_notes.md
+          fi
+
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
         with:
           files: ./release_output/*
-          body: "Automated release for tag ${{ github.ref }}"
+          body_path: ./release_notes.md
           make_latest: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

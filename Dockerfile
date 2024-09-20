@@ -102,14 +102,10 @@ RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/i
 
 FROM go_builder as release
 WORKDIR /home/autodba
-RUN apt-get install -y --no-install-recommends rpm ruby ruby-dev rubygems build-essential && \
-    gem install fpm
 COPY ./ ./
 RUN ./scripts/build.sh && \
     mkdir -p release_output && \
-    mv build_output/tar.gz/autodba-0.1.0.tar.gz release_output/  && \
-    cp ./scripts/install.sh release_output/ && \
-    cp ./scripts/uninstall.sh release_output/ && \
+    mv build_output/tar.gz/autodba-*.tar.gz release_output/  && \
     rm -rf build_output
 
 FROM bff_builder AS test
