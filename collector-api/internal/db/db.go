@@ -39,16 +39,14 @@ func initSchema() {
 	CREATE TABLE IF NOT EXISTS snapshots (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		collected_at INTEGER,
-		local_dir TEXT,
-		status TEXT
+		s3_location TEXT
 	);`
 
 	createCompactSnapshotTable := `
 	CREATE TABLE IF NOT EXISTS compact_snapshots (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		collected_at INTEGER,
-		local_dir TEXT,
-		snapshot_type TEXT
+		s3_location TEXT
 	);`
 
 	_, err := db.Exec(createSnapshotTable)
@@ -65,17 +63,17 @@ func initSchema() {
 func StoreSnapshotMetadata(snapshot models.Snapshot) error {
 	// Insert metadata into the SQLite database
 	_, err := db.Exec(`
-		INSERT INTO snapshots (collected_at, local_dir, status)
-		VALUES (?, ?, ?)`,
-		snapshot.CollectedAt, snapshot.LocalDir, snapshot.Status)
+		INSERT INTO snapshots (collected_at, s3_location)
+		VALUES (?, ?)`,
+		snapshot.CollectedAt, snapshot.S3Location)
 	return err
 }
 
 func StoreCompactSnapshotMetadata(snapshot models.CompactSnapshot) error {
 	// Insert compact snapshot metadata
 	_, err := db.Exec(`
-		INSERT INTO compact_snapshots (collected_at, local_dir, snapshot_type)
-		VALUES (?, ?, ?)`,
-		snapshot.CollectedAt, snapshot.LocalDir, snapshot.Type)
+		INSERT INTO compact_snapshots (collected_at, s3_location)
+		VALUES (?, ?)`,
+		snapshot.CollectedAt, snapshot.S3Location)
 	return err
 }

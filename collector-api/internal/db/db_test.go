@@ -16,8 +16,7 @@ func TestStoreSnapshotMetadata(t *testing.T) {
 	// Create a sample snapshot
 	snapshot := models.Snapshot{
 		CollectedAt: 1234567890,
-		LocalDir:    "/test/dir",
-		Status:      "completed",
+		S3Location:  "/test/dir",
 	}
 
 	// Store snapshot metadata
@@ -35,8 +34,7 @@ func TestStoreCompactSnapshotMetadata(t *testing.T) {
 	// Create a sample compact snapshot
 	snapshot := models.CompactSnapshot{
 		CollectedAt: 1234567890,
-		LocalDir:    "/test/dir",
-		Type:        "compact",
+		S3Location:  "/test/dir",
 	}
 
 	// Store compact snapshot metadata
