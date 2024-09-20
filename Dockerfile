@@ -107,14 +107,20 @@ RUN ./scripts/build.sh && \
     mv build_output/tar.gz/autodba-*.tar.gz release_output/  && \
     rm -rf build_output
 
-FROM bff_builder AS test
+FROM go_builder AS test
 WORKDIR /home/autodba/bff
+COPY bff/go.mod bff/go.sum ./
+RUN go mod download
+COPY bff/ ./
 RUN go test ./pkg/server/promql_codegen_test.go -v
 RUN go test ./pkg/server -v
 RUN go test ./pkg/metrics -v
 RUN go test ./pkg/prometheus -v
 
 WORKDIR /home/autodba/collector-api
+COPY collector-api/go.mod collector-api/go.sum ./
+RUN go mod download
+COPY collector-api/ ./
 RUN go test -v ./...
 
 FROM base AS autodba
