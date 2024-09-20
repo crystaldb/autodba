@@ -138,7 +138,7 @@ if [ -z "$DISABLE_DATA_COLLECTION" ] || [ "$DISABLE_DATA_COLLECTION" = false ]; 
     # Start up Collector
     if [ -f "$COLLECTOR_CONFIG_FILE" ]; then
       echo "Starting Collector..."
-      $PARENT_DIR/share/collector/collector --config="$COLLECTOR_CONFIG_FILE" --dry-run
+      $PARENT_DIR/share/collector/collector --config="$COLLECTOR_CONFIG_FILE" --statefile="$PARENT_DIR/share/collector/state" &
       COLLECTOR_COLLECTOR_PID=$!
     else
       echo "Collector configuration file not found, skipping Collector startup."
