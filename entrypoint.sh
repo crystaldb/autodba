@@ -151,6 +151,7 @@ fi
 # Start up Prometheus for initialization
 "$PARENT_DIR/prometheus/prometheus" \
     --config.file="$PARENT_DIR/config/prometheus/prometheus.yml" \
+    --enable-feature="remote-write-receiver" \
     --storage.tsdb.path="$PARENT_DIR/prometheus_data" \
     --web.console.templates="$PARENT_DIR/config/prometheus/consoles" \
     --web.console.libraries="$PARENT_DIR/config/prometheus/console_libraries" \

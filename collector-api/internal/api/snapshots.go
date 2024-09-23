@@ -5,10 +5,18 @@ import (
 	"collector-api/internal/config"
 	"collector-api/internal/db"
 	"collector-api/pkg/models"
+	"compress/zlib"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
+	"os"
+	"path"
 	"strconv"
+
+	"google.golang.org/protobuf/proto"
+
+	collector_proto "github.com/pganalyze/collector/output/pganalyze_collector"
 )
 
 func SnapshotHandler(w http.ResponseWriter, r *http.Request) {
@@ -195,5 +203,45 @@ func handleCompactSnapshot(s3Location string, collectedAt int64) error {
 	// Here, implement your actual logic for processing the compact snapshot
 	// e.g., saving to local storage, uploading to S3, etc.
 	log.Printf("Processing compact snapshot with s3_location: %s and collected_at: %d", s3Location, collectedAt)
+
+	f, err := os.Open(path.Join("/usr/local/autodba/share/collector_api_server/storage", s3Location))
+	if err != nil {
+		return fmt.Errorf("open file: %w", err)
+	}
+
+	decompressor, err := zlib.NewReader(f)
+	if err != nil {
+		return fmt.Errorf("create zlib reader: %w", err)
+	}
+
+	pb, err := io.ReadAll(decompressor)
+	if err != nil {
+		return fmt.Errorf("read compact snapshot proto: %w", err)
+	}
+
+	var compactSnapshot collector_proto.CompactSnapshot
+	if err := proto.Unmarshal(pb, &compactSnapshot); err != nil {
+		return fmt.Errorf("unmarshal compact snapshot: %w", err)
+	}
+
+	promClient := prometheusClient{
+		Client:   http.DefaultClient,
+		endpoint: prometheusURL,
+	}
+
+	resp, err := promClient.RemoteWrite(compactSnapshotMetrics(&compactSnapshot))
+	if err != nil {
+		return fmt.Errorf("send remote write: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return fmt.Errorf("decode response body: %w", err)
+		}
+		return fmt.Errorf("%s", body)
+	}
+
 	return nil
 }
