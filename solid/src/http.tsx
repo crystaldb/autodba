@@ -1,4 +1,4 @@
-import { produce } from "solid-js/store";
+import { Part, produce } from "solid-js/store";
 import {
   allowInFlight,
   ApiEndpoint,
@@ -10,12 +10,12 @@ import {
   type State,
 } from "./state";
 import { batch } from "solid-js";
+import { contextState } from "./context_state";
 
 const magicPrometheusMaxSamplesLimit = 11000;
 
-export async function queryDatabaseInstanceInfo(
-  setState: (arg0: string, arg1: any, arg2?: any) => void,
-): Promise<boolean> {
+export async function queryDatabaseInstanceInfo(): Promise<boolean> {
+  const { setState } = contextState();
   const response = await fetch("/api/v1/info", { method: "GET" });
 
   const json = await response.json();
@@ -24,9 +24,8 @@ export async function queryDatabaseInstanceInfo(
   return true;
 }
 
-export async function queryDatabaseList(
-  setState: (arg0: string, arg1: any, arg2?: any) => void,
-): Promise<boolean> {
+export async function queryDatabaseList(): Promise<boolean> {
+  const { setState } = contextState();
   const response = await fetch("/api/v1/databases", { method: "GET" });
 
   const json = await response.json();
@@ -36,7 +35,8 @@ export async function queryDatabaseList(
   return true;
 }
 
-export function isLive(state: State): boolean {
+export function isLive(): boolean {
+  const { state } = contextState();
   if (!state.database_list.length) return false;
   if (state.range_end !== 100) return false;
   return true;
@@ -44,36 +44,28 @@ export function isLive(state: State): boolean {
 
 export async function queryEndpointDataIfLive(
   apiEndpoint: ApiEndpoint,
-  state: State,
-  setState: (arg0: string, arg1: any, arg2?: any) => void,
 ): Promise<boolean> {
-  if (!isLive(state)) return false;
-  return queryEndpointData(apiEndpoint, state, setState);
+  if (!isLive()) return false;
+  return queryEndpointData(apiEndpoint);
 }
 
 export async function queryEndpointData(
   apiEndpoint: ApiEndpoint,
-  state: State,
-  setState: (arg0: string, arg1: any, arg2?: any) => void,
 ): Promise<boolean> {
   return apiEndpoint === ApiEndpoint.activity
-    ? queryActivityCube(state, setState)
-    : queryStandardEndpointFullTimeframe(apiEndpoint, state, setState);
+    ? queryActivityCube()
+    : queryStandardEndpointFullTimeframe(apiEndpoint);
 }
 
-async function queryActivityCube(
-  state: State,
-  setState: (arg0: string, arg1: any, arg2?: any) => void,
-): Promise<boolean> {
+async function queryActivityCube(): Promise<boolean> {
+  const { state } = contextState();
   return state.activityCube.uiDimension1 === DimensionName.time
-    ? queryActivityCubeFullTimeframe(state, setState)
-    : queryActivityCubeTimeWindow(state, setState);
+    ? queryActivityCubeFullTimeframe()
+    : queryActivityCubeTimeWindow();
 }
 
-async function queryActivityCubeFullTimeframe(
-  state: State,
-  setState: (arg0: string, arg1: any, arg2?: any) => void,
-): Promise<boolean> {
+async function queryActivityCubeFullTimeframe(): Promise<boolean> {
+  const { state, setState } = contextState();
   if (!state.database_list.length) return false;
   if (!allowInFlight(ApiEndpoint.activity)) return false;
 
@@ -146,12 +138,10 @@ async function queryActivityCubeFullTimeframe(
   return data;
 }
 
-let debugZero = +new Date();
+// const debugZero = +new Date();
 
-async function queryActivityCubeTimeWindow(
-  state: State,
-  setState: (arg0: string, arg1: any, arg2?: any) => void,
-): Promise<boolean> {
+async function queryActivityCubeTimeWindow(): Promise<boolean> {
+  const { state, setState } = contextState();
   if (!state.database_list.length) return false;
   if (!state.server_now) return false;
   if (!allowInFlight(ApiEndpoint.activity)) return false;
@@ -187,18 +177,17 @@ async function queryActivityCubeTimeWindow(
   }
 
   const url = `/api/v1/activity?why=timewindow&${
-    false
-      ? ""
-      : `t=${Math.floor(
-          (request_time_begin - debugZero) / 1000 / 60,
-        ).toString()}_${Math.floor(
-          (request_time_end - debugZero) / 1000 / 60,
-        ).toString()}_${Math.floor(
-          (request_time_begin - debugZero) / 1000,
-        ).toString()}_${Math.floor(
-          (request_time_end - debugZero) / 1000,
-        ).toString()}&`
-    //
+    ""
+    //   `t=${Math.floor(
+    //       (request_time_begin - debugZero) / 1000 / 60,
+    //     ).toString()}_${Math.floor(
+    //       (request_time_end - debugZero) / 1000 / 60,
+    //     ).toString()}_${Math.floor(
+    //       (request_time_begin - debugZero) / 1000,
+    //     ).toString()}_${Math.floor(
+    //       (request_time_end - debugZero) / 1000,
+    //     ).toString()}&`
+    // //
   }database_list=(${
     state.database_list.join("|") //
   })&start=${
@@ -253,10 +242,8 @@ async function queryActivityCubeTimeWindow(
   return json;
 }
 
-export async function queryFilterOptions(
-  state: State,
-  setState: (arg0: string, arg1: any, arg2?: any) => void,
-): Promise<boolean> {
+export async function queryFilterOptions(): Promise<boolean> {
+  const { state, setState } = contextState();
   if (!state.database_list.length) return false;
   if (!state.server_now) return false;
 
@@ -304,9 +291,8 @@ export async function queryFilterOptions(
 
 async function queryStandardEndpointFullTimeframe(
   apiEndpoint: string,
-  state: State,
-  setState: (arg0: string, arg1: any, arg2?: any) => void,
 ): Promise<boolean> {
+  const { state, setState } = contextState();
   if (apiEndpoint !== ApiEndpoint.metric) return false;
   if (!state.database_list.length) return false;
   if (!allowInFlight(ApiEndpoint.metric)) return false;
@@ -352,7 +338,7 @@ async function queryStandardEndpointFullTimeframe(
 
   batch(() => {
     setState("server_now", server_now);
-    const dataBucketName = apiEndpoint + "Data";
+    const dataBucketName = (apiEndpoint + "Data") as Part<State, keyof State>;
     setState(dataBucketName, data);
 
     clearBusyWaiting();

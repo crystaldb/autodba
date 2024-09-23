@@ -1,5 +1,5 @@
 import { batch } from "solid-js";
-import { createStore, produce } from "solid-js/store";
+import { createStore, produce, SetStoreFunction } from "solid-js/store";
 import { queryEndpointData } from "./http";
 
 let dateZero = +new Date();
@@ -64,7 +64,7 @@ export enum DimensionName {
   datname = "datname",
 }
 
-export function listDimensionTabNames() {
+export function listDimensionTabNames(): [DimensionName, string][] {
   return [
     [DimensionName.wait_event_name, "Wait"],
     [DimensionName.query, "Sql"],
@@ -85,6 +85,11 @@ export enum DimensionField {
 export type CubeData = {
   metric: Partial<Record<DimensionName, string>>;
   values: { timestamp: number; value: number }[];
+}[];
+
+export type LegendData = {
+  metric: Partial<Record<DimensionName, string>>;
+  values: { value: number }[];
 }[];
 
 export const listColors = [
@@ -244,7 +249,7 @@ export const listColors = [
 const initial_timeframe_ms = 15 * 60 * 1000; // 15 minutes
 const initial_interval_ms = 10 * 1000; // 10 seconds
 
-const [state, setState]: [State, any] = createStore({
+const [state, setState]: [State, SetStoreFunction<State>] = createStore({
   apiThrottle: {
     requestInFlight: {},
   },
@@ -264,9 +269,9 @@ const [state, setState]: [State, any] = createStore({
   range_begin: 0.0,
   range_end: 100.0,
   force_refresh_by_incrementing: 0,
-});
+} as State);
 
-export function useState(): { state: State; setState: any } {
+export function useState(): { state: State; setState: SetStoreFunction<State> } {
   return { state, setState };
 }
 
@@ -317,7 +322,7 @@ export function clearBusyWaiting() {
   );
   if (requestWaiting) {
     console.log("requestWaiting now", requestWaitingCount || 0, requestWaiting);
-    queryEndpointData(requestWaiting, state, setState);
+    queryEndpointData(requestWaiting);
   }
 }
 

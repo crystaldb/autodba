@@ -1,42 +1,51 @@
 import { NavTopConfig1 } from "./NavTop";
 import { Navigate } from "@solidjs/router";
 import { ContextState, contextState } from "./context_state";
-import { useState } from "./state";
 import { PageActivity } from "./page/activity";
 import { PageMetric } from "./page/metric";
 import { Router, Route } from "@solidjs/router";
-import { createResource, JSX, Show } from "solid-js";
+import { JSX, Show } from "solid-js";
 import { queryDatabaseInstanceInfo, queryDatabaseList } from "./http";
 import { Dynamic } from "solid-js/web";
 import { DarkmodeSelector } from "./view/darkmode";
 import { TimebarSection } from "./view/timebar_section";
 
 export default function App(): JSX.Element {
-  const { setState } = useState();
-  createResource(() => queryDatabaseInstanceInfo(setState));
-  createResource(() => queryDatabaseList(setState));
-
   return (
-    <div class="max-w-screen-xl mx-auto">
-      <ContextState>
-        <Router>
-          <Route path="/" component={() => <Navigate href="/activity" />} />
-          <Route
-            path="/activity"
-            component={PageWrapper.bind(null, "pageActivity", PageActivity)}
-          />
-          <Route
-            path="/metric"
-            component={PageWrapper.bind(null, "pageMetric", PageMetric)}
-          />
-          <Route path={"**"} component={() => <h1>404. Page not found.</h1>} />
-        </Router>
-      </ContextState>
-    </div>
+    <ContextState>
+      <Router root={Layout}>
+        <Route path="/" component={() => <Navigate href="/activity" />} />
+        <Route
+          path="/activity"
+          component={() => PageWrapper("pageActivity", PageActivity)}
+        />
+        <Route
+          path="/metric"
+          component={() => PageWrapper("pageMetric", PageMetric)}
+        />
+        <Route path={"**"} component={() => <h1>404. Page not found.</h1>} />
+      </Router>
+    </ContextState>
   );
 }
 
-function PageWrapper(testid: string, page: any) {
+function Layout(props: {
+  children?:
+    | number
+    | boolean
+    | Node
+    | JSX.ArrayElement
+    | (string & {})
+    | null
+    | undefined;
+}): JSX.Element {
+  queryDatabaseInstanceInfo();
+  queryDatabaseList();
+
+  return <div class="max-w-screen-xl mx-auto">{props.children}</div>;
+}
+
+function PageWrapper(testid: string, page: () => JSX.Element) {
   const { state } = contextState();
   return (
     <>
