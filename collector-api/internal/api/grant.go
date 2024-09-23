@@ -55,7 +55,7 @@ func GrantHandler(w http.ResponseWriter, r *http.Request) {
 		Valid:    true,
 		Config:   grantConfig,
 		LocalDir: storage.GetLocalStorageDir(),
-		S3URL:    "",
+		S3URL:    "http://localhost:7080/v2/upload",
 	}
 
 	// Respond with the grant
