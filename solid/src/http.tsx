@@ -91,7 +91,7 @@ async function queryActivityCubeFullTimeframe(
     return false;
   }
 
-  const url = `/api/v1/activity?database_list=(${
+  const url = `/api/v1/activity?why=cube&database_list=(${
     state.database_list.join("|") //
   })&start=${
     `now-${state.timeframe_ms}ms` //
@@ -108,9 +108,10 @@ async function queryActivityCubeFullTimeframe(
   }&dim=${
     state.activityCube.uiDimension1 //
   }&filterdim=${
-    state.activityCube.uiFilter1 !== DimensionName.none
-      ? state.activityCube.uiFilter1
-      : ""
+    state.activityCube.uiFilter1 === DimensionName.none ||
+    !state.activityCube.uiFilter1Value
+      ? ""
+      : state.activityCube.uiFilter1
   }&filterdimselected=${encodeURIComponent(
     state.activityCube.uiFilter1 !== DimensionName.none
       ? state.activityCube.uiFilter1Value || ""
@@ -185,7 +186,7 @@ async function queryActivityCubeTimeWindow(
     return false;
   }
 
-  const url = `/api/v1/activity?${
+  const url = `/api/v1/activity?why=timewindow&${
     false
       ? ""
       : `t=${Math.floor(
@@ -215,9 +216,10 @@ async function queryActivityCubeTimeWindow(
   }&dim=${
     state.activityCube.uiDimension1 //
   }&filterdim=${
-    state.activityCube.uiFilter1 !== DimensionName.none
-      ? state.activityCube.uiFilter1
-      : ""
+    state.activityCube.uiFilter1 === DimensionName.none ||
+    !state.activityCube.uiFilter1Value
+      ? ""
+      : state.activityCube.uiFilter1
   }&filterdimselected=${encodeURIComponent(
     state.activityCube.uiFilter1 !== DimensionName.none
       ? state.activityCube.uiFilter1Value || ""
@@ -247,6 +249,55 @@ async function queryActivityCubeTimeWindow(
     );
 
     clearBusyWaiting();
+  });
+  return json;
+}
+
+export async function queryFilterOptions(
+  state: State,
+  setState: (arg0: string, arg1: any, arg2?: any) => void,
+): Promise<boolean> {
+  if (!state.database_list.length) return false;
+  if (!state.server_now) return false;
+
+  const url = `/api/v1/activity?why=filteroptions&database_list=(${
+    state.database_list.join("|") //
+  })&start=${
+    `now-${state.timeframe_ms}ms` //
+  }&end=${
+    "now" //
+  }&step=${
+    state.interval_ms //
+  }ms&limitdim=${
+    state.activityCube.limit //
+  }&limitlegend=${
+    state.activityCube.limit //
+  }&legend=${
+    state.activityCube.uiFilter1 //
+  }&dim=${
+    state.activityCube.uiFilter1 //
+  }&filterdim=${
+    "" //
+  }&filterdimselected=${encodeURIComponent(
+    "", //
+  )}`;
+  const response = await fetch(url, { method: "GET" });
+
+  if (!response.ok) {
+    return true;
+  }
+  const json = await response.json();
+  if (!json) {
+    return false;
+  }
+
+  batch(() => {
+    setState(
+      "activityCube",
+      produce((activityCube: State["activityCube"]) => {
+        activityCube.filter1Options = json.data;
+      }),
+    );
   });
   return json;
 }

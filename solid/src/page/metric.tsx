@@ -1,6 +1,6 @@
 import { For } from "solid-js";
 import { contextState } from "../context_state";
-import { Echarts2 } from "../view/echarts2";
+import { EchartsLinechart } from "../view/echarts_linechart";
 import { ApiEndpoint } from "../state";
 
 export function PageMetric() {
@@ -85,7 +85,7 @@ export function PageMetric() {
                   <h2 class="break-words">
                     {title} {unit ? `(${unit})` : ""}
                   </h2>
-                  <Echarts2
+                  <EchartsLinechart
                     title={title}
                     metricList={metricList}
                     data={state.metricData}

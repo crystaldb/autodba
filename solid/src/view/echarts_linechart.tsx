@@ -3,14 +3,14 @@ import { contextState } from "../context_state";
 import { mergeProps } from "solid-js";
 import { datazoomEventHandler } from "../state";
 
-interface PropsEcharts2 {
+interface PropsEchartsLinechart {
   title: string;
   metricList: string[];
   data: any[];
   class?: string;
 }
 
-export function Echarts2(props: PropsEcharts2) {
+export function EchartsLinechart(props: PropsEchartsLinechart) {
   const { state } = contextState();
 
   const base = {
