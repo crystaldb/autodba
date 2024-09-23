@@ -172,9 +172,13 @@ devenv.local.nix
 .direnv
 .envrc
 
+# personal holding areas
+hold/
+
 # pre-commit
 .pre-commit-config.yaml
 autodba_backups_dir
 bff/main
 build_output/
 crystaldb-collector.db
+

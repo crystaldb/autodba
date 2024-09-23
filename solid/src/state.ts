@@ -21,15 +21,7 @@ export type State = {
     engine_version?: string;
     instance_class?: string;
   };
-  activityCube: {
-    cubeData: CubeData;
-    uiLegend: DimensionName;
-    uiDimension1: DimensionName;
-
-    uiFilter1: DimensionName;
-    uiFilter1Value?: string;
-    limit: number;
-  };
+  activityCube: ActivityCube;
   metricData: any[];
 };
 
@@ -42,6 +34,17 @@ export type ApiThrottle = {
   requestWaiting?: ApiEndpoint;
   requestWaitingCount?: number;
   requestInFlightUrl?: string;
+};
+
+export type ActivityCube = {
+  cubeData: CubeData;
+  uiLegend: DimensionName;
+  uiDimension1: DimensionName;
+  filter1Options?: CubeData;
+
+  uiFilter1: DimensionName;
+  uiFilter1Value?: string;
+  limit: number;
 };
 
 export enum ApiEndpoint {

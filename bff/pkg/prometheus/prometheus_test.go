@@ -24,49 +24,30 @@ func (m *MockQueryAPI) Query(ctx context.Context, query string, ts time.Time, op
 	args := m.Called(ctx, query, ts)
 	return args.Get(0).(model.Value), v1.Warnings{}, args.Error(2)
 }
-
 func TestParseTimeRange(t *testing.T) {
-	tests := []struct {
-		options   map[string]string
-		start     int64
-		end       int64
-		step      time.Duration
-		expectErr bool
-	}{
-		{
-			options:   map[string]string{"start": "1638316800000", "end": "1638317400000", "step": "1m"},
-			start:     1638316800000,
-			end:       1638317400000,
-			step:      1 * time.Minute,
-			expectErr: false,
-		},
-		{
-			options:   map[string]string{"start": "invalid", "step": "1m"},
-			start:     0,
-			end:       time.Now().UnixMilli(),
-			step:      30 * time.Second,
-			expectErr: true,
-		},
-		{
-			options:   map[string]string{},
-			start:     time.Now().UnixMilli(),
-			end:       time.Now().UnixMilli(),
-			step:      30 * time.Second,
-			expectErr: false,
-		},
-	}
 
-	for _, test := range tests {
-		result, err := parseTimeRange(test.options)
-		if test.expectErr {
-			assert.Error(t, err)
-		} else {
-			assert.NoError(t, err)
-			assert.Equal(t, test.start, result.Start.UnixMilli())
-			assert.Equal(t, test.end, result.End.UnixMilli())
-			assert.Equal(t, test.step, result.Step)
-		}
-	}
+	// Valid start and end
+	options1 := map[string]string{"start": "1638316800000", "end": "1638317400000", "step": "1m"}
+	result1, err1 := parseTimeRange(options1)
+	assert.NoError(t, err1)
+	assert.Equal(t, int64(1638316800000), result1.Start.UnixMilli())
+	assert.Equal(t, int64(1638317400000), result1.End.UnixMilli())
+	assert.Equal(t, 1*time.Minute, result1.Step)
+
+	now := time.Now().UnixMilli()
+
+	// Invalid Start
+	options2 := map[string]string{"start": "invalid", "step": "1m"}
+	_, err2 := parseTimeRange(options2)
+	assert.Error(t, err2)
+
+	// No options
+	options3 := map[string]string{}
+	result3, err3 := parseTimeRange(options3)
+	assert.NoError(t, err3)
+	assert.GreaterOrEqual(t, result3.Start.UnixMilli(), now)
+	assert.GreaterOrEqual(t, result3.End.UnixMilli(), now)
+	assert.Equal(t, 30*time.Second, result3.Step)
 }
 
 func TestExecute(t *testing.T) {
