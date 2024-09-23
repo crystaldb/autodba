@@ -18,7 +18,7 @@ import { flip } from "@floating-ui/dom";
 import { cssSelectorGeneral } from "./cube_activity";
 import { EchartsTimebar } from "./echarts_timebar";
 
-let debug = true;
+let debugThrottling = false;
 
 interface ITimebarSectionProps {
   class?: string;
@@ -130,7 +130,7 @@ export function TimebarSection(props: ITimebarSectionProps) {
         </div>
       </div>
       <EchartsTimebar class="h-12 min-w-[18rem] max-w-[calc(1280px - 39rem)] w-[18rem] xs:w-[24rem] sm:w-[36rem]" />
-      <Show when={debug && state.apiThrottle.requestWaitingCount}>
+      <Show when={debugThrottling && state.apiThrottle.requestWaitingCount}>
         <section class="flex flex-col leading-none text-2xs">
           <p>{JSON.stringify(state.apiThrottle.needDataFor)}</p>
           <p>{JSON.stringify(state.apiThrottle.requestInFlight)}</p>
@@ -140,9 +140,6 @@ export function TimebarSection(props: ITimebarSectionProps) {
           </p>
         </section>
       </Show>
-      {/*
-      <TimebarDebugger />
-      */}
     </section>
   );
 }

@@ -45,7 +45,7 @@ function PageWrapper(testid: string, page: any) {
         <DatabaseHeader class="" />
         <Show when={state.database_list.length}>
           <Dynamic component={page} />
-          <section class="sticky bottom-0 flex flex-col mt-3 z-20 backdrop-blur">
+          <section class="sticky bottom-0 flex flex-col mt-3 pt-1 z-20 backdrop-blur">
             <TimebarSection />
           </section>
         </Show>
