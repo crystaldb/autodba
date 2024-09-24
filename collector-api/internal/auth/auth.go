@@ -10,3 +10,8 @@ func Authenticate(r *http.Request) bool {
 	apiKey := r.Header.Get("Pganalyze-Api-Key")
 	return apiKey == cfg.APIKey
 }
+
+func S3Authenticate(key string) bool {
+	cfg, _ := config.LoadConfigWithDefaultPath()
+	return key == cfg.APIKey
+}

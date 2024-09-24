@@ -1,7 +1,7 @@
 package api
 
 import (
-	// "collector-api/internal/auth"
+	"collector-api/internal/auth"
 	"collector-api/internal/config"
 	"log"
 	"net/http"
@@ -27,23 +27,36 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Authenticate the request
-	// if !auth.Authenticate(r) {
-	// 	if cfg.Debug {
-	// 		log.Printf("Unauthorized access attempt from %s", r.RemoteAddr)
-	// 	}
-	// 	http.Error(w, "Unauthorized", http.StatusUnauthorized)
-	// 	return
-	// }
-
-	// if cfg.Debug {
-	// 	log.Printf("Authenticated request from %s", r.RemoteAddr)
-	// }
-
 	// Parse the multipart form
 	if err := r.ParseMultipartForm(10 << 20); err != nil { // 10 MB limit
 		http.Error(w, "Unable to parse form", http.StatusBadRequest)
 		return
+	}
+
+	if values, ok := r.MultipartForm.Value["key"]; ok {
+		for _, value := range values {
+			if cfg.Debug {
+				log.Printf("checking for %s: %s\n", "key", value)
+			}
+			if !auth.S3Authenticate(value) {
+				if cfg.Debug {
+					log.Printf("Unauthorized access attempt from %s", r.RemoteAddr)
+				}
+				http.Error(w, "Unauthorized", http.StatusUnauthorized)
+				return
+			}
+			break
+		}
+	} else {
+		if cfg.Debug {
+			log.Printf("Api Key not found\n")
+		}
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	if cfg.Debug {
+		log.Printf("Authenticated request from %s", r.RemoteAddr)
 	}
 
 	file, fileHeader, err := r.FormFile("file")

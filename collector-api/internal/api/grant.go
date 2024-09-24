@@ -56,6 +56,7 @@ func GrantHandler(w http.ResponseWriter, r *http.Request) {
 		Config:   grantConfig,
 		LocalDir: storage.GetLocalStorageDir(),
 		S3URL:    "http://localhost:7080/v2/upload",
+		S3Fields: map[string]string{"key": cfg.APIKey},
 	}
 
 	// Respond with the grant
