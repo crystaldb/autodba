@@ -156,6 +156,8 @@ function TimeframeSelector() {
   const { setState } = contextState();
   const id = "timeframeSelector";
   const options = [
+    { ms: 14 * 24 * 60 * 60 * 1000, label: "last 14d", ms2: 60 * 60 * 1000 },
+    { ms: 7 * 24 * 60 * 60 * 1000, label: "last 7d", ms2: 30 * 60 * 1000 },
     { ms: 24 * 60 * 60 * 1000, label: "last 1d", ms2: 30 * 60 * 1000 },
     { ms: 12 * 60 * 60 * 1000, label: "last 12h", ms2: 30 * 60 * 1000 },
     { ms: 6 * 60 * 60 * 1000, label: "last 6h", ms2: 10 * 60 * 1000 },
