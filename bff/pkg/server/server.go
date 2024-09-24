@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"local/bff/pkg/metrics"
@@ -91,6 +92,40 @@ func (s server_imp) Run() error {
 	}))
 
 	return http.ListenAndServe(":"+s.port, r)
+}
+
+func ReadDbIdentifiers(configFile string) ([]string, error) {
+	file, err := os.Open(configFile)
+	if err != nil {
+		return nil, fmt.Errorf("error opening config file: %v", err)
+	}
+	defer file.Close()
+
+	var identifiers []string
+	scanner := bufio.NewScanner(file)
+
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if !strings.HasPrefix(line, "#") {
+			if strings.HasPrefix(line, "aws_db_instance_id") {
+				parts := strings.SplitN(line, "=", 2)
+				if len(parts) == 2 {
+					identifier := strings.TrimSpace(parts[1])
+					identifiers = append(identifiers, identifier)
+				}
+			}
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return nil, fmt.Errorf("error reading config file: %v", err)
+	}
+
+	if len(identifiers) == 0 {
+		return []string{}, nil
+	}
+
+	return identifiers, nil
 }
 
 func convertDbIdentifiersToPromQLParam(identifiers []string) string {
