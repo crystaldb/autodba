@@ -106,7 +106,7 @@ func parseTimeRange(options map[string]string) (*v1.Range, error) {
 
 func (r repository) Execute(query string, options map[string]string) (*map[int64]map[string]float64, error) {
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
 	rangeConfig, err := parseTimeRange(options)
@@ -115,7 +115,7 @@ func (r repository) Execute(query string, options map[string]string) (*map[int64
 		return nil, err
 	}
 
-	result, warnings, err := r.Api.QueryRange(ctx, query, *rangeConfig, v1.WithTimeout(5*time.Second))
+	result, warnings, err := r.Api.QueryRange(ctx, query, *rangeConfig, v1.WithTimeout(60*time.Second))
 	if err != nil {
 		fmt.Println("Error executing query: ", err)
 		return nil, err
