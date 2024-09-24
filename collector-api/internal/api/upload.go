@@ -35,7 +35,9 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 
 	if values, ok := r.MultipartForm.Value["key"]; ok {
 		for _, value := range values {
-			log.Printf("checking for %s: %s\n", "key", value)
+			if cfg.Debug {
+				log.Printf("checking for %s: %s\n", "key", value)
+			}
 			if !auth.S3Authenticate(value) {
 				if cfg.Debug {
 					log.Printf("Unauthorized access attempt from %s", r.RemoteAddr)
