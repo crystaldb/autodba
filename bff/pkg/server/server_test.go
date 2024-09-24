@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -478,7 +477,7 @@ aws_db_instance_id = instance2
 
 aws_db_instance_id = instance4
 `
-	tmpfile, err := ioutil.TempFile("", "config.*.conf")
+	tmpfile, err := os.CreateTemp("", "config.*.conf")
 	if err != nil {
 		t.Fatal(err)
 	}
