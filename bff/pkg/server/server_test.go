@@ -8,9 +8,10 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"local/bff/pkg/utils"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"local/bff/pkg/utils"
 )
 
 type MockMetricsService struct {
@@ -327,7 +328,7 @@ func TestDefaultDBIdentifier(t *testing.T) {
 	// Create a request without the dbidentifier parameter
 	record := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/api/v1/test?start=now", nil)
-	handler := metrics_handler(routeConfigs, defaultDBIdentifier, mockService)
+	handler := metrics_handler(routeConfigs, []string{defaultDBIdentifier}, mockService)
 	handler.ServeHTTP(record, req)
 
 	mockService.AssertExpectations(t)

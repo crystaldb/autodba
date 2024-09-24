@@ -150,7 +150,7 @@ if [ -n "$BACKUP_FILE" ]; then
 fi
 
 # Start up bff
-"$PARENT_DIR/bin/autodba-bff" -dbidentifier="$AWS_RDS_INSTANCE" -webappPath "$PARENT_DIR/share/webapp" &
+"$PARENT_DIR/bin/autodba-bff" -collectorConfigFile="$CONFIG_FILE" -webappPath "$PARENT_DIR/share/webapp" &
 BFF_PID=$!
 
 # Wait for a process to exit
