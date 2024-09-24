@@ -69,6 +69,7 @@ for arch in amd64 arm64; do
     PROMETHEUS_CONFIG_DIR="$PARENT_DIR/config/prometheus"
     AUTODBA_CONFIG_DIR="$PARENT_DIR/config/autodba"
     PROMETHEUS_INSTALL_DIR="$PARENT_DIR/prometheus"
+    COLLECTOR_DIR="${PARENT_DIR}/share/collector"
 
     echo "Downloading Prometheus tarball for ${arch}..."
     # Prepare clean
@@ -114,6 +115,24 @@ for arch in amd64 arm64; do
     cp -r monitor/prometheus/sql_exporter/* "${EXPORTER_DIR}/sql_exporter/"
     cp -r monitor/prometheus/rds_exporter/* "${EXPORTER_DIR}/rds_exporter/"
     cp monitor/prometheus/prometheus.yml "${PROMETHEUS_CONFIG_DIR}/prometheus.yml"
+
+    # Build collector
+    if [ "$arch" == "amd64" ]; then
+        PROTOC_ARCH_SUFFIX="x86_64"
+    else
+        PROTOC_ARCH_SUFFIX="aarch_64"
+    fi
+    echo "Building collector..."
+    mkdir -p "${COLLECTOR_DIR}"
+    git clone --recurse-submodules https://github.com/crystaldb/collector.git "${COLLECTOR_DIR}"
+    cd "${COLLECTOR_DIR}"
+    wget https://github.com/protocolbuffers/protobuf/releases/download/v3.14.0/protoc-3.14.0-linux-${PROTOC_ARCH_SUFFIX}.zip
+    unzip protoc-3.14.0-linux-${PROTOC_ARCH_SUFFIX}.zip -d protoc
+    make build
+    mv pganalyze-collector collector
+    mv pganalyze-collector-helper collector-helper
+    mv pganalyze-collector-setup collector-setup
+    cd -
 
     # Prepare directories for install
     mkdir -p "${INSTALL_DIR}"
