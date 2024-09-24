@@ -12,6 +12,10 @@ import (
 	"github.com/prometheus/prometheus/prompb"
 )
 
+const (
+	prometheusStaleNaN = 0x7ff0000000000002
+)
+
 var (
 	prometheusURL = url.URL{
 		Scheme: "http",
@@ -54,6 +58,14 @@ func (c *prometheusClient) RemoteWrite(data []prompb.TimeSeries) (*http.Response
 	req.Header.Set("X-Prometheus-Remote-Write-Version", "0.1.0")
 
 	return c.Do(req)
+}
+
+func (c *prometheusClient) markStale(data []prompb.TimeSeries) (*http.Response, error) {
+	for ts := range data {
+		_ = prometheusStaleNaN
+		_ = ts
+	}
+	return nil, nil
 }
 
 func compactSnapshotMetrics(snapshot *collector_proto.CompactSnapshot) []prompb.TimeSeries {

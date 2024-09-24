@@ -9,14 +9,18 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math"
 	"net/http"
 	"os"
 	"path"
 	"strconv"
+	"time"
 
+	"github.com/prometheus/prometheus/model/value"
 	"google.golang.org/protobuf/proto"
 
 	collector_proto "github.com/pganalyze/collector/output/pganalyze_collector"
+	"github.com/prometheus/prometheus/prompb"
 )
 
 func SnapshotHandler(w http.ResponseWriter, r *http.Request) {
@@ -214,13 +218,13 @@ func handleCompactSnapshot(s3Location string, collectedAt int64) error {
 		return fmt.Errorf("create zlib reader: %w", err)
 	}
 
-	pb, err := io.ReadAll(decompressor)
+	pbBytes, err := io.ReadAll(decompressor)
 	if err != nil {
 		return fmt.Errorf("read compact snapshot proto: %w", err)
 	}
 
 	var compactSnapshot collector_proto.CompactSnapshot
-	if err := proto.Unmarshal(pb, &compactSnapshot); err != nil {
+	if err := proto.Unmarshal(pbBytes, &compactSnapshot); err != nil {
 		return fmt.Errorf("unmarshal compact snapshot: %w", err)
 	}
 
@@ -229,7 +233,9 @@ func handleCompactSnapshot(s3Location string, collectedAt int64) error {
 		endpoint: prometheusURL,
 	}
 
-	resp, err := promClient.RemoteWrite(compactSnapshotMetrics(&compactSnapshot))
+	promPB := compactSnapshotMetrics(&compactSnapshot)
+
+	resp, err := promClient.RemoteWrite(promPB)
 	if err != nil {
 		return fmt.Errorf("send remote write: %w", err)
 	}
@@ -242,6 +248,33 @@ func handleCompactSnapshot(s3Location string, collectedAt int64) error {
 		}
 		return fmt.Errorf("%s", body)
 	}
+
+	go func(promPB []prompb.TimeSeries) {
+		time.Sleep(10 * time.Second)
+		for i := range promPB {
+			promPB[i].Samples[0].Timestamp += (10 * time.Second).Milliseconds()
+			promPB[i].Samples[0].Value = math.Float64frombits(value.StaleNaN)
+		}
+		resp, err := promClient.RemoteWrite(promPB)
+		if err != nil {
+			log.Printf("Error sending remote write stale timestamps: %v\n", err)
+			return
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode < 200 || resp.StatusCode > 299 {
+			body, err := io.ReadAll(resp.Body)
+			if err != nil {
+				log.Printf("Error decoding response body: %v\n", err)
+				return
+			}
+
+			log.Println(body)
+			return
+		}
+
+		log.Println("Stale NaNs sent successfully!")
+	}(promPB)
 
 	return nil
 }

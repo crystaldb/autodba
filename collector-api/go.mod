@@ -13,6 +13,7 @@ require (
 	github.com/golang/snappy v0.0.4
 	github.com/pganalyze/collector v0.58.0
 	github.com/prometheus/prometheus v0.54.1
+	google.golang.org/protobuf v1.34.2
 )
 
 require (
@@ -25,6 +26,5 @@ require (
 	github.com/prometheus/client_model v0.6.1 // indirect
 	github.com/prometheus/common v0.55.0 // indirect
 	golang.org/x/text v0.16.0 // indirect
-	google.golang.org/protobuf v1.34.2 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
