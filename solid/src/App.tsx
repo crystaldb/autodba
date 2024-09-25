@@ -5,7 +5,7 @@ import { PageActivity } from "./page/activity";
 import { PageMetric } from "./page/metric";
 import { Router, Route } from "@solidjs/router";
 import { JSX, Show } from "solid-js";
-import { queryDatabaseInstanceInfo, queryDatabaseList } from "./http";
+import { queryInstances, queryDatabases } from "./http";
 import { Dynamic } from "solid-js/web";
 import { DarkmodeSelector } from "./view/darkmode";
 import { TimebarSection } from "./view/timebar_section";
@@ -39,8 +39,8 @@ function Layout(props: {
     | null
     | undefined;
 }): JSX.Element {
-  queryDatabaseInstanceInfo();
-  queryDatabaseList();
+  queryInstances(true);
+  queryDatabases(true);
 
   return <div class="max-w-screen-xl mx-auto">{props.children}</div>;
 }
