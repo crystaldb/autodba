@@ -14,22 +14,55 @@ import { contextState } from "./context_state";
 
 const magicPrometheusMaxSamplesLimit = 11000;
 
-export async function queryDatabaseInstanceInfo(): Promise<boolean> {
+// BEGIN HACK CODE: we are (temporarily) prioritizing time-to-completion over quality here while we work out the product spec for retries and exponential backoffs.
+/** globalWithTemporaryHackTimeouts
+ * CONTEXT: This code is temporary until we implement retry with exponential backoff. A global variable is used because, during development, each time this file is saved, Vite reloads the code, getting around the check to see if a timeout already exists. As a result, a developer can quickly have tons of requests being retried every 5 seconds, causing requests to continually be sending, which turns your laptop fan on. So, for now, we're polluting the global namespace since this code will be removed soon.
+ */
+const retryMs = 5000;
+type GlobalWithTemporaryHackTimeouts = typeof globalThis & {
+  timeout_queryInstances: NodeJS.Timeout | null;
+  timeout_queryDatabases: NodeJS.Timeout | null;
+};
+const globalWithTemporaryHackTimeouts =
+  globalThis as GlobalWithTemporaryHackTimeouts;
+export function retryQuery(
+  blockExcessRetriesKey: "timeout_queryDatabases" | "timeout_queryInstances",
+  fn: (arg0: boolean) => Promise<boolean>,
+): boolean {
+  if (globalWithTemporaryHackTimeouts[blockExcessRetriesKey]) return false;
+  console.log(`Query: ${blockExcessRetriesKey}: will retry in ${retryMs}ms`);
+  globalWithTemporaryHackTimeouts[blockExcessRetriesKey] = setTimeout(() => {
+    globalWithTemporaryHackTimeouts[blockExcessRetriesKey] = null;
+    fn(true);
+  }, retryMs);
+  return false;
+}
+// END HACK CODE
+
+export async function queryInstances(retryIfNeeded: boolean): Promise<boolean> {
   const { setState } = contextState();
   const response = await fetch("/api/v1/info", { method: "GET" });
 
+  if (!response.ok) {
+    if (retryIfNeeded)
+      return retryQuery("timeout_queryInstances", queryInstances);
+    return false;
+  }
   const json = await response.json();
-  if (!response.ok) return false;
   setState("database_instance", json || {});
   return true;
 }
 
-export async function queryDatabaseList(): Promise<boolean> {
+export async function queryDatabases(retryIfNeeded: boolean): Promise<boolean> {
   const { setState } = contextState();
   const response = await fetch("/api/v1/databases", { method: "GET" });
 
+  if (!response.ok) {
+    if (retryIfNeeded)
+      return retryQuery("timeout_queryDatabases", queryDatabases);
+    return false;
+  }
   const json = await response.json();
-  if (!response.ok) return false;
 
   setState("database_list", json || []);
   return true;
