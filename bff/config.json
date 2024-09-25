@@ -3,7 +3,13 @@
   "prometheus_server": "http://localhost:9090",
   "routes_config": {
     "/v1/health": {
-      "params": ["dbidentifier", "datname", "start", "end", "step"],
+      "params": [
+        "dbidentifier",
+        "datname",
+        "start",
+        "end",
+        "step"
+      ],
       "options": {
         "start": "$start",
         "end": "$end",
@@ -16,7 +22,13 @@
       }
     },
     "/v1/metric": {
-      "params": ["dbidentifier", "datname", "start", "end", "step"],
+      "params": [
+        "dbidentifier",
+        "datname",
+        "start",
+        "end",
+        "step"
+      ],
       "options": {
         "start": "$start",
         "end": "$end",

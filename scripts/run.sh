@@ -20,6 +20,7 @@ BACKUP_FILE=""  # Path to the backup file
 BACKUP_DIR="$SOURCE_DIR/../autodba_backups_dir"
 DISABLE_DATA_COLLECTION=false  # Flag to disable data collection
 CONTINUE=false  # Flag to continue from existing agent data
+CONFIG_FILE="" # Path to the configuration file
 
 command_exists() {
     command -v "$1" >/dev/null 2>&1
@@ -27,8 +28,9 @@ command_exists() {
 
 # Function to display usage information
 usage() {
-    echo "Usage: $0 --db-url <TARGET_DATABASE_URL> [--instance-id <INSTANCE_ID>] [--rds-instance <RDS_INSTANCE_NAME>] [--backup-file <BACKUP_FILE>] [--disable-data-collection] [--continue]"
+    echo "Usage: $0 --db-url <TARGET_DATABASE_URL> [--config <CONFIG_FILE>] [--instance-id <INSTANCE_ID>] [--rds-instance <RDS_INSTANCE_NAME>] [--backup-file <BACKUP_FILE>] [--disable-data-collection] [--continue]"
     echo "Options:"
+    echo "--config                    <CONFIG_FILE> path to the configuration file"
     echo "--instance-id               <INSTANCE_ID> if you are running multiple instances of the agent, specify a unique number for each"
     echo "--rds-instance              <RDS_INSTANCE_NAME> collect metrics from an AWS RDS instance"
     echo "--restore-backup            <BACKUP_FILE> the path to the backup file to be restored into the agent's Prometheus and PostgreSQL databases"
@@ -40,6 +42,15 @@ usage() {
 # Parse command-line options
 while [[ "$#" -gt 0 ]]; do
     case $1 in
+        --config)
+            if [[ -n "$2" ]] && [[ ${2:0:1} != "-" ]]; then
+                CONFIG_FILE="$2"
+                shift 2
+            else
+                echo "Error: Argument for $1 is missing" >&2
+                exit 1
+            fi
+            ;;
         --db-url)
             if [[ -n "$2" ]] && [[ ${2:0:1} != "-" ]]; then
                 DB_CONN_STRING="$2"
@@ -105,29 +116,85 @@ while [[ "$#" -gt 0 ]]; do
     esac
 done
 
-# Check if required parameters are provided
-if [[ -z "$DB_CONN_STRING" ]]; then
-    echo "Missing required parameters"
-    usage
-fi
+# Function to extract parts from the DB connection string
+function parse_db_conn_string() {
+  local conn_string="$1"
+  
+  db_host=$(echo "$conn_string" | sed -E 's/.*@([^:]+).*/\1/')  # Extract host
+  db_name=$(echo "$conn_string" | sed -E 's/.*\/([^?]+).*/\1/')  # Correct extraction of dbname
+  db_username=$(echo "$conn_string" | sed -E 's/.*\/\/([^:]+):.*/\1/')  # Extract username
+  db_password=$(echo "$conn_string" | sed -E 's/.*\/\/[^:]+:([^@]+)@.*/\1/')  # Extract password
+  db_port=$(echo "$conn_string" | sed -E 's/.*:(543[0-9]{1}).*/\1/')  # Extract port
+  
+  echo "Parsed connection string:"
+  echo "  DB Host: $db_host"
+  echo "  DB Name: $db_name"
+  echo "  DB Username: $db_username"
+  echo "  DB Password: (hidden)"
+  echo "  DB Port: $db_port"
+}
 
-if [[ -z "$AWS_RDS_INSTANCE" ]]; then
-    echo "Warning: --rds-instance not specified. Starting without RDS Instance metrics."
-fi
+# Function to create config file
+create_config_file() {
+    local config_file="$1"
 
-if [[ -n "$AWS_RDS_INSTANCE" ]]; then
-  if ! command_exists "aws"; then
-    echo "Warning: AWS CLI is not installed. Please install AWS CLI to fetch AWS credentials."
-  else
-    # Fetch AWS Access Key and AWS Secret Key
-    AWS_ACCESS_KEY_ID=$(aws configure get aws_access_key_id || echo "")
-    AWS_SECRET_ACCESS_KEY=$(aws configure get aws_secret_access_key || echo "")
-    AWS_REGION=$(aws configure get region || echo "")
+    # Parse the DB connection string
+    parse_db_conn_string "$DB_CONN_STRING"
 
-    if [[ -z "$AWS_ACCESS_KEY_ID" || -z "$AWS_SECRET_ACCESS_KEY" || -z "$AWS_REGION" ]]; then
-        echo "Warning: AWS credentials or region are not configured properly. Proceeding without AWS integration."
+    cat > "$config_file" <<EOF
+[pganalyze]
+api_key = your-secure-api-key
+api_base_url = http://localhost:7080
+
+[server1]
+db_host = $db_host
+db_name = $db_name
+db_username = $db_username
+db_password = $db_password
+db_port = $db_port
+aws_db_instance_id = $AWS_RDS_INSTANCE
+aws_region = $AWS_REGION
+aws_access_key_id = $AWS_ACCESS_KEY_ID
+aws_secret_access_key = $AWS_SECRET_ACCESS_KEY
+EOF
+}
+
+# Handle config file
+if [[ -z "$CONFIG_FILE" ]]; then
+    echo "No config file provided. Creating one based on provided parameters..."
+
+    # Check if required parameters are provided
+    if [[ -z "$DB_CONN_STRING" ]]; then
+        echo "Missing required parameters"
+        usage
     fi
-  fi
+
+    if [[ -z "$AWS_RDS_INSTANCE" ]]; then
+        echo "Warning: --rds-instance not specified. Starting without RDS Instance metrics."
+    fi
+
+    if [[ -n "$AWS_RDS_INSTANCE" ]]; then
+    if ! command_exists "aws"; then
+        echo "Warning: AWS CLI is not installed. Please install AWS CLI to fetch AWS credentials."
+    else
+        # Fetch AWS Access Key and AWS Secret Key
+        AWS_ACCESS_KEY_ID=$(aws configure get aws_access_key_id || echo "")
+        AWS_SECRET_ACCESS_KEY=$(aws configure get aws_secret_access_key || echo "")
+        AWS_REGION=$(aws configure get region || echo "")
+
+        if [[ -z "$AWS_ACCESS_KEY_ID" || -z "$AWS_SECRET_ACCESS_KEY" || -z "$AWS_REGION" ]]; then
+            echo "Warning: AWS credentials or region are not configured properly. Proceeding without AWS integration."
+        fi
+    fi
+    fi
+
+    CONFIG_FILE="./autodba-collector.conf"
+    create_config_file "$CONFIG_FILE"
+else
+    if [[ ! -f "$CONFIG_FILE" ]]; then
+        echo "Error: Provided config file $CONFIG_FILE does not exist" >&2
+        exit 1
+    fi
 fi
 
 # Adjust port numbers based on INSTANCE_ID
@@ -195,8 +262,10 @@ docker run --name "$CONTAINER_NAME" \
     -e AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY:-""}" \
     -e AWS_REGION="${AWS_REGION:-""}" \
     -e DISABLE_DATA_COLLECTION="$DISABLE_DATA_COLLECTION" \
+    -e CONFIG_FILE="/usr/local/autodba/config/autodba/collector.conf" \
     $BACKUP_FILE_ENV \
     $BACKUP_DIR_BINDING \
+    --mount type=bind,source="$CONFIG_FILE",target="/usr/local/autodba/config/autodba/collector.conf",readonly \
     "$IMAGE_NAME"
     # -v "$VOLUME_NAME":/var/lib/postgresql/data \
     # --env-file "$ENV_FILE" \

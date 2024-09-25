@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"local/bff/pkg/metrics"
@@ -29,7 +30,7 @@ type server_imp struct {
 	routes_config   map[string]RouteConfig
 	metrics_service metrics.Service
 	port            string
-	dbIdentifier    string
+	dbIdentifiers   []string
 	webappPath      string
 }
 
@@ -50,8 +51,8 @@ func CORS(next http.Handler) http.Handler {
 	})
 }
 
-func CreateServer(r map[string]RouteConfig, m metrics.Service, port string, dbIdentifier string, webappPath string) Server {
-	return server_imp{r, m, port, dbIdentifier, webappPath}
+func CreateServer(r map[string]RouteConfig, m metrics.Service, port string, dbIdentifiers []string, webappPath string) Server {
+	return server_imp{r, m, port, dbIdentifiers, webappPath}
 }
 
 func fileExists(filePath string) bool {
@@ -76,7 +77,7 @@ func (s server_imp) Run() error {
 	r.Get("/api/v1/info", info_handler(s.metrics_service))
 
 	r.Route(api_prefix, func(r chi.Router) {
-		r.Mount("/", metrics_handler(s.routes_config, s.dbIdentifier, s.metrics_service))
+		r.Mount("/", metrics_handler(s.routes_config, s.dbIdentifiers, s.metrics_service))
 	})
 
 	fs := http.FileServer(http.Dir(s.webappPath))
@@ -93,7 +94,61 @@ func (s server_imp) Run() error {
 	return http.ListenAndServe(":"+s.port, r)
 }
 
-func metrics_handler(route_configs map[string]RouteConfig, dbIdentifier string, metrics_service metrics.Service) http.Handler {
+func ReadDbIdentifiers(configFile string) ([]string, error) {
+	file, err := os.Open(configFile)
+	if err != nil {
+		return nil, fmt.Errorf("error opening config file: %v", err)
+	}
+	defer file.Close()
+
+	var identifiers []string
+	scanner := bufio.NewScanner(file)
+
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if !strings.HasPrefix(line, "#") {
+			if strings.HasPrefix(line, "aws_db_instance_id") {
+				parts := strings.SplitN(line, "=", 2)
+				if len(parts) == 2 {
+					identifier := strings.TrimSpace(parts[1])
+					identifiers = append(identifiers, identifier)
+				}
+			}
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return nil, fmt.Errorf("error reading config file: %v", err)
+	}
+
+	if len(identifiers) == 0 {
+		return []string{}, nil
+	}
+
+	return identifiers, nil
+}
+
+func convertDbIdentifiersToPromQLParam(identifiers []string) string {
+	if len(identifiers) == 0 {
+		return ""
+	}
+
+	quoted := make([]string, len(identifiers))
+	for i, id := range identifiers {
+		quoted[i] = fmt.Sprintf("%s", id)
+	}
+
+	result := strings.Join(quoted, "|")
+
+	// Add parentheses if there are multiple identifiers
+	if len(identifiers) > 1 {
+		result = "(" + result + ")"
+	}
+
+	return result
+}
+
+func metrics_handler(route_configs map[string]RouteConfig, dbIdentifiers []string, metrics_service metrics.Service) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("Handling metrics request")
 
@@ -150,7 +205,7 @@ func metrics_handler(route_configs map[string]RouteConfig, dbIdentifier string, 
 							current_query = metrics[metric]
 						}
 
-						metrics[metric] = strings.ReplaceAll(current_query, replace_prefix+param, dbIdentifier)
+						metrics[metric] = strings.ReplaceAll(current_query, replace_prefix+param, convertDbIdentifiersToPromQLParam(dbIdentifiers))
 
 						fmt.Println("metric: ", metric)
 						fmt.Println("query: ", query)
