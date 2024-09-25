@@ -4,73 +4,38 @@
 
 # Set the base directory based on installation
 PARENT_DIR="${PARENT_DIR:-/usr/local/autodba}"
+CONFIG_FILE="${CONFIG_FILE:-${PARENT_DIR}/share/collector/collector.conf}"
 
-# Load environment variables from a JSON config file if provided
-if [ -n "$CONFIG_FILE" ]; then
-    echo "Loading environment variables from JSON config file: $CONFIG_FILE"
-    if [ -f "$CONFIG_FILE" ]; then
-        DB_CONN_STRING=$(jq -r '.DB_CONN_STRING' "$CONFIG_FILE")
-        AWS_RDS_INSTANCE=$(jq -r '.AWS_RDS_INSTANCE' "$CONFIG_FILE")
-        AWS_ACCESS_KEY_ID=$(jq -r '.AWS_ACCESS_KEY_ID' "$CONFIG_FILE")
-        AWS_SECRET_ACCESS_KEY=$(jq -r '.AWS_SECRET_ACCESS_KEY' "$CONFIG_FILE")
-        AWS_REGION=$(jq -r '.AWS_REGION' "$CONFIG_FILE")
-    else
-        echo "Error: Config file $CONFIG_FILE does not exist."
-        exit 1
-    fi
+# Check if config file exists
+if [ ! -f "${CONFIG_FILE}" ]; then
+    echo "Error: Config file not found at ${CONFIG_FILE}"
+    exit 1
 fi
+
+# Function to extract value from the first server section
+extract_value() {
+    grep -m1 "^$1" "${CONFIG_FILE}" | cut -d'=' -f2- | tr -d ' '
+}
+
+# Extract values for the first server
+DB_HOST=$(extract_value "db_host")
+DB_NAME=$(extract_value "db_name")
+DB_USERNAME=$(extract_value "db_username")
+DB_PASSWORD=$(extract_value "db_password")
+DB_PORT=$(extract_value "db_port")
+AWS_RDS_INSTANCE=$(extract_value "aws_db_instance_id")
+AWS_REGION=$(extract_value "aws_region")
+AWS_ACCESS_KEY_ID=$(extract_value "aws_access_key_id")
+AWS_SECRET_ACCESS_KEY=$(extract_value "aws_secret_access_key")
+
+# Construct the DB_CONN_STRING
+DB_CONN_STRING="postgresql://${DB_USERNAME}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}"
 
 # Ensure required environment variables are set
 if [ -z "$DB_CONN_STRING" ]; then
-  echo "Error: DB_CONN_STRING environment variable is not set."
+  echo "Error: there is no PostgreSQL server connection string defined in the provided config."
   exit 1
 fi
-
-# Function to extract parts from the DB connection string
-function parse_db_conn_string() {
-  local conn_string="$1"
-  
-  db_host=$(echo "$conn_string" | sed -E 's/.*@([^:]+).*/\1/')  # Extract host
-  db_name=$(echo "$conn_string" | sed -E 's/.*\/([^?]+).*/\1/')  # Correct extraction of dbname
-  db_username=$(echo "$conn_string" | sed -E 's/.*\/\/([^:]+):.*/\1/')  # Extract username
-  db_password=$(echo "$conn_string" | sed -E 's/.*\/\/[^:]+:([^@]+)@.*/\1/')  # Extract password
-  db_port=$(echo "$conn_string" | sed -E 's/.*:(543[0-9]{1}).*/\1/')  # Extract port
-  
-  echo "Parsed connection string:"
-  echo "  DB Host: $db_host"
-  echo "  DB Name: $db_name"
-  echo "  DB Username: $db_username"
-  echo "  DB Password: (hidden)"
-  echo "  DB Port: $db_port"
-}
-
-# Parse the DB connection string
-parse_db_conn_string "$DB_CONN_STRING"
-
-# Ensure the directory for the config file exists
-COLLECTOR_CONFIG_DIR="$PARENT_DIR/share/collector"
-mkdir -p "$COLLECTOR_CONFIG_DIR"
-
-# Create Collector config file from parsed values
-COLLECTOR_CONFIG_FILE="$COLLECTOR_CONFIG_DIR/collector.conf"
-cat > "$COLLECTOR_CONFIG_FILE" <<EOL
-[pganalyze]
-api_key = your-secure-api-key
-api_base_url = http://localhost:7080
-
-[server1]
-db_host = $db_host
-db_name = $db_name
-db_username = $db_username
-db_password = $db_password
-db_port = $db_port
-aws_db_instance_id = $AWS_RDS_INSTANCE
-aws_region = $AWS_REGION
-aws_access_key_id = $AWS_ACCESS_KEY_ID
-aws_secret_access_key = $AWS_SECRET_ACCESS_KEY
-EOL
-
-echo "Collector configuration file created at $COLLECTOR_CONFIG_FILE"
 
 function clean_up {
     # Perform program exit housekeeping
@@ -136,12 +101,14 @@ if [ -z "$DISABLE_DATA_COLLECTION" ] || [ "$DISABLE_DATA_COLLECTION" = false ]; 
   # Check if collector exists before starting it. This acts as a feature-flag.
   if [ -d "$PARENT_DIR/share/collector" ]; then
     # Start up Collector
-    if [ -f "$COLLECTOR_CONFIG_FILE" ]; then
+    if [ -f "${CONFIG_FILE}" ]; then
       echo "Starting Collector..."
-      $PARENT_DIR/share/collector/collector --config="$COLLECTOR_CONFIG_FILE" --statefile="$PARENT_DIR/share/collector/state" --verbose &
+      $PARENT_DIR/share/collector/collector --config="${CONFIG_FILE}" --statefile="$PARENT_DIR/share/collector/state" --verbose &
       COLLECTOR_COLLECTOR_PID=$!
     else
-      echo "Collector configuration file not found, skipping Collector startup."
+      # Check if config file exists
+      echo "Error: Collector configuration file not found at ${CONFIG_FILE}"
+      exit 1
     fi
   else
     echo "Warning: Skipping Collector. Directory does not exist: $PARENT_DIR/share/collector"
@@ -184,7 +151,7 @@ if [ -n "$BACKUP_FILE" ]; then
 fi
 
 # Start up bff
-"$PARENT_DIR/bin/autodba-bff" -dbidentifier="$AWS_RDS_INSTANCE" -webappPath "$PARENT_DIR/share/webapp" &
+"$PARENT_DIR/bin/autodba-bff" -collectorConfigFile="$CONFIG_FILE" -webappPath "$PARENT_DIR/share/webapp" &
 BFF_PID=$!
 
 # Wait for a process to exit

@@ -32,7 +32,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 usage() {
-    echo "Usage: $0 [--system] [--install-dir <path>] [--config <config.json>]"
+    echo "Usage: $0 [--system] [--install-dir <path>] [--config <config.conf>]"
     echo ""
     echo "Options:"
     echo "  --system       Install globally under /usr/local/autodba"
@@ -70,7 +70,7 @@ PROMETHEUS_CONFIG_DIR="$PARENT_DIR/config/prometheus"
 AUTODBA_CONFIG_DIR="$PARENT_DIR/config/autodba"
 PROMETHEUS_STORAGE_DIR="$PARENT_DIR/prometheus_data"
 PROMETHEUS_INSTALL_DIR="$PARENT_DIR/prometheus"
-AUTODBA_CONFIG_FILE="$AUTODBA_CONFIG_DIR/autodba-config.json"
+AUTODBA_CONFIG_FILE="$AUTODBA_CONFIG_DIR/collector.conf"
 
 echo "Installing AutoDBA under: $PARENT_DIR"
 
@@ -85,6 +85,50 @@ else
     echo "Using the current directory for installation, no copying needed."
 fi
 
+
+# Function to extract parts from the DB connection string
+function parse_db_conn_string() {
+  local conn_string="$1"
+  
+  db_host=$(echo "$conn_string" | sed -E 's/.*@([^:]+).*/\1/')  # Extract host
+  db_name=$(echo "$conn_string" | sed -E 's/.*\/([^?]+).*/\1/')  # Correct extraction of dbname
+  db_username=$(echo "$conn_string" | sed -E 's/.*\/\/([^:]+):.*/\1/')  # Extract username
+  db_password=$(echo "$conn_string" | sed -E 's/.*\/\/[^:]+:([^@]+)@.*/\1/')  # Extract password
+  db_port=$(echo "$conn_string" | sed -E 's/.*:(543[0-9]{1}).*/\1/')  # Extract port
+  
+  echo "Parsed connection string:"
+  echo "  DB Host: $db_host"
+  echo "  DB Name: $db_name"
+  echo "  DB Username: $db_username"
+  echo "  DB Password: (hidden)"
+  echo "  DB Port: $db_port"
+}
+
+# Function to create config file
+create_config_file() {
+    local config_file="$1"
+
+    # Parse the DB connection string
+    parse_db_conn_string "$DB_CONN_STRING"
+
+    cat > "$config_file" <<EOF
+[pganalyze]
+api_key = your-secure-api-key
+api_base_url = http://localhost:7080
+
+[server1]
+db_host = $db_host
+db_name = $db_name
+db_username = $db_username
+db_password = $db_password
+db_port = $db_port
+aws_db_instance_id = $AWS_RDS_INSTANCE
+aws_region = $AWS_REGION
+aws_access_key_id = $AWS_ACCESS_KEY_ID
+aws_secret_access_key = $AWS_SECRET_ACCESS_KEY
+EOF
+}
+
 # Handle configuration file
 if [ -n "$CONFIG_FILE" ]; then
     if [ -f "$CONFIG_FILE" ]; then
@@ -96,26 +140,14 @@ if [ -n "$CONFIG_FILE" ]; then
 elif [ ! -t 0 ]; then
     echo "Reading config from stdin and saving to $AUTODBA_CONFIG_FILE"
 
-    # Check if jq is installed for JSON validation
-    if ! command_exists "jq"; then
-        echo "Error: jq is required for JSON validation but is not installed."
-        exit 1
-    fi
-
-    # Read and validate the JSON file using jq
+    # Read and validate the config file from stdin
     mkdir -p "$AUTODBA_CONFIG_DIR"
     if ! cat > "$AUTODBA_CONFIG_FILE"; then
         echo "Error: Failed to save stdin input to $AUTODBA_CONFIG_FILE"
         exit 1
     fi
 
-    if ! jq empty "$AUTODBA_CONFIG_FILE"; then
-        echo "Error: Input from stdin is not valid JSON."
-        rm -f "$AUTODBA_CONFIG_FILE"
-        exit 1
-    fi
-
-    echo "Valid JSON config saved at $AUTODBA_CONFIG_FILE"
+    echo "Valid config saved at $AUTODBA_CONFIG_FILE"
 else
     echo "No config file provided, and no input from stdin detected. Using environment variables."
     # Remove any existing config file
@@ -149,15 +181,8 @@ else
         fi
     fi
     mkdir -p "$AUTODBA_CONFIG_DIR"
-    cat <<EOF > "${AUTODBA_CONFIG_FILE}"
-{
-    "DB_CONN_STRING": "${DB_CONN_STRING:-""}",
-    "AWS_RDS_INSTANCE": "${AWS_RDS_INSTANCE:-""}",
-    "AWS_ACCESS_KEY_ID": "${AWS_ACCESS_KEY_ID:-""}",
-    "AWS_SECRET_ACCESS_KEY": "${AWS_SECRET_ACCESS_KEY:-""}",
-    "AWS_REGION": "${AWS_REGION:-""}"
-}
-EOF
+    create_config_file "${AUTODBA_CONFIG_FILE}"
+
     echo "Generated config file at ${AUTODBA_CONFIG_FILE}"
 fi
 
@@ -190,7 +215,7 @@ Restart=on-failure
 User=autodba
 Group=autodba
 Environment="PARENT_DIR=${PARENT_DIR}"
-Environment="CONFIG_FILE=${AUTODBA_CONFIG_DIR}/autodba-config.json"
+Environment="CONFIG_FILE=${AUTODBA_CONFIG_FILE}"
 
 [Install]
 WantedBy=multi-user.target

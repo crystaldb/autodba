@@ -6,11 +6,13 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
+
+	"local/bff/pkg/utils"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"local/bff/pkg/utils"
 )
 
 type MockMetricsService struct {
@@ -52,7 +54,7 @@ func TestEndpointsGeneration(t *testing.T) {
 		},
 	}
 
-	handler := metrics_handler(routesConfig, "", mockMetricsService)
+	handler := metrics_handler(routesConfig, []string{""}, mockMetricsService)
 
 	// TEST configured route exists
 	record := httptest.NewRecorder()
@@ -101,7 +103,7 @@ func TestParamsPopulation(t *testing.T) {
 		return true
 	})).Return(map[int64]map[string]float64{}, nil)
 
-	handler := metrics_handler(routesConfig, "", mockMetricsService)
+	handler := metrics_handler(routesConfig, []string{""}, mockMetricsService)
 
 	// TEST params population
 	record := httptest.NewRecorder()
@@ -140,7 +142,7 @@ func TestMissingParams(t *testing.T) {
 		},
 		nil,
 	)
-	handler := metrics_handler(routesConfig, "", mockMetricsService)
+	handler := metrics_handler(routesConfig, []string{""}, mockMetricsService)
 
 	record := httptest.NewRecorder()
 
@@ -175,7 +177,7 @@ func TestMetricsHandlerJSONFormat(t *testing.T) {
 		},
 	}
 
-	handler := metrics_handler(routesConfig, "", mockMetricsService)
+	handler := metrics_handler(routesConfig, []string{""}, mockMetricsService)
 
 	record := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/metrics?start=now", nil)
@@ -309,7 +311,7 @@ func TestDefaultDBIdentifier(t *testing.T) {
 		"/v1/test": {
 			Params: []string{"dbidentifier"},
 			Metrics: map[string]string{
-				"cpu": "sum(rds_cpu_usage_percent_average{dbidentifier=~\"$dbidentifier\"})",
+				"cpu": "sum(rds_cpu_usage_percent_average{dbidentifier=~$dbidentifier})",
 			},
 			Options: map[string]string{},
 		},
@@ -327,7 +329,7 @@ func TestDefaultDBIdentifier(t *testing.T) {
 	// Create a request without the dbidentifier parameter
 	record := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/api/v1/test?start=now", nil)
-	handler := metrics_handler(routeConfigs, defaultDBIdentifier, mockService)
+	handler := metrics_handler(routeConfigs, []string{defaultDBIdentifier}, mockService)
 	handler.ServeHTTP(record, req)
 
 	mockService.AssertExpectations(t)
@@ -455,6 +457,88 @@ func TestInfoHandler(t *testing.T) {
 	assert.Equal(t, expectedInfo, info, "Response body should contain the correct information")
 
 	mockService.AssertExpectations(t)
+}
+
+func TestReadDbIdentifiers(t *testing.T) {
+	// Create a temporary config file for testing
+	content := `
+[pganalyze]
+api_key = your-secure-api-key
+api_base_url = http://localhost:7080
+
+[server1]
+aws_db_instance_id = instance1
+
+[server2]
+aws_db_instance_id = instance2
+
+# Commented out instance
+# aws_db_instance_id = instance3
+
+aws_db_instance_id = instance4
+`
+	tmpfile, err := os.CreateTemp("", "config.*.conf")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(tmpfile.Name())
+
+	if _, err := tmpfile.Write([]byte(content)); err != nil {
+		t.Fatal(err)
+	}
+	if err := tmpfile.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	// Test readDbIdentifiers function
+	identifiers, err := ReadDbIdentifiers(tmpfile.Name())
+	if err != nil {
+		t.Fatalf("readDbIdentifiers failed: %v", err)
+	}
+
+	expected := []string{"instance1", "instance2", "instance4"}
+	if len(identifiers) != len(expected) {
+		t.Fatalf("Expected %d identifiers, got %d", len(expected), len(identifiers))
+	}
+
+	for i, id := range identifiers {
+		if id != expected[i] {
+			t.Errorf("Expected identifier %s, got %s", expected[i], id)
+		}
+	}
+}
+
+func TestConvertDbIdentifiersToPromQLParam(t *testing.T) {
+	testCases := []struct {
+		name        string
+		identifiers []string
+		expected    string
+	}{
+		{
+			name:        "Single identifier",
+			identifiers: []string{"instance1"},
+			expected:    `"instance1"`,
+		},
+		{
+			name:        "Multiple identifiers",
+			identifiers: []string{"instance1", "instance2", "instance3"},
+			expected:    `("instance1"|"instance2"|"instance3")`,
+		},
+		{
+			name:        "Empty list",
+			identifiers: []string{},
+			expected:    `""`,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := convertDbIdentifiersToPromQLParam(tc.identifiers)
+			if result != tc.expected {
+				t.Errorf("Expected %s, got %s", tc.expected, result)
+			}
+		})
+	}
 }
 
 func formatQueryParams(params map[string]string) string {

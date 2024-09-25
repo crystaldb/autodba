@@ -2,7 +2,7 @@ package api
 
 import (
 	"bytes"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"time"
@@ -26,12 +26,12 @@ func LoggingMiddleware(next http.Handler, debug bool) http.Handler {
 
 			// Log request body if it's a JSON request
 			if r.Header.Get("Content-Type") == "application/json" {
-				body, err := ioutil.ReadAll(r.Body)
+				body, err := io.ReadAll(r.Body)
 				if err == nil {
 					log.Printf("Request Body: %s", string(body))
 
 					// Reset the body so it can be read again in the handler
-					r.Body = ioutil.NopCloser(bytes.NewBuffer(body))
+					r.Body = io.NopCloser(bytes.NewBuffer(body))
 				} else {
 					log.Printf("Error reading body: %v", err)
 				}

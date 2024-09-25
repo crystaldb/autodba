@@ -3,7 +3,13 @@
   "prometheus_server": "http://localhost:9090",
   "routes_config": {
     "/v1/health": {
-      "params": ["dbidentifier", "datname", "start", "end", "step"],
+      "params": [
+        "dbidentifier",
+        "datname",
+        "start",
+        "end",
+        "step"
+      ],
       "options": {
         "start": "$start",
         "end": "$end",
@@ -11,12 +17,18 @@
       },
       "metrics": {
         "connections_percent": "sum(pg_stat_database_numbackends{datname=~\"$datname\"})/sum(pg_settings_max_connections)",
-        "cpu": "sum(rds_cpu_usage_percent_average{dbidentifier=~\"$dbidentifier\"})",
-        "disk_usage": "1-(sum(rds_free_storage_bytes{dbidentifier=\"$dbidentifier\"})/sum(rds_allocated_storage_bytes{dbidentifier=\"$dbidentifier\"}))"
+        "cpu": "sum(rds_cpu_usage_percent_average{dbidentifier=~$dbidentifier})",
+        "disk_usage": "1-(sum(rds_free_storage_bytes{dbidentifier=$dbidentifier})/sum(rds_allocated_storage_bytes{dbidentifier=$dbidentifier}))"
       }
     },
     "/v1/metric": {
-      "params": ["dbidentifier", "datname", "start", "end", "step"],
+      "params": [
+        "dbidentifier",
+        "datname",
+        "start",
+        "end",
+        "step"
+      ],
       "options": {
         "start": "$start",
         "end": "$end",
@@ -39,17 +51,17 @@
         "vacuum_max_used_transaction_ids": "max(crystal_max_transaction_age{datname=~\"$datname\"})",
         "io_vs_disk_blocks_read": "sum(rate(crystal_pg_stat_database{crystal_metric=\"blks_read\"}[1m]))",
         "io_vs_disk_blocks_hit": "sum(rate(crystal_pg_stat_database{crystal_metric=\"blks_hit\"}[1m]))",
-        "cpu_utilization": "sum(rds_cpu_usage_percent_average{dbidentifier=~\"$dbidentifier\"})",
+        "cpu_utilization": "sum(rds_cpu_usage_percent_average{dbidentifier=~$dbidentifier})",
         "memory_usage_unused_instance_memory": "sum(rds_instance_memory_bytes) - sum(rds_freeable_memory_bytes)",
         "memory_usage_other_freeable_memory": "sum(rds_freeable_memory_bytes) - sum(pg_settings_shared_memory_size_bytes)",
         "memory_usage_shared_memory": "sum(pg_settings_shared_memory_size_bytes)",
-        "ebs_read_iops": "sum(rds_read_iops_average{dbidentifier=~\"$dbidentifier\"})",
-        "ebs_write_iops": "sum(rds_write_iops_average{dbidentifier=~\"$dbidentifier\"})",
+        "ebs_read_iops": "sum(rds_read_iops_average{dbidentifier=~$dbidentifier})",
+        "ebs_write_iops": "sum(rds_write_iops_average{dbidentifier=~$dbidentifier})",
         "ebs_current_provisioned_iops": "sum(rds_instance_max_iops_average)",
-        "io_read_throughput": "sum(rds_read_throughput_bytes{dbidentifier=~\"$dbidentifier\"})",
-        "io_write_throughput": "sum(rds_write_throughput_bytes{dbidentifier=~\"$dbidentifier\"})",
-        "free_memory": "sum(rds_freeable_memory_bytes{dbidentifier=~\"$dbidentifier\"})",
-        "free_storage_space": "sum(rds_free_storage_bytes{dbidentifier=~\"$dbidentifier\"})"
+        "io_read_throughput": "sum(rds_read_throughput_bytes{dbidentifier=~$dbidentifier})",
+        "io_write_throughput": "sum(rds_write_throughput_bytes{dbidentifier=~$dbidentifier})",
+        "free_memory": "sum(rds_freeable_memory_bytes{dbidentifier=~$dbidentifier})",
+        "free_storage_space": "sum(rds_free_storage_bytes{dbidentifier=~$dbidentifier})"
       }
     }
   }

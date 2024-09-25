@@ -3,11 +3,12 @@ package api
 import (
 	"collector-api/internal/auth"
 	"collector-api/internal/config"
+	"io"
 	"log"
 	"net/http"
+	"os"
 
 	"encoding/xml"
-	"io/ioutil"
 	"path/filepath"
 )
 
@@ -66,7 +67,7 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer file.Close()
 
-	data, err := ioutil.ReadAll(file)
+	data, err := io.ReadAll(file)
 	if err != nil {
 		http.Error(w, "Unable to read file", http.StatusInternalServerError)
 		return
@@ -83,7 +84,7 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	filePath := filepath.Join(cfg.StorageDir, filename)
-	if err := ioutil.WriteFile(filePath, data, 0644); err != nil {
+	if err := os.WriteFile(filePath, data, 0644); err != nil {
 		http.Error(w, "Failed to save file", http.StatusInternalServerError)
 		return
 	}
