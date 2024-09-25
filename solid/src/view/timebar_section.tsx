@@ -7,6 +7,7 @@ import {
   For,
   getOwner,
   JSX,
+  on,
   onCleanup,
   runWithOwner,
   Show,
@@ -18,33 +19,40 @@ import { flip } from "@floating-ui/dom";
 import { cssSelectorGeneral } from "./cube_activity";
 import { EchartsTimebar } from "./echarts_timebar";
 
-let debugThrottling = false;
+const debugThrottling = false;
 
 interface ITimebarSectionProps {
   class?: string;
 }
 
 export function TimebarSection(props: ITimebarSectionProps) {
-  const { state, setState } = contextState();
-  let owner = getOwner();
-  let timeout: any;
+  const { state } = contextState();
+  const owner = getOwner();
+  let timeout: ReturnType<typeof setTimeout> | null;
   let destroyed = false;
 
   const [eventTimeoutOccurred, setTimeoutOccurred] = createSignal<number>(0);
 
-  const eventForceAnUpdateEvenIfNotLive = createMemo((changeCount: number) => {
-    state.force_refresh_by_incrementing;
-    state.apiThrottle.needDataFor;
-    state.interval_ms;
-    state.timeframe_ms;
-    state.database_instance.dbidentifier;
-    state.activityCube.uiLegend;
-    state.activityCube.uiDimension1;
-    state.activityCube.uiFilter1;
-    state.activityCube.uiFilter1Value;
-    console.log("changed_timebar_evenIfNotLive", changeCount);
-    return changeCount + 1;
-  }, 0);
+  const eventForceAnUpdateEvenIfNotLive = createMemo(
+    on(
+      [
+        () => state.force_refresh_by_incrementing,
+        () => state.apiThrottle.needDataFor,
+        () => state.interval_ms,
+        () => state.timeframe_ms,
+        () => state.database_instance.dbidentifier,
+        () => state.activityCube.uiLegend,
+        () => state.activityCube.uiDimension1,
+        () => state.activityCube.uiFilter1,
+        () => state.activityCube.uiFilter1Value,
+      ],
+      (_0, _1, changeCount?: number) => {
+        console.log("changed_timebar_evenIfNotLive", changeCount);
+        return (changeCount || 0) + 1;
+      },
+    ),
+    0,
+  );
 
   // const eventSomethingChangedSoUpdateIfLive = createMemo(
   //   (changeCount: number) => {
@@ -77,8 +85,8 @@ export function TimebarSection(props: ITimebarSectionProps) {
     doRestartTheTimeout();
   });
 
-  let allowOnlyOneInitialQueryToRunAtStartup = true;
-  let blockOtherInitialQueryAtStartup = false;
+  const allowOnlyOneInitialQueryToRunAtStartup = true;
+  const blockOtherInitialQueryAtStartup = false;
 
   createEffect((allow) => {
     eventForceAnUpdateEvenIfNotLive();
@@ -88,7 +96,7 @@ export function TimebarSection(props: ITimebarSectionProps) {
     untrack(() => {
       if (state.apiThrottle.needDataFor) {
         console.log("queryEndpointData_FORCE");
-        queryEndpointData(state.apiThrottle.needDataFor, state, setState);
+        queryEndpointData(state.apiThrottle.needDataFor);
       }
     });
     return true;
@@ -103,7 +111,7 @@ export function TimebarSection(props: ITimebarSectionProps) {
     untrack(() => {
       if (state.apiThrottle.needDataFor) {
         console.log("queryEndpointData_IfLive");
-        queryEndpointDataIfLive(state.apiThrottle.needDataFor, state, setState);
+        queryEndpointDataIfLive(state.apiThrottle.needDataFor);
       }
     });
     return true;
@@ -145,14 +153,10 @@ export function TimebarSection(props: ITimebarSectionProps) {
 }
 
 function TimeframeSelector() {
-  const { state, setState } = contextState();
+  const { setState } = contextState();
   const id = "timeframeSelector";
   const options = [
-    {
-      ms: 24 * 60 * 60 * 1000,
-      label: "last 1d",
-      ms2: 30 * 60 * 1000,
-    },
+    { ms: 24 * 60 * 60 * 1000, label: "last 1d", ms2: 30 * 60 * 1000 },
     { ms: 12 * 60 * 60 * 1000, label: "last 12h", ms2: 30 * 60 * 1000 },
     { ms: 6 * 60 * 60 * 1000, label: "last 6h", ms2: 10 * 60 * 1000 },
     { ms: 3 * 60 * 60 * 1000, label: "last 3h", ms2: 5 * 60 * 1000 },
@@ -191,7 +195,7 @@ interface PropsViewSelector {
     arg0: RecordClickHandler,
   ) => JSX.EventHandlerUnion<HTMLButtonElement, MouseEvent>;
   options: RecordClickHandler[];
-  id: any;
+  id: string;
   class?: string;
 }
 
@@ -284,7 +288,7 @@ function LiveIndicator() {
   return (
     <div
       class="border border-yellow-300 dark:border-0 dark:border-green-500 px-2.5 py-2.5 rounded-md bg-yellow-200 text-black font-semibold leading-none"
-      classList={{ invisible: !isLive(state) }}
+      classList={{ invisible: !isLive() }}
     >
       <span class="invisible">.</span>
       LIVE

@@ -22,7 +22,7 @@ export function CubeDimensionTime() {
   const timeFormat = "HH:mm:ss [GMT]Z ";
 
   const eventHandlers = {
-    click: (event: any) => {
+    click: (event: Event) => {
       console.log("Chart is clicked!", event);
     },
     // highlight: (event: any) => { console.log("Chart Highlight", event); },
@@ -43,15 +43,15 @@ export function CubeDimensionTime() {
       trigger: "axis",
       formatter: function (
         params: {
-          color: any;
+          color: string;
           seriesName: string | number;
-          value: { [x: string]: any };
+          value: { [x: string]: number | string | null };
         }[],
       ) {
         const createTooltipRow = (item: {
-          color: any;
+          color: string;
           seriesName: string | number;
-          value: { [x: string]: any };
+          value: { [x: string]: number | string | null };
         }) => {
           const colorDot = `<span style="background-color: ${item.color};" class="inline-block w-3 h-3 rounded-full mr-2"></span>`;
 
@@ -84,16 +84,16 @@ export function CubeDimensionTime() {
       axisPointer: {
         label: {
           formatter: function (pointer: { value: string }) {
-            let timestamp = parseInt(pointer.value, 10);
-            let date = moment(timestamp);
+            const timestamp = parseInt(pointer.value, 10);
+            const date = moment(timestamp);
             return date.format(timeFormat) + "(" + timezoneAbbreviation + ")";
           },
         },
       },
       axisLabel: {
         formatter: function (value: string) {
-          let timestamp = parseInt(value, 10);
-          let date = moment(timestamp);
+          const timestamp = parseInt(value, 10);
+          const date = moment(timestamp);
           return (
             date.format(timeFormat).replace(/ /, "\n") +
             "(" +
@@ -156,7 +156,7 @@ export function CubeDimensionTime() {
       <section class="h-[28rem]">
         <Show when={state.activityCube.cubeData} keyed>
           <EChartsAutoSize
-            // @ts-expect-error
+            // @ts-expect-error echart's typescript support seems to throw invalid errors
             option={mergeProps(base, {
               dataset: {
                 dimensions: ["timestamp", ...legendDistinct()],

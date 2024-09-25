@@ -6,7 +6,7 @@ import { datazoomEventHandler } from "../state";
 interface PropsEchartsLinechart {
   title: string;
   metricList: string[];
-  data: any[];
+  data: number[];
   class?: string;
 }
 
@@ -67,20 +67,20 @@ export function EchartsLinechart(props: PropsEchartsLinechart) {
   };
 
   const eventHandlers = {
-    click: (event: any) => {
+    click: (event: Event) => {
       console.log("Chart is clicked!", event);
     },
-    // highlight: (event: any) => {
+    // highlight: (event: Event) => {
     //   console.log("Chart2 Highlight", event);
     // },
-    timelinechanged: (event: any) => {
+    timelinechanged: (event: Event) => {
       console.log("Chart2 Timeline Changed", event);
     },
-    datarangeselected: (event: any) => {
+    datarangeselected: (event: Event) => {
       console.log("Chart2 Data Range Selected", event);
     },
     datazoom: datazoomEventHandler,
-    dataviewchanged: (event: any) => {
+    dataviewchanged: (event: Event) => {
       console.log("Chart2 Data View Changed", event);
     },
   };

@@ -1,6 +1,6 @@
 import { contextState } from "../context_state";
-import { createMemo, For, JSX, Show } from "solid-js";
-import { DimensionName, CubeData, ApiEndpoint } from "../state";
+import { createMemo, For, JSX } from "solid-js";
+import { DimensionName, CubeData, ApiEndpoint, LegendData } from "../state";
 import { first, groupBy, sum, summarize, tidy } from "@tidyjs/tidy";
 import { ILegend } from "./cube_activity";
 
@@ -20,15 +20,14 @@ export function DimensionBars(props: IDimensionBars) {
       total: number;
       records: {
         metric: { [key: string]: string };
-        values: { value: any }[];
+        values: { value: number }[];
       }[];
     }[]
   >(() => {
-    props.cubeData;
     if (state.activityCube.uiDimension1 === DimensionName.time) {
       return [];
     }
-    let cubeData = tidy(
+    const cubeData = tidy(
       props.cubeData,
       groupBy(
         (d) => d.metric[state.activityCube.uiDimension1],
@@ -71,7 +70,7 @@ export function DimensionBars(props: IDimensionBars) {
 
 interface IDimensionRow {
   legend: ILegend;
-  records: any;
+  records: LegendData;
   len: number;
   txt:
     | number
@@ -93,7 +92,7 @@ function DimensionRowGrouped(props: IDimensionRow) {
           {(record) => (
             <DimensionRowPart
               len={record.values[0].value}
-              txt={record.metric[state.activityCube.uiLegend]}
+              txt={record.metric[state.activityCube.uiLegend]!}
               legend={props.legend}
             />
           )}
@@ -101,7 +100,7 @@ function DimensionRowGrouped(props: IDimensionRow) {
         <p class="ms-2 me-3">
           {props.records
             .reduce(
-              (sum: number, record: { values: { value: any }[] }) =>
+              (sum: number, record: { values: { value: number }[] }) =>
                 sum + record.values[0].value,
               0,
             )
@@ -115,7 +114,7 @@ function DimensionRowGrouped(props: IDimensionRow) {
 
 interface IDimensionRowPart {
   len: number;
-  txt: string & {};
+  txt: string;
   legend: ILegend;
 }
 

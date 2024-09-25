@@ -40,7 +40,6 @@ export function EchartsTimebar(props: IEchartsTimebarProps) {
 
   const datasource = (): number[] => {
     const timeEnd = state.server_now || dateZero;
-    const timeBegin = timeEnd - state.timeframe_ms;
     const timeRef = { timeframe_ms: state.timeframe_ms, server_now: timeEnd };
     const windowBegin = Math.floor(
       getTimeAtPercentage(timeRef, state.range_begin),
