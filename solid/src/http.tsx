@@ -49,7 +49,25 @@ export async function queryInstances(retryIfNeeded: boolean): Promise<boolean> {
     return false;
   }
   const json = await response.json();
-  setState("database_instance", json || {});
+  let instance_list = json?.list || [];
+  let instance_active = instance_list[0];
+  batch(() => {
+    setState("instance_active", instance_active || {});
+    setState(
+      "instance_list",
+      [
+        ...instance_list,
+        {
+          dbIdentifier:
+            "db-with-a-really-long-systemId-11111111111111111111111111111REMOVEMEBEFORECOMMITING_TODO",
+          systemId:
+            "db-with-a-really-long-systemId-11111111111111111111111111111REMOVEMEBEFORECOMMITING_TODO",
+          systemType: "amazon_rds",
+          systemScope: "us-west-99",
+        },
+      ] || [],
+    );
+  });
   return true;
 }
 
@@ -141,7 +159,9 @@ async function queryActivityCubeFullTimeframe(): Promise<boolean> {
     state.activityCube.uiFilter1 !== DimensionName.none
       ? state.activityCube.uiFilter1Value || ""
       : "",
-  )}`;
+  )}&dbidentifier=${
+    state.instance_active?.dbIdentifier || "" //
+  }`;
   setInFlight(ApiEndpoint.activity, url);
   const response = await fetch(url, { method: "GET" });
   clearInFlight(ApiEndpoint.activity);
@@ -246,7 +266,9 @@ async function queryActivityCubeTimeWindow(): Promise<boolean> {
     state.activityCube.uiFilter1 !== DimensionName.none
       ? state.activityCube.uiFilter1Value || ""
       : "",
-  )}`;
+  )}&dbidentifier=${
+    state.instance_active?.dbIdentifier || "" //
+  }`;
   setInFlight(ApiEndpoint.activity, url);
   const response = await fetch(url, { method: "GET" });
   clearInFlight(ApiEndpoint.activity);
@@ -355,7 +377,7 @@ async function queryStandardEndpointFullTimeframe(
   }&step=${
     state.interval_ms //
   }ms&dbidentifier=${
-    state.database_instance.dbidentifier //
+    state.instance_active?.dbIdentifier || "" //
   }`;
   setInFlight(ApiEndpoint.metric, url);
   const response = await fetch(url, { method: "GET" });
