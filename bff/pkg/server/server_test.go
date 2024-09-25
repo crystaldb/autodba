@@ -311,7 +311,7 @@ func TestDefaultDBIdentifier(t *testing.T) {
 		"/v1/test": {
 			Params: []string{"dbidentifier"},
 			Metrics: map[string]string{
-				"cpu": "sum(rds_cpu_usage_percent_average{dbidentifier=~$dbidentifier})",
+				"cpu": "sum(rds_cpu_usage_percent_average{dbidentifier=~\"$dbidentifier\"})",
 			},
 			Options: map[string]string{},
 		},
@@ -517,17 +517,17 @@ func TestConvertDbIdentifiersToPromQLParam(t *testing.T) {
 		{
 			name:        "Single identifier",
 			identifiers: []string{"instance1"},
-			expected:    `"instance1"`,
+			expected:    "instance1",
 		},
 		{
 			name:        "Multiple identifiers",
 			identifiers: []string{"instance1", "instance2", "instance3"},
-			expected:    `("instance1"|"instance2"|"instance3")`,
+			expected:    `(instance1|instance2|instance3)`,
 		},
 		{
 			name:        "Empty list",
 			identifiers: []string{},
-			expected:    `""`,
+			expected:    "",
 		},
 	}
 
