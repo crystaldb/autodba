@@ -130,12 +130,12 @@ func ReadDbIdentifiers(configFile string) ([]string, error) {
 
 func convertDbIdentifiersToPromQLParam(identifiers []string) string {
 	if len(identifiers) == 0 {
-		return "\"\""
+		return ""
 	}
 
 	quoted := make([]string, len(identifiers))
 	for i, id := range identifiers {
-		quoted[i] = fmt.Sprintf("%q", id)
+		quoted[i] = fmt.Sprintf("%s", id)
 	}
 
 	result := strings.Join(quoted, "|")
