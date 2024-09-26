@@ -110,7 +110,7 @@ func createLabelsForBackend(backendKey BackendKey) []prompb.Label {
 	}
 
 	if backendKey.Role != "" {
-		labels = append(labels, prompb.Label{Name: "role", Value: backendKey.Role})
+		labels = append(labels, prompb.Label{Name: "usename", Value: backendKey.Role})
 	}
 	if backendKey.Datname != "" {
 		labels = append(labels, prompb.Label{Name: "datname", Value: backendKey.Datname})
