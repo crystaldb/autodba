@@ -119,7 +119,7 @@ func GenerateActivityCubePromQLQuery(input PromQLInput) (string, error) {
 	}
 
 	selector := &Selector{
-		Metric: "crystal_pg_stat_activity",
+		Metric: "cc_pg_stat_activity",
 		Labels: labels,
 	}
 
