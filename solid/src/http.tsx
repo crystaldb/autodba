@@ -41,7 +41,7 @@ export function retryQuery(
 
 export async function queryInstances(retryIfNeeded: boolean): Promise<boolean> {
   const { setState } = contextState();
-  const response = await fetch("/api/v1/info", { method: "GET" });
+  const response = await fetch("/api/v1/instances", { method: "GET" });
 
   if (!response.ok) {
     if (retryIfNeeded)

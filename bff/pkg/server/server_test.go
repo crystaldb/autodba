@@ -214,6 +214,7 @@ func TestMissingParameters(t *testing.T) {
 	handler := activity_handler(mockService)
 
 	defaultParams := map[string]string{
+		"dbidentifier":  "test",
 		"database_list": "postgres",
 		"start":         "10",
 		"end":           "20",
@@ -262,7 +263,7 @@ func TestActivityValidationLogic(t *testing.T) {
 		{map[string]string{"start": "10", "end": "20", "limitlegend": "0"}, http.StatusBadRequest, "limitlegend must be a positive integer"},
 	}
 
-	defaultParams := map[string]string{"database_list": "postgres", "step": "5000ms", "legend": "wait_event_name", "dim": "time", "filterdim": ""}
+	defaultParams := map[string]string{"dbidentifier": "test", "database_list": "postgres", "step": "5000ms", "legend": "wait_event_name", "dim": "time", "filterdim": ""}
 
 	mockService.On("ExecuteRaw", mock.Anything, mock.Anything).Return([]map[string]interface{}{}, nil)
 
@@ -288,6 +289,7 @@ func TestOptions(t *testing.T) {
 	}
 
 	params := map[string]string{
+		"dbidentifier":  "test",
 		"database_list": "postgres",
 		"start":         "10",
 		"end":           "20",
@@ -387,76 +389,46 @@ func TestDatabasesHandler(t *testing.T) {
 
 func TestInfoHandler(t *testing.T) {
 	mockService := new(MockMetricsService)
-	mockData := []map[string]interface{}{
-		{
-			"metric": map[string]interface{}{
-				"__name__":                     "rds_instance_info",
-				"arn":                          "arn:aws:rds:us-west-2:547247648472:db:mohammad-dashti-rds-1",
-				"aws_account_id":               "547247648472",
-				"aws_region":                   "us-west-2",
-				"ca_certificate_identifier":    "rds-ca-rsa2048-g1",
-				"dbi_resource_id":              "db-5VD7GB7MYLNLYDZ64ANW6HZLZM",
-				"dbidentifier":                 "mohammad-dashti-rds-1",
-				"deletion_protection":          "false",
-				"engine":                       "postgres",
-				"engine_version":               "16.3",
-				"instance":                     "localhost:9043",
-				"instance_class":               "db.t4g.medium",
-				"job":                          "rds",
-				"multi_az":                     "false",
-				"pending_maintenance":          "unknown",
-				"pending_modified_values":      "false",
-				"performance_insights_enabled": "true",
-				"role":                         "primary",
-				"storage_type":                 "gp3",
-			},
-			"values": []map[string]interface{}{
-				{"timestamp": 1724943899678, "value": 1},
-			},
-		},
-	}
-	mockService.On("ExecuteRaw", "rds_instance_info", map[string]string{}).Return(mockData, nil)
 
-	handler := info_handler(mockService)
+	dbIdentifiers := []string{"test1", "test2"}
+	handler := info_handler(mockService, dbIdentifiers)
 
 	record := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/info", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/instances", nil)
 
 	handler.ServeHTTP(record, req)
 
+	// Assert that the status code is OK
 	assert.Equal(t, http.StatusOK, record.Code)
 
-	var info map[string]string
-	err := json.Unmarshal(record.Body.Bytes(), &info)
+	expectedInstances := []InstanceInfo{
+		{
+			DBIdentifier: "test1",
+			SystemID:     "test1",
+			SystemScope:  "us-west-2",
+			SystemType:   "amazon_rds",
+		},
+		{
+			DBIdentifier: "test2",
+			SystemID:     "test2",
+			SystemScope:  "us-west-2",
+			SystemType:   "amazon_rds",
+		},
+	}
+
+	expectedResponse := struct {
+		List []InstanceInfo `json:"list"`
+	}{
+		List: expectedInstances,
+	}
+
+	expectedJSON, err := json.Marshal(expectedResponse)
 	if err != nil {
-		t.Fatalf("Failed to unmarshal response body: %v", err)
+		t.Fatalf("Failed to marshal expected response: %v", err)
 	}
 
-	expectedInfo := map[string]string{
-		"__name__":                     "rds_instance_info",
-		"arn":                          "arn:aws:rds:us-west-2:547247648472:db:mohammad-dashti-rds-1",
-		"aws_account_id":               "547247648472",
-		"aws_region":                   "us-west-2",
-		"ca_certificate_identifier":    "rds-ca-rsa2048-g1",
-		"dbi_resource_id":              "db-5VD7GB7MYLNLYDZ64ANW6HZLZM",
-		"dbidentifier":                 "mohammad-dashti-rds-1",
-		"deletion_protection":          "false",
-		"engine":                       "postgres",
-		"engine_version":               "16.3",
-		"instance":                     "localhost:9043",
-		"instance_class":               "db.t4g.medium",
-		"job":                          "rds",
-		"multi_az":                     "false",
-		"pending_maintenance":          "unknown",
-		"pending_modified_values":      "false",
-		"performance_insights_enabled": "true",
-		"role":                         "primary",
-		"storage_type":                 "gp3",
-	}
+	assert.JSONEq(t, string(expectedJSON), record.Body.String(), "Response should match the expected JSON")
 
-	assert.Equal(t, expectedInfo, info, "Response body should contain the correct information")
-
-	mockService.AssertExpectations(t)
 }
 
 func TestReadDbIdentifiers(t *testing.T) {
