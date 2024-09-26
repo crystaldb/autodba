@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"sort"
 
 	gogoproto "github.com/gogo/protobuf/proto"
 	"github.com/golang/snappy"
@@ -62,9 +63,12 @@ type BackendKey struct {
 	BackendType         string
 	ClientAddr          string
 	ClientPort          int32
+	Datname             string
 	Pid                 int32
 	Query               string
-	QueryIdx            int64
+	QueryFingerPrint    string
+	QueryFull           string
+	Role                string
 	State               string
 	SystemID            string
 	SystemIDFallback    string
@@ -79,15 +83,13 @@ type BackendKey struct {
 // createLabelsForBackend generates Prometheus labels for a given BackendKey
 // This function is used for both active backends and stale markers
 func createLabelsForBackend(backendKey BackendKey) []prompb.Label {
-	return []prompb.Label{
+	labels := []prompb.Label{
 		{Name: "__name__", Value: "cc_pg_stat_activity"},
 		{Name: "application_name", Value: backendKey.ApplicationName},
 		{Name: "backend_type", Value: backendKey.BackendType},
 		{Name: "client_addr", Value: backendKey.ClientAddr},
 		{Name: "client_port", Value: fmt.Sprintf("%d", backendKey.ClientPort)},
 		{Name: "pid", Value: fmt.Sprintf("%d", backendKey.Pid)},
-		{Name: "query", Value: backendKey.Query},
-		{Name: "query_id", Value: fmt.Sprintf("%d", backendKey.QueryIdx)},
 		{Name: "state", Value: backendKey.State},
 		{Name: "sys_id", Value: backendKey.SystemID},
 		{Name: "sys_id_fallback", Value: backendKey.SystemIDFallback},
@@ -98,6 +100,28 @@ func createLabelsForBackend(backendKey BackendKey) []prompb.Label {
 		{Name: "wait_event", Value: backendKey.WaitEvent},
 		{Name: "wait_event_type", Value: backendKey.WaitEventType},
 	}
+
+	if backendKey.Query != "" {
+		labels = append(labels, prompb.Label{Name: "query", Value: backendKey.Query})
+		labels = append(labels, prompb.Label{Name: "query_fp", Value: backendKey.QueryFingerPrint})
+		labels = append(labels, prompb.Label{Name: "query_full", Value: backendKey.QueryFull})
+	} else {
+		labels = append(labels, prompb.Label{Name: "query", Value: backendKey.QueryFull})
+	}
+
+	if backendKey.Role != "" {
+		labels = append(labels, prompb.Label{Name: "role", Value: backendKey.Role})
+	}
+	if backendKey.Datname != "" {
+		labels = append(labels, prompb.Label{Name: "datname", Value: backendKey.Datname})
+	}
+
+	// Sort labels by name
+	sort.Slice(labels, func(i, j int) bool {
+		return labels[i].Name < labels[j].Name
+	})
+
+	return labels
 }
 
 // compactSnapshotMetrics processes a compact snapshot and returns time series for each backend
@@ -106,6 +130,7 @@ func compactSnapshotMetrics(snapshot *collector_proto.CompactSnapshot, systemInf
 	var ts []prompb.TimeSeries
 	snapshotTimestamp := snapshot.CollectedAt.AsTime().UnixMilli()
 	seenBackends := make(map[BackendKey]bool)
+	baseRef := snapshot.GetBaseRefs()
 
 	for _, backend := range snapshot.GetActivitySnapshot().GetBackends() {
 		// Create a unique BackendKey for each backend
@@ -115,8 +140,7 @@ func compactSnapshotMetrics(snapshot *collector_proto.CompactSnapshot, systemInf
 			ClientAddr:          backend.GetClientAddr(),
 			ClientPort:          backend.GetClientPort(),
 			Pid:                 backend.GetPid(),
-			Query:               backend.GetQueryText(),
-			QueryIdx:            int64(backend.GetQueryIdx()),
+			QueryFull:           backend.GetQueryText(),
 			State:               backend.GetState(),
 			SystemID:            systemInfo["system_id"],
 			SystemIDFallback:    systemInfo["system_id_fallback"],
@@ -126,6 +150,19 @@ func compactSnapshotMetrics(snapshot *collector_proto.CompactSnapshot, systemInf
 			SystemTypeFallback:  systemInfo["system_type_fallback"],
 			WaitEvent:           backend.GetWaitEvent(),
 			WaitEventType:       backend.GetWaitEventType(),
+		}
+
+		if baseRef != nil {
+			if backend.GetHasRoleIdx() {
+				backendKey.Role = baseRef.GetRoleReferences()[backend.GetRoleIdx()].GetName()
+			}
+			if backend.GetHasDatabaseIdx() {
+				backendKey.Datname = baseRef.GetDatabaseReferences()[backend.GetDatabaseIdx()].GetName()
+			}
+			if backend.GetHasQueryIdx() {
+				backendKey.Query = string(baseRef.GetQueryInformations()[backend.GetQueryIdx()].GetNormalizedQuery())
+				backendKey.QueryFingerPrint = string(baseRef.GetQueryReferences()[backend.GetQueryIdx()].GetFingerprint())
+			}
 		}
 		// Create a time series for the backend
 		backendTS := prompb.TimeSeries{
