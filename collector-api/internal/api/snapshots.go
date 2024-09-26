@@ -188,8 +188,17 @@ func CompactSnapshotHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	systemInfo := map[string]string{
+		"system_id":             r.Header.Get("Pganalyze-System-Id"),
+		"system_id_fallback":    r.Header.Get("Pganalyze-System-Id-Fallback"),
+		"system_scope":          r.Header.Get("Pganalyze-System-Scope"),
+		"system_scope_fallback": r.Header.Get("Pganalyze-System-Scope-Fallback"),
+		"system_type":           r.Header.Get("Pganalyze-System-Type"),
+		"system_type_fallback":  r.Header.Get("Pganalyze-System-Type-Fallback"),
+	}
+
 	// Simulate handling the compact snapshot (you'll replace this with your actual logic)
-	err = handleCompactSnapshot(cfg, s3Location, collectedAt)
+	err = handleCompactSnapshot(cfg, s3Location, collectedAt, systemInfo)
 	if err != nil {
 		if cfg.Debug {
 			log.Printf("Error handling compact snapshot: %v", err)
@@ -207,7 +216,7 @@ var previousBackends map[BackendKey]bool
 
 // handleCompactSnapshot processes a compact snapshot, generates metrics and stale markers,
 // and sends them to Prometheus
-func handleCompactSnapshot(cfg *config.Config, s3Location string, collectedAt int64) error {
+func handleCompactSnapshot(cfg *config.Config, s3Location string, collectedAt int64, systemInfo map[string]string) error {
 	if cfg.Debug {
 		log.Printf("Processing compact snapshot with s3_location: %s and collected_at: %d", s3Location, collectedAt)
 	}
@@ -240,7 +249,7 @@ func handleCompactSnapshot(cfg *config.Config, s3Location string, collectedAt in
 	}
 
 	// Process the snapshot and get metrics and current backends
-	metrics, currentBackends := compactSnapshotMetrics(&compactSnapshot)
+	metrics, currentBackends := compactSnapshotMetrics(&compactSnapshot, systemInfo)
 
 	// Generate stale markers for time-series (identified by a unique set of labels) no longer present
 	staleMarkers := createStaleMarkers(previousBackends, currentBackends, compactSnapshot.CollectedAt.AsTime().UnixMilli())
