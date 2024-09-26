@@ -80,8 +80,8 @@ func (s server_imp) Run() error {
 	r.Use(CORS)
 
 	r.Get("/api/v1/activity", activity_handler(s.metrics_service))
-	r.Get("/api/v1/databases", databases_handler(s.metrics_service))
 	r.Get("/api/v1/instances", info_handler(s.metrics_service, s.dbIdentifiers))
+	r.Get("/api/v1/{dbIdentifier}/databases", databases_handler(s.metrics_service))
 
 	r.Route(api_prefix, func(r chi.Router) {
 		r.Mount("/", metrics_handler(s.routes_config, s.dbIdentifiers, s.metrics_service))
@@ -455,6 +455,9 @@ func activity_handler(metrics_service metrics.Service) http.HandlerFunc {
 func databases_handler(metrics_service metrics.Service) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("Handling database list request")
+
+		dbIdentifier := chi.URLParam(r, "dbIdentifier")
+		fmt.Printf("DBIdentifier: %s\n", dbIdentifier)
 
 		query := "crystal_all_databases"
 		options := make(map[string]string)
