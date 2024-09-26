@@ -18,5 +18,4 @@ if (import.meta.env.DEV && !(root instanceof HTMLElement)) {
   );
 }
 
-// @ts-ignore
-render(() => <App />, root);
+if (root) render(() => <App />, root);

@@ -6,6 +6,7 @@ import {
   For,
   JSX,
   Match,
+  on,
   onCleanup,
   onMount,
   Show,
@@ -18,7 +19,6 @@ import {
   DimensionName,
   listDimensionTabNames,
   CubeData,
-  State,
   ActivityCube,
 } from "../state";
 import { arrange, distinct, filter, fixedOrder, map, tidy } from "@tidyjs/tidy";
@@ -39,7 +39,7 @@ export type ILegend = {
 }[];
 
 export function CubeActivity() {
-  const { state, setState } = contextState();
+  const { state } = contextState();
 
   const legendDistinct = createMemo((): ILegend => {
     return tidy(
@@ -62,12 +62,15 @@ export function CubeActivity() {
     );
   });
 
-  createEffect((enabled) => {
-    state.activityCube.uiFilter1;
-    if (!enabled) return true;
-    untrack(() => queryFilterOptions(state, setState));
-    return true;
-  }, false);
+  createEffect(
+    on(
+      () => state.activityCube.uiFilter1,
+      () => {
+        untrack(() => queryFilterOptions());
+      },
+      { defer: true },
+    ),
+  );
 
   const cssSectionHeading = "flex flex-col gap-y-3.5";
 
@@ -168,7 +171,7 @@ function DimensionTabs(props: PropsDimensionTabs) {
     width: window.innerWidth,
   });
 
-  const handlerResize = (event: Event) => {
+  const handlerResize = () => {
     setRect({ height: window.innerHeight, width: window.innerWidth });
   };
 
@@ -193,7 +196,7 @@ function DimensionTabs(props: PropsDimensionTabs) {
 }
 
 function DimensionTabsHorizontal(props: PropsDimensionTabs) {
-  const { state, setState } = contextState();
+  const { state } = contextState();
 
   return (
     <section class="flex flex-col gap-y-2">
@@ -246,7 +249,6 @@ function FilterBySelectButton(props: { class?: string }) {
   );
 }
 function DimensionTabsVertical(props: PropsDimensionTabs) {
-  const { state, setState } = contextState();
   return (
     <div data-name="dimensionTabsVert" class="flex flex-col gap-y-4">
       <div class="flex flex-row gap-x-4">
@@ -264,7 +266,7 @@ function DimensionTabsVertical(props: PropsDimensionTabs) {
   );
 }
 
-function Tab(props: { value: string; txt: string; selected: boolean }) {
+function Tab(props: { value: DimensionName; txt: string; selected: boolean }) {
   const { setState } = contextState();
   return (
     <button
@@ -317,7 +319,7 @@ interface PropsSelectButton {
     | null
     | undefined;
   class?: string;
-  fnOnChange?: (arg0: any) => void;
+  fnOnChange?: (arg0: DimensionName) => void;
   list?: string[][];
 }
 
@@ -339,7 +341,7 @@ function SelectButton(props: PropsSelectButton) {
 function SelectSliceBy(props: {
   dimension: DimensionField | "uiFilter1Value";
   class?: string;
-  fnOnChange?: (arg0: any) => void;
+  fnOnChange?: (arg0: DimensionName) => void;
   list?: string[][];
   defaultOpen?: boolean;
 }) {
@@ -353,10 +355,9 @@ function SelectSliceBy(props: {
         multiple={defaultOpen()}
         size={defaultOpen() ? Math.min(10, each.length) : 0}
         onChange={(event) => {
-          const value = event.target.value;
-          props.fnOnChange
-            ? props.fnOnChange(value)
-            : setState("activityCube", props.dimension, value);
+          const value = event.target.value as DimensionName;
+          if (props.fnOnChange) props.fnOnChange(value);
+          else setState("activityCube", props.dimension, value);
         }}
         class={`bg-transparent text-fuchsia-500 px-2 focus:outline-none ${props.class}`}
       >

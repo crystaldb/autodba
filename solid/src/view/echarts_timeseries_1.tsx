@@ -16,7 +16,7 @@ export function EchartsTimeseries1(props: IProps) {
   const base = {
     tooltip: {
       trigger: "axis",
-      position: function (pt: any[]) {
+      position: function (pt: number[]) {
         return [pt[0], "10%"];
       },
     },
@@ -82,10 +82,10 @@ export function EchartsTimeseries1(props: IProps) {
   };
 
   const eventHandlers = {
-    click: (event: any) => {
+    click: (event: Event) => {
       console.log("Chart is clicked!", event);
     },
-    highlight: (event: any) => {
+    highlight: (event: Event) => {
       console.log("Chart Highlight", event);
     },
     datazoom: datazoomEventHandler,
