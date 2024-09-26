@@ -5,6 +5,7 @@ import { queryEndpointData } from "./http";
 let dateZero = +new Date();
 
 export type Instance = {
+  /** uniquely identifies instance */
   dbIdentifier: string;
   systemId: string;
   systemScope: string;

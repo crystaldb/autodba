@@ -49,24 +49,27 @@ export async function queryInstances(retryIfNeeded: boolean): Promise<boolean> {
     return false;
   }
   const json = await response.json();
-  let instance_list = json?.list || [];
-  let instance_active = instance_list[0];
+  const instance_list = json?.list || [];
+  const instance_active = instance_list[0]
+    ? JSON.parse(JSON.stringify(instance_list[0]))
+    : null;
   batch(() => {
-    setState("instance_active", instance_active || {});
-    setState(
-      "instance_list",
-      [
-        ...instance_list,
-        {
-          dbIdentifier:
-            "db-with-a-really-long-systemId-11111111111111111111111111111REMOVEMEBEFORECOMMITING_TODO",
-          systemId:
-            "db-with-a-really-long-systemId-11111111111111111111111111111REMOVEMEBEFORECOMMITING_TODO",
-          systemType: "amazon_rds",
-          systemScope: "us-west-99",
-        },
-      ] || [],
-    );
+    setState("instance_active", instance_active);
+    setState("instance_list", [
+      ...instance_list,
+      // {
+      //   dbIdentifier:
+      //     "0000000000111111111222222222233333333334444444444455555555555" +
+      //     "::" +
+      //     "amazon_rds" +
+      //     "::" +
+      //     "us-west-99",
+      //   systemId:
+      //     "0000000000111111111222222222233333333334444444444455555555555",
+      //   systemType: "amazon_rds",
+      //   systemScope: "us-west-99",
+      // },
+    ]);
   });
   return true;
 }

@@ -256,7 +256,7 @@ function FilterBySelectButton(props: { class?: string }) {
 function DimensionTabsVertical(props: PropsDimensionTabs) {
   return (
     <div data-name="dimensionTabsVert" class="flex flex-col gap-y-4">
-      <div class="flex flex-row gap-x-4">
+      <div class="flex flex-row flex-wrap gap-4">
         <SelectButton
           label=""
           dimension={DimensionField.uiDimension1}
