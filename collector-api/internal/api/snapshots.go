@@ -9,14 +9,11 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"math"
 	"net/http"
 	"os"
 	"path"
 	"strconv"
-	"time"
 
-	"github.com/prometheus/prometheus/model/value"
 	"google.golang.org/protobuf/proto"
 
 	collector_proto "github.com/pganalyze/collector/output/pganalyze_collector"
@@ -95,7 +92,7 @@ func SnapshotHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Simulate handling the snapshot submission (replace with actual logic)
-	err = handleFullSnapshot(s3Location, collectedAt)
+	err = handleFullSnapshot(cfg, s3Location, collectedAt)
 	if err != nil {
 		if cfg.Debug {
 			log.Printf("Error handling snapshot submission: %v", err)
@@ -110,10 +107,12 @@ func SnapshotHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // Dummy function for handling the snapshot submission
-func handleFullSnapshot(s3Location string, collectedAt int64) error {
+func handleFullSnapshot(cfg *config.Config, s3Location string, collectedAt int64) error {
 	// Here, implement your actual logic for processing the snapshot
 	// e.g., saving to local storage, uploading to S3, etc.
-	log.Printf("Processing full snapshot submission with s3_location: %s and collected_at: %d", s3Location, collectedAt)
+	if cfg.Debug {
+		log.Printf("Processing full snapshot submission with s3_location: %s and collected_at: %d", s3Location, collectedAt)
+	}
 	return nil
 }
 
@@ -188,7 +187,7 @@ func CompactSnapshotHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Simulate handling the compact snapshot (you'll replace this with your actual logic)
-	err = handleCompactSnapshot(s3Location, collectedAt)
+	err = handleCompactSnapshot(cfg, s3Location, collectedAt)
 	if err != nil {
 		if cfg.Debug {
 			log.Printf("Error handling compact snapshot: %v", err)
@@ -202,21 +201,22 @@ func CompactSnapshotHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, "Compact snapshot successfully processed")
 }
 
-// Dummy function for handling the compact snapshot
-func handleCompactSnapshot(s3Location string, collectedAt int64) error {
-	// Here, implement your actual logic for processing the compact snapshot
-	// e.g., saving to local storage, uploading to S3, etc.
-	log.Printf("Processing compact snapshot with s3_location: %s and collected_at: %d", s3Location, collectedAt)
+func handleCompactSnapshot(cfg *config.Config, s3Location string, collectedAt int64) error {
+	if cfg.Debug {
+		log.Printf("Processing compact snapshot with s3_location: %s and collected_at: %d", s3Location, collectedAt)
+	}
 
 	f, err := os.Open(path.Join("/usr/local/autodba/share/collector_api_server/storage", s3Location))
 	if err != nil {
 		return fmt.Errorf("open file: %w", err)
 	}
+	defer f.Close()
 
 	decompressor, err := zlib.NewReader(f)
 	if err != nil {
 		return fmt.Errorf("create zlib reader: %w", err)
 	}
+	defer decompressor.Close()
 
 	pbBytes, err := io.ReadAll(decompressor)
 	if err != nil {
@@ -235,9 +235,32 @@ func handleCompactSnapshot(s3Location string, collectedAt int64) error {
 
 	promPB := compactSnapshotMetrics(&compactSnapshot)
 
-	resp, err := promClient.RemoteWrite(promPB)
-	if err != nil {
+	// Send original metrics
+	if err := sendRemoteWrite(promClient, promPB); err != nil {
 		return fmt.Errorf("send remote write: %w", err)
+	}
+
+	// // Send Stale Marker after a delay in a goroutine
+	// go func() {
+	// 	time.Sleep(10 * time.Second)
+	// 	stalePromPB := createStaleMarker(promPB)
+	// 	if err := sendRemoteWrite(promClient, stalePromPB); err != nil {
+	// 		log.Printf("Error sending stale marker: %v", err)
+	// 	} else if cfg.Debug {
+	// 		log.Println("Stale Marker sent successfully")
+	// 	}
+	// }()
+
+	if cfg.Debug {
+		log.Println("Compact snapshot processed successfully!")
+	}
+	return nil
+}
+
+func sendRemoteWrite(client prometheusClient, promPB []prompb.TimeSeries) error {
+	resp, err := client.RemoteWrite(promPB)
+	if err != nil {
+		return err
 	}
 	defer resp.Body.Close()
 
@@ -246,35 +269,23 @@ func handleCompactSnapshot(s3Location string, collectedAt int64) error {
 		if err != nil {
 			return fmt.Errorf("decode response body: %w", err)
 		}
-		return fmt.Errorf("%s", body)
+		return fmt.Errorf("unexpected status code %d: %s", resp.StatusCode, body)
 	}
-
-	go func(promPB []prompb.TimeSeries) {
-		time.Sleep(10 * time.Second)
-		for i := range promPB {
-			promPB[i].Samples[0].Timestamp += (10 * time.Second).Milliseconds()
-			promPB[i].Samples[0].Value = math.Float64frombits(value.StaleNaN)
-		}
-		resp, err := promClient.RemoteWrite(promPB)
-		if err != nil {
-			log.Printf("Error sending remote write stale timestamps: %v\n", err)
-			return
-		}
-		defer resp.Body.Close()
-
-		if resp.StatusCode < 200 || resp.StatusCode > 299 {
-			body, err := io.ReadAll(resp.Body)
-			if err != nil {
-				log.Printf("Error decoding response body: %v\n", err)
-				return
-			}
-
-			log.Println(body)
-			return
-		}
-
-		log.Println("Stale NaNs sent successfully!")
-	}(promPB)
-
 	return nil
 }
+
+// func createStaleMarker(promPB []prompb.TimeSeries) []prompb.TimeSeries {
+// 	stalePromPB := make([]prompb.TimeSeries, len(promPB))
+// 	for i, ts := range promPB {
+// 		stalePromPB[i] = prompb.TimeSeries{
+// 			Labels: ts.Labels,
+// 			Samples: []prompb.Sample{
+// 				{
+// 					Timestamp: ts.Samples[0].Timestamp + (10 * time.Second).Milliseconds() - 1, // 9.999 seconds after the original
+// 					Value:     math.Float64frombits(value.StaleNaN),
+// 				},
+// 			},
+// 		}
+// 	}
+// 	return stalePromPB
+// }

@@ -57,6 +57,7 @@ func (c *prometheusClient) RemoteWrite(data []prompb.TimeSeries) (*http.Response
 }
 
 func compactSnapshotMetrics(snapshot *collector_proto.CompactSnapshot) []prompb.TimeSeries {
+	snapshotTimestamp := snapshot.CollectedAt.AsTime().UnixMilli()
 	var ts []prompb.TimeSeries
 	for _, backend := range snapshot.GetActivitySnapshot().GetBackends() {
 		backendTS := prompb.TimeSeries{
@@ -103,7 +104,7 @@ func compactSnapshotMetrics(snapshot *collector_proto.CompactSnapshot) []prompb.
 			},
 			Samples: []prompb.Sample{
 				{
-					Timestamp: snapshot.CollectedAt.AsTime().UnixMilli(),
+					Timestamp: snapshotTimestamp,
 					Value:     1.0,
 				},
 			},
