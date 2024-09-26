@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math"
 	"net/http"
 	"os"
 	"path"
@@ -17,6 +18,7 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	collector_proto "github.com/pganalyze/collector/output/pganalyze_collector"
+	"github.com/prometheus/prometheus/model/value"
 	"github.com/prometheus/prometheus/prompb"
 )
 
@@ -201,6 +203,10 @@ func CompactSnapshotHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, "Compact snapshot successfully processed")
 }
 
+var previousBackends map[BackendKey]bool
+
+// handleCompactSnapshot processes a compact snapshot, generates metrics and stale markers,
+// and sends them to Prometheus
 func handleCompactSnapshot(cfg *config.Config, s3Location string, collectedAt int64) error {
 	if cfg.Debug {
 		log.Printf("Processing compact snapshot with s3_location: %s and collected_at: %d", s3Location, collectedAt)
@@ -233,23 +239,22 @@ func handleCompactSnapshot(cfg *config.Config, s3Location string, collectedAt in
 		endpoint: prometheusURL,
 	}
 
-	promPB := compactSnapshotMetrics(&compactSnapshot)
+	// Process the snapshot and get metrics and current backends
+	metrics, currentBackends := compactSnapshotMetrics(&compactSnapshot)
 
-	// Send original metrics
-	if err := sendRemoteWrite(promClient, promPB); err != nil {
+	// Generate stale markers for time-series (identified by a unique set of labels) no longer present
+	staleMarkers := createStaleMarkers(previousBackends, currentBackends, compactSnapshot.CollectedAt.AsTime().UnixMilli())
+
+	// Combine active metrics and stale markers
+	allMetrics := append(metrics, staleMarkers...)
+
+	// Send all metrics to Prometheus
+	if err := sendRemoteWrite(promClient, allMetrics); err != nil {
 		return fmt.Errorf("send remote write: %w", err)
 	}
 
-	// // Send Stale Marker after a delay in a goroutine
-	// go func() {
-	// 	time.Sleep(10 * time.Second)
-	// 	stalePromPB := createStaleMarker(promPB)
-	// 	if err := sendRemoteWrite(promClient, stalePromPB); err != nil {
-	// 		log.Printf("Error sending stale marker: %v", err)
-	// 	} else if cfg.Debug {
-	// 		log.Println("Stale Marker sent successfully")
-	// 	}
-	// }()
+	// Update previousBackends for the next snapshot comparison
+	previousBackends = currentBackends
 
 	if cfg.Debug {
 		log.Println("Compact snapshot processed successfully!")
@@ -274,18 +279,26 @@ func sendRemoteWrite(client prometheusClient, promPB []prompb.TimeSeries) error 
 	return nil
 }
 
-// func createStaleMarker(promPB []prompb.TimeSeries) []prompb.TimeSeries {
-// 	stalePromPB := make([]prompb.TimeSeries, len(promPB))
-// 	for i, ts := range promPB {
-// 		stalePromPB[i] = prompb.TimeSeries{
-// 			Labels: ts.Labels,
-// 			Samples: []prompb.Sample{
-// 				{
-// 					Timestamp: ts.Samples[0].Timestamp + (10 * time.Second).Milliseconds() - 1, // 9.999 seconds after the original
-// 					Value:     math.Float64frombits(value.StaleNaN),
-// 				},
-// 			},
-// 		}
-// 	}
-// 	return stalePromPB
-// }
+// createStaleMarkers generates stale markers for backends that were present in the previous snapshot
+// but are missing in the current one
+func createStaleMarkers(previousBackends, currentBackends map[BackendKey]bool, timestamp int64) []prompb.TimeSeries {
+	var staleMarkers []prompb.TimeSeries
+
+	for backendKey := range previousBackends {
+		if !currentBackends[backendKey] {
+			// Create a stale marker with NaN value for backends no longer present
+			staleMarker := prompb.TimeSeries{
+				Labels: createLabelsForBackend(backendKey),
+				Samples: []prompb.Sample{
+					{
+						Timestamp: timestamp,
+						Value:     math.Float64frombits(value.StaleNaN), // NaN
+					},
+				},
+			}
+			staleMarkers = append(staleMarkers, staleMarker)
+		}
+	}
+
+	return staleMarkers
+}

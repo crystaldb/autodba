@@ -56,52 +56,62 @@ func (c *prometheusClient) RemoteWrite(data []prompb.TimeSeries) (*http.Response
 	return c.Do(req)
 }
 
-func compactSnapshotMetrics(snapshot *collector_proto.CompactSnapshot) []prompb.TimeSeries {
-	snapshotTimestamp := snapshot.CollectedAt.AsTime().UnixMilli()
+// BackendKey uniquely identifies a backend session
+type BackendKey struct {
+	ApplicationName string
+	BackendType     string
+	ClientAddr      string
+	ClientPort      int32
+	Pid             int32
+	Query           string
+	QueryIdx        int64
+	State           string
+	WaitEvent       string
+	WaitEventType   string
+}
+
+// createLabelsForBackend generates Prometheus labels for a given BackendKey
+// This function is used for both active backends and stale markers
+func createLabelsForBackend(backendKey BackendKey) []prompb.Label {
+	return []prompb.Label{
+		{Name: "__name__", Value: "cc_pg_stat_activity"},
+		{Name: "application_name", Value: backendKey.ApplicationName},
+		{Name: "backend_type", Value: backendKey.BackendType},
+		{Name: "client_addr", Value: backendKey.ClientAddr},
+		{Name: "client_port", Value: fmt.Sprintf("%d", backendKey.ClientPort)},
+		{Name: "pid", Value: fmt.Sprintf("%d", backendKey.Pid)},
+		{Name: "query", Value: backendKey.Query},
+		{Name: "query_id", Value: fmt.Sprintf("%d", backendKey.QueryIdx)},
+		{Name: "state", Value: backendKey.State},
+		{Name: "wait_event", Value: backendKey.WaitEvent},
+		{Name: "wait_event_type", Value: backendKey.WaitEventType},
+	}
+}
+
+// compactSnapshotMetrics processes a compact snapshot and returns time series for each backend
+// It also returns a map of seen backends for stale marker generation
+func compactSnapshotMetrics(snapshot *collector_proto.CompactSnapshot) ([]prompb.TimeSeries, map[BackendKey]bool) {
 	var ts []prompb.TimeSeries
+	snapshotTimestamp := snapshot.CollectedAt.AsTime().UnixMilli()
+	seenBackends := make(map[BackendKey]bool)
+
 	for _, backend := range snapshot.GetActivitySnapshot().GetBackends() {
+		// Create a unique BackendKey for each backend
+		backendKey := BackendKey{
+			ApplicationName: backend.GetApplicationName(),
+			BackendType:     backend.GetBackendType(),
+			ClientAddr:      backend.GetClientAddr(),
+			ClientPort:      backend.GetClientPort(),
+			Pid:             backend.GetPid(),
+			Query:           backend.GetQueryText(),
+			QueryIdx:        int64(backend.GetQueryIdx()),
+			State:           backend.GetState(),
+			WaitEvent:       backend.GetWaitEvent(),
+			WaitEventType:   backend.GetWaitEventType(),
+		}
+		// Create a time series for the backend
 		backendTS := prompb.TimeSeries{
-			Labels: []prompb.Label{
-				{
-					Name: "__name__", Value: "cc_pg_stat_activity",
-				},
-				{
-					Name:  "application_name",
-					Value: backend.GetApplicationName(),
-				},
-				{
-					Name:  "backend_type",
-					Value: backend.GetBackendType(),
-				},
-				{
-					Name:  "client_port",
-					Value: fmt.Sprintf("%d", backend.GetClientPort()),
-				},
-				{
-					Name:  "client_addr",
-					Value: backend.GetClientAddr(),
-				},
-				{
-					Name:  "pid",
-					Value: fmt.Sprintf("%d", backend.GetPid()),
-				},
-				{
-					Name:  "query",
-					Value: backend.GetQueryText(),
-				},
-				{
-					Name:  "state",
-					Value: backend.GetState(),
-				},
-				{
-					Name:  "wait_event",
-					Value: backend.GetWaitEvent(),
-				},
-				{
-					Name:  "wait_event_type",
-					Value: backend.GetWaitEventType(),
-				},
-			},
+			Labels: createLabelsForBackend(backendKey),
 			Samples: []prompb.Sample{
 				{
 					Timestamp: snapshotTimestamp,
@@ -110,6 +120,8 @@ func compactSnapshotMetrics(snapshot *collector_proto.CompactSnapshot) []prompb.
 			},
 		}
 		ts = append(ts, backendTS)
+		seenBackends[backendKey] = true
 	}
-	return ts
+
+	return ts, seenBackends
 }
