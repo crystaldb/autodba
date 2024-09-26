@@ -14,6 +14,7 @@ import (
 	"os"
 	"path"
 	"strconv"
+	"strings"
 
 	"google.golang.org/protobuf/proto"
 
@@ -93,8 +94,10 @@ func SnapshotHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	systemInfo := extractSystemInfo(r)
+
 	// Simulate handling the snapshot submission (replace with actual logic)
-	err = handleFullSnapshot(cfg, s3Location, collectedAt)
+	err = handleFullSnapshot(cfg, s3Location, collectedAt, systemInfo)
 	if err != nil {
 		if cfg.Debug {
 			log.Printf("Error handling snapshot submission: %v", err)
@@ -109,7 +112,7 @@ func SnapshotHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // Dummy function for handling the snapshot submission
-func handleFullSnapshot(cfg *config.Config, s3Location string, collectedAt int64) error {
+func handleFullSnapshot(cfg *config.Config, s3Location string, collectedAt int64, systemInfo map[string]string) error {
 	// Here, implement your actual logic for processing the snapshot
 	// e.g., saving to local storage, uploading to S3, etc.
 	if cfg.Debug {
@@ -188,14 +191,7 @@ func CompactSnapshotHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	systemInfo := map[string]string{
-		"system_id":             r.Header.Get("Pganalyze-System-Id"),
-		"system_id_fallback":    r.Header.Get("Pganalyze-System-Id-Fallback"),
-		"system_scope":          r.Header.Get("Pganalyze-System-Scope"),
-		"system_scope_fallback": r.Header.Get("Pganalyze-System-Scope-Fallback"),
-		"system_type":           r.Header.Get("Pganalyze-System-Type"),
-		"system_type_fallback":  r.Header.Get("Pganalyze-System-Type-Fallback"),
-	}
+	systemInfo := extractSystemInfo(r)
 
 	// Simulate handling the compact snapshot (you'll replace this with your actual logic)
 	err = handleCompactSnapshot(cfg, s3Location, collectedAt, systemInfo)
@@ -210,6 +206,30 @@ func CompactSnapshotHandler(w http.ResponseWriter, r *http.Request) {
 	// Respond with success
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprint(w, "Compact snapshot successfully processed")
+}
+
+// extractSystemInfo extracts system information from request headers
+func extractSystemInfo(r *http.Request) map[string]string {
+	systemInfo := make(map[string]string)
+	headers := []string{
+		"Pganalyze-System-Id",
+		"Pganalyze-System-Id-Fallback",
+		"Pganalyze-System-Scope",
+		"Pganalyze-System-Scope-Fallback",
+		"Pganalyze-System-Type",
+		"Pganalyze-System-Type-Fallback",
+	}
+
+	for _, header := range headers {
+		value := r.Header.Get(header)
+		if value != "" {
+			key := strings.ToLower(strings.TrimPrefix(header, "Pganalyze-"))
+			key = strings.ReplaceAll(key, "-", "_")
+			systemInfo[key] = value
+		}
+	}
+
+	return systemInfo
 }
 
 var previousBackends map[BackendKey]bool
