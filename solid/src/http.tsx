@@ -172,7 +172,7 @@ async function queryActivityCubeFullTimeframe(): Promise<boolean> {
       ? state.activityCube.uiFilter1Value || ""
       : "",
   )}&dbidentifier=${
-    state.instance_active?.dbIdentifier //
+    state.instance_active.dbIdentifier //
   }`;
   setInFlight(ApiEndpoint.activity, url);
   const response = await fetch(url, { method: "GET" });
@@ -280,7 +280,7 @@ async function queryActivityCubeTimeWindow(): Promise<boolean> {
       ? state.activityCube.uiFilter1Value || ""
       : "",
   )}&dbidentifier=${
-    state.instance_active?.dbIdentifier //
+    state.instance_active.dbIdentifier //
   }`;
   setInFlight(ApiEndpoint.activity, url);
   const response = await fetch(url, { method: "GET" });
@@ -391,7 +391,7 @@ async function queryStandardEndpointFullTimeframe(
   }&step=${
     state.interval_ms //
   }ms&dbidentifier=${
-    state.instance_active?.dbIdentifier //
+    state.instance_active.dbIdentifier //
   }`;
   setInFlight(ApiEndpoint.metric, url);
   const response = await fetch(url, { method: "GET" });
