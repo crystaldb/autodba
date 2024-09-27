@@ -9,6 +9,7 @@ import { render } from "solid-js/web";
 
 import "./index.css";
 import App from "./App";
+import { MetaProvider, Title } from "@solidjs/meta";
 
 const root = document.getElementById("root");
 
@@ -18,4 +19,13 @@ if (import.meta.env.DEV && !(root instanceof HTMLElement)) {
   );
 }
 
-if (root) render(() => <App />, root);
+if (root)
+  render(
+    () => (
+      <MetaProvider>
+        <Title>AutoDBA</Title>
+        <App />
+      </MetaProvider>
+    ),
+    root,
+  );

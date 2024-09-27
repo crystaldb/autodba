@@ -21,7 +21,7 @@ export default function App(): JSX.Element {
           component={() => PageWrapper("pageActivity", PageActivity)}
         />
         <Route
-          path="/metric"
+          path="/metrics"
           component={() => PageWrapper("pageMetric", PageMetric)}
         />
         <Route path={"**"} component={() => <h1>404. Page not found.</h1>} />

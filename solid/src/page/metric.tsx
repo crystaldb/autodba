@@ -2,6 +2,7 @@ import { For } from "solid-js";
 import { contextState } from "../context_state";
 import { EchartsLinechart } from "../view/echarts_linechart";
 import { ApiEndpoint } from "../state";
+import { Title } from "@solidjs/meta";
 
 export function PageMetric() {
   const { state, setState } = contextState();
@@ -9,6 +10,7 @@ export function PageMetric() {
 
   return (
     <>
+      <Title>Metrics | AutoDBA</Title>
       <section class="flex flex-col gap-y-12">
         <div class="flex flex-col p-4 gap-y-4 rounded-xl bg-neutral-100 dark:bg-neutral-800">
           <h2 class="font-medium">Database metrics</h2>
