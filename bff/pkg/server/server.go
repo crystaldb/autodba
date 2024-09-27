@@ -80,8 +80,8 @@ func (s server_imp) Run() error {
 	r.Use(CORS)
 
 	r.Get("/api/v1/activity", activity_handler(s.metrics_service))
-	r.Get("/api/v1/instances", info_handler(s.metrics_service, s.dbIdentifiers))
-	r.Get("/api/v1/{dbIdentifier}/databases", databases_handler(s.metrics_service))
+	r.Get("/api/v1/instance", info_handler(s.metrics_service, s.dbIdentifiers))
+	r.Get("/api/v1/instance/{dbIdentifier}/database", databases_handler(s.metrics_service))
 
 	r.Route(api_prefix, func(r chi.Router) {
 		r.Mount("/", metrics_handler(s.routes_config, s.dbIdentifiers, s.metrics_service))

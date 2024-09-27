@@ -370,7 +370,7 @@ func TestDatabasesHandler(t *testing.T) {
 	handler := databases_handler(mockService)
 
 	record := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/databases", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/instance/DBIDENTIFIER_IGNORED/database", nil)
 
 	handler.ServeHTTP(record, req)
 	assert.Equal(t, http.StatusOK, record.Code)
@@ -394,7 +394,7 @@ func TestInfoHandler(t *testing.T) {
 	handler := info_handler(mockService, dbIdentifiers)
 
 	record := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/instances", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/instance", nil)
 
 	handler.ServeHTTP(record, req)
 

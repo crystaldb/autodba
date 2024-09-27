@@ -41,7 +41,7 @@ export function retryQuery(
 
 export async function queryInstances(retryIfNeeded: boolean): Promise<boolean> {
   const { setState } = contextState();
-  const response = await fetch("/api/v1/instances", { method: "GET" });
+  const response = await fetch("/api/v1/instance", { method: "GET" });
 
   if (!response.ok) {
     if (retryIfNeeded)
@@ -75,8 +75,16 @@ export async function queryInstances(retryIfNeeded: boolean): Promise<boolean> {
 }
 
 export async function queryDatabases(retryIfNeeded: boolean): Promise<boolean> {
-  const { setState } = contextState();
-  const response = await fetch("/api/v1/databases", { method: "GET" });
+  const { state, setState } = contextState();
+  if (!state.instance_active?.dbIdentifier) {
+    if (retryIfNeeded)
+      return retryQuery("timeout_queryDatabases", queryDatabases);
+    return false;
+  }
+  const response = await fetch(
+    `/api/v1/instance/${state.instance_active.dbIdentifier}/database`,
+    { method: "GET" },
+  );
 
   if (!response.ok) {
     if (retryIfNeeded)
@@ -121,6 +129,7 @@ async function queryActivityCube(): Promise<boolean> {
 async function queryActivityCubeFullTimeframe(): Promise<boolean> {
   const { state, setState } = contextState();
   if (!state.database_list.length) return false;
+  if (!state.instance_active?.dbIdentifier) return false;
   if (!allowInFlight(ApiEndpoint.activity)) return false;
 
   if (
@@ -163,7 +172,7 @@ async function queryActivityCubeFullTimeframe(): Promise<boolean> {
       ? state.activityCube.uiFilter1Value || ""
       : "",
   )}&dbidentifier=${
-    state.instance_active?.dbIdentifier || "" //
+    state.instance_active?.dbIdentifier //
   }`;
   setInFlight(ApiEndpoint.activity, url);
   const response = await fetch(url, { method: "GET" });
@@ -199,6 +208,7 @@ async function queryActivityCubeFullTimeframe(): Promise<boolean> {
 async function queryActivityCubeTimeWindow(): Promise<boolean> {
   const { state, setState } = contextState();
   if (!state.database_list.length) return false;
+  if (!state.instance_active?.dbIdentifier) return false;
   if (!state.server_now) return false;
   if (!allowInFlight(ApiEndpoint.activity)) return false;
 
@@ -270,7 +280,7 @@ async function queryActivityCubeTimeWindow(): Promise<boolean> {
       ? state.activityCube.uiFilter1Value || ""
       : "",
   )}&dbidentifier=${
-    state.instance_active?.dbIdentifier || "" //
+    state.instance_active?.dbIdentifier //
   }`;
   setInFlight(ApiEndpoint.activity, url);
   const response = await fetch(url, { method: "GET" });
@@ -353,6 +363,7 @@ async function queryStandardEndpointFullTimeframe(
   const { state, setState } = contextState();
   if (apiEndpoint !== ApiEndpoint.metric) return false;
   if (!state.database_list.length) return false;
+  if (!state.instance_active?.dbIdentifier) return false;
   if (!allowInFlight(ApiEndpoint.metric)) return false;
 
   if (
@@ -380,7 +391,7 @@ async function queryStandardEndpointFullTimeframe(
   }&step=${
     state.interval_ms //
   }ms&dbidentifier=${
-    state.instance_active?.dbIdentifier || "" //
+    state.instance_active?.dbIdentifier //
   }`;
   setInFlight(ApiEndpoint.metric, url);
   const response = await fetch(url, { method: "GET" });

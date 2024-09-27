@@ -67,7 +67,6 @@ export function InstanceHeader(props: PropsInstanceHeader) {
           </Show>
         </section>
       </Show>
-
       {!state.instance_active ? (
         ""
       ) : (

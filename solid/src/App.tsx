@@ -4,7 +4,7 @@ import { ContextState, contextState } from "./context_state";
 import { PageActivity } from "./page/activity";
 import { PageMetric } from "./page/metric";
 import { Router, Route } from "@solidjs/router";
-import { JSX, Show } from "solid-js";
+import { createResource, JSX, Show } from "solid-js";
 import { queryInstances, queryDatabases } from "./http";
 import { Dynamic } from "solid-js/web";
 import { DarkmodeSelector } from "./view/darkmode";
@@ -40,8 +40,8 @@ function Layout(props: {
     | null
     | undefined;
 }): JSX.Element {
-  queryInstances(true);
-  queryDatabases(true);
+  const [instances] = createResource(() => queryInstances(true));
+  createResource(instances, () => queryDatabases(true));
 
   return <div class="max-w-screen-xl mx-auto">{props.children}</div>;
 }
