@@ -126,7 +126,7 @@ func createLabelsForBackend(backendKey BackendKey) []prompb.Label {
 
 // compactSnapshotMetrics processes a compact snapshot and returns time series for each backend
 // It also returns a map of seen backends for stale marker generation
-func compactSnapshotMetrics(snapshot *collector_proto.CompactSnapshot, systemInfo map[string]string) ([]prompb.TimeSeries, map[BackendKey]bool) {
+func compactSnapshotMetrics(snapshot *collector_proto.CompactSnapshot, systemInfo SystemInfo) ([]prompb.TimeSeries, map[BackendKey]bool) {
 	var ts []prompb.TimeSeries
 	snapshotTimestamp := snapshot.CollectedAt.AsTime().UnixMilli()
 	seenBackends := make(map[BackendKey]bool)
@@ -142,12 +142,12 @@ func compactSnapshotMetrics(snapshot *collector_proto.CompactSnapshot, systemInf
 			Pid:                 backend.GetPid(),
 			QueryFull:           backend.GetQueryText(),
 			State:               backend.GetState(),
-			SystemID:            systemInfo["system_id"],
-			SystemIDFallback:    systemInfo["system_id_fallback"],
-			SystemScope:         systemInfo["system_scope"],
-			SystemScopeFallback: systemInfo["system_scope_fallback"],
-			SystemType:          systemInfo["system_type"],
-			SystemTypeFallback:  systemInfo["system_type_fallback"],
+			SystemID:            systemInfo.SystemID,
+			SystemIDFallback:    systemInfo.SystemIDFallback,
+			SystemScope:         systemInfo.SystemScope,
+			SystemScopeFallback: systemInfo.SystemScopeFallback,
+			SystemType:          systemInfo.SystemType,
+			SystemTypeFallback:  systemInfo.SystemTypeFallback,
 			WaitEvent:           backend.GetWaitEvent(),
 			WaitEventType:       backend.GetWaitEventType(),
 		}
