@@ -110,7 +110,7 @@ export function TimebarSection(props: ITimebarSectionProps) {
 
     untrack(() => {
       if (state.apiThrottle.needDataFor) {
-        console.log("queryEndpointData_IfLive");
+        // console.log("queryEndpointData_IfLive");
         queryEndpointDataIfLive(state.apiThrottle.needDataFor);
       }
     });
