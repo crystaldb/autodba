@@ -1,12 +1,12 @@
-package server_test
+package server
 
 import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"local/bff/pkg/server" // Replace with the actual import path to your server package
 	"os"
 	"testing"
+	"time"
 )
 
 type TestCase struct {
@@ -59,15 +59,54 @@ func TestGenerateActivityCubePromQLQuery(t *testing.T) {
 	// Track whether any changes were made
 	anyMismatch := false
 
+	now := time.Now()
+
 	for _, tt := range testCases {
 		t.Run(tt.Name, func(t *testing.T) {
-			var input server.PromQLInput
-			err := json.Unmarshal(tt.Input, &input)
+			var rawInput map[string]interface{}
+			err := json.Unmarshal(tt.Input, &rawInput)
 			if err != nil {
 				t.Fatalf("Failed to unmarshal input: %v", err)
 			}
 
-			query, err := server.GenerateActivityCubePromQLQuery(input)
+			startStr, ok := rawInput["start"].(string)
+			if !ok {
+				t.Fatalf("Invalid type for start: %v", rawInput["start"])
+			}
+			endStr, ok := rawInput["end"].(string)
+			if !ok {
+				t.Fatalf("Invalid type for end: %v", rawInput["end"])
+			}
+
+			startTime, err := parseTimeParameter(startStr, now)
+			if err != nil {
+				if !tt.HasError {
+					t.Errorf("unexpected error parsing start time %v", err)
+				}
+				return
+			}
+
+			endTime, err := parseTimeParameter(endStr, now)
+			if err != nil {
+				if !tt.HasError {
+					t.Errorf("unexpected error parsing start time %v", err)
+				}
+				return
+			}
+
+			input := PromQLInput{
+				DatabaseList:      rawInput["database_list"].(string),
+				Start:             startTime,
+				End:               endTime,
+				Legend:            rawInput["legend"].(string),
+				Dim:               rawInput["dim"].(string),
+				FilterDim:         rawInput["filterdim"].(string),
+				FilterDimSelected: rawInput["filterdimselected"].(string),
+				Limit:             rawInput["limit"].(string),
+				Offset:            rawInput["offset"].(string),
+			}
+
+			query, err := GenerateActivityCubePromQLQuery(input)
 			if (err != nil) != tt.HasError {
 				t.Errorf("expected error: %v, got: %v", tt.HasError, err)
 				anyMismatch = true

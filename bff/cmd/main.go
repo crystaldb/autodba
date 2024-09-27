@@ -104,7 +104,9 @@ func run(collectorConfigFile, webappPath string) error {
 	metrics_repo := prometheus.New(config.PrometheusServer)
 	metrics_service := metrics.CreateService(metrics_repo)
 
-	server := server.CreateServer(config.RoutesConfig, metrics_service, config.Port, config.DBIdentifiers, config.WebappPath)
+	validate := server.CreateValidator()
+
+	server := server.CreateServer(config.RoutesConfig, metrics_service, config.Port, config.DBIdentifiers, config.WebappPath, validate)
 
 	if err = server.Run(); err != nil {
 		return err

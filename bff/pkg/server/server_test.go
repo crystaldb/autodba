@@ -9,8 +9,7 @@ import (
 	"os"
 	"testing"
 
-	"local/bff/pkg/utils"
-
+	"github.com/go-playground/validator/v10"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -211,7 +210,9 @@ func TestMetricsHandlerJSONFormat(t *testing.T) {
 
 func TestMissingParameters(t *testing.T) {
 	mockService := new(MockMetricsService)
-	handler := activity_handler(mockService)
+
+	validate := CreateValidator()
+	handler := activity_handler(mockService, validate)
 
 	defaultParams := map[string]string{
 		"dbidentifier":  "test",
@@ -224,12 +225,12 @@ func TestMissingParameters(t *testing.T) {
 	}
 
 	expectedErrors := map[string]string{
-		"database_list": "Missing param/value: database_list",
-		"start":         "Missing param/value: start",
-		"end":           "Missing param/value: end",
-		"step":          "Missing param/value: step",
-		"legend":        "Missing param/value: legend",
-		"dim":           "Missing param/value: dim",
+		"database_list": "DatabaseList",
+		"start":         "Start",
+		"end":           "End",
+		"step":          "Step",
+		"legend":        "Legend",
+		"dim":           "Dim",
 	}
 
 	for paramToRemove, expectedError := range expectedErrors {
@@ -251,35 +252,144 @@ func TestMissingParameters(t *testing.T) {
 
 func TestActivityValidationLogic(t *testing.T) {
 	mockService := new(MockMetricsService)
-	handler := activity_handler(mockService)
+
+	validate := CreateValidator()
+	handler := activity_handler(mockService, validate)
 
 	tests := []struct {
+		name           string
 		queryParams    map[string]string
 		expectedStatus int
-		expectedError  string
 	}{
-		{map[string]string{"start": "10", "end": "5", "limitdim": "10"}, http.StatusBadRequest, "Parameter 'end' must be greater than 'start'"},
-		{map[string]string{"start": "10", "end": "20", "limitdim": "0"}, http.StatusBadRequest, "limitdim must be a positive integer"},
-		{map[string]string{"start": "10", "end": "20", "limitlegend": "0"}, http.StatusBadRequest, "limitlegend must be a positive integer"},
+		{
+			name: "Valid parameters",
+			queryParams: map[string]string{
+				"dbidentifier":  "valid-db",
+				"database_list": "postgres",
+				"start":         "now-1h",
+				"end":           "now",
+				"step":          "1m",
+				"legend":        "wait_event_name",
+				"dim":           "time",
+			},
+			expectedStatus: http.StatusOK,
+		},
+		{
+			name: "Missing dbidentifier",
+			queryParams: map[string]string{
+				"database_list": "postgres",
+				"start":         "now-1h",
+				"end":           "now",
+				"step":          "1m",
+				"legend":        "wait_event_name",
+				"dim":           "time",
+			},
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name: "Missing database_list",
+			queryParams: map[string]string{
+				"dbidentifier": "valid-db",
+				"start":        "now-1h",
+				"end":          "now",
+				"step":         "1m",
+				"legend":       "wait_event_name",
+				"dim":          "time",
+			},
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name: "Missing start",
+			queryParams: map[string]string{
+				"dbidentifier":  "valid-db",
+				"database_list": "postgres",
+				"end":           "now",
+				"step":          "1m",
+				"legend":        "wait_event_name",
+				"dim":           "time",
+			},
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name: "Missing end",
+			queryParams: map[string]string{
+				"dbidentifier":  "valid-db",
+				"database_list": "postgres",
+				"start":         "now",
+				"step":          "1m",
+				"legend":        "wait_event_name",
+				"dim":           "time",
+			},
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name: "Missing legend",
+			queryParams: map[string]string{
+				"dbidentifier":  "valid-db",
+				"database_list": "postgres",
+				"start":         "now-1h",
+				"end":           "now",
+				"step":          "1m",
+				"dim":           "time",
+			},
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name: "Missing Dim",
+			queryParams: map[string]string{
+				"dbidentifier":  "valid-db",
+				"database_list": "postgres",
+				"start":         "now-1h",
+				"end":           "now",
+				"step":          "1m",
+				"legend":        "wait_event_name",
+			},
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name: "Bad Dim",
+			queryParams: map[string]string{
+				"dbidentifier":  "valid-db",
+				"database_list": "postgres",
+				"start":         "now-1h",
+				"end":           "now",
+				"step":          "1m",
+				"legend":        "wait_event_name",
+				"dim":           "invalid",
+			},
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name: "Invalid time range",
+			queryParams: map[string]string{
+				"start":         "now",
+				"end":           "now-1h", // end before start
+				"dbidentifier":  "valid-db",
+				"database_list": "postgres",
+				"step":          "1m",
+				"legend":        "wait_event_name",
+				"dim":           "time",
+			},
+			expectedStatus: http.StatusBadRequest,
+		},
 	}
-
-	defaultParams := map[string]string{"dbidentifier": "test", "database_list": "postgres", "step": "5000ms", "legend": "wait_event_name", "dim": "time", "filterdim": ""}
 
 	mockService.On("ExecuteRaw", mock.Anything, mock.Anything).Return([]map[string]interface{}{}, nil)
 
 	for _, test := range tests {
 
 		record := httptest.NewRecorder()
-		req := httptest.NewRequest(http.MethodGet, "/api/v1/activity?"+formatQueryParams(utils.MergeMaps(test.queryParams, defaultParams)), nil)
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/activity?"+formatQueryParams(test.queryParams), nil)
 
 		handler.ServeHTTP(record, req)
 		assert.Equal(t, test.expectedStatus, record.Code)
-		assert.Contains(t, record.Body.String(), test.expectedError)
 	}
 }
 func TestOptions(t *testing.T) {
 	mockService := new(MockMetricsService)
-	handler := activity_handler(mockService)
+
+	validate := CreateValidator()
+	handler := activity_handler(mockService, validate)
 
 	expectedOptions := map[string]string{
 		"start": "10",
@@ -524,4 +634,184 @@ func formatQueryParams(params map[string]string) string {
 		buffer.WriteString(value)
 	}
 	return buffer.String()
+}
+
+func TestValidateAfterStart(t *testing.T) {
+	validate := validator.New()
+	validate.RegisterValidation("afterStart", ValidateAfterStart)
+
+	tests := []struct {
+		start string
+		end   string
+		valid bool
+	}{
+		{"now", "now", true},
+		{"now", "now-1m", false},
+		{"now-1m", "now", true},
+		{"now-1m", "now-1m", true},
+		{"invalid", "now", false},
+		{"now", "invalid", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.start+"_"+tt.end, func(t *testing.T) {
+			input := struct {
+				Start string `validate:"required"`
+				End   string `validate:"required,afterStart"`
+			}{
+				Start: tt.start,
+				End:   tt.end,
+			}
+			err := validate.Struct(input)
+			if (err == nil) != tt.valid {
+				t.Errorf("expected valid: %v, got error: %v", tt.valid, err)
+			}
+		})
+	}
+}
+
+func TestValidateFilterDimSelected(t *testing.T) {
+	validate := validator.New()
+	validate.RegisterValidation("filterDimSelected", ValidateFilterDimSelected)
+
+	tests := []struct {
+		filterDim         string
+		filterDimSelected string
+		valid             bool
+	}{
+		{"Time", "1627891200000", true},
+		{"Time", "invalid", false},
+		{"Other", "someString", true},
+		{"Other", "", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.filterDim+"_"+tt.filterDimSelected, func(t *testing.T) {
+			input := struct {
+				FilterDim         string `validate:"required"`
+				FilterDimSelected string `validate:"omitempty,filterDimSelected"`
+			}{
+				FilterDim:         tt.filterDim,
+				FilterDimSelected: tt.filterDimSelected,
+			}
+			err := validate.Struct(input)
+			if (err == nil) != tt.valid {
+				t.Errorf("expected valid: %v, got error: %v", tt.valid, err)
+			}
+		})
+	}
+}
+
+func TestValidateDatabaseList(t *testing.T) {
+	validate := validator.New()
+	validate.RegisterValidation("databaseList", ValidateDatabaseList)
+
+	tests := []struct {
+		dbList string
+		valid  bool
+	}{
+		{"(db1|db2|db3)", true},
+		{"db1", true},
+		{"db1|", false},
+		{"db1|db2", false},
+		{"db1|invalid@db", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.dbList, func(t *testing.T) {
+			input := struct {
+				DatabaseList string `validate:"required,databaseList"`
+			}{
+				DatabaseList: tt.dbList,
+			}
+			err := validate.Struct(input)
+			if (err == nil) != tt.valid {
+				t.Errorf("expected valid: %v, got error: %v", tt.valid, err)
+			}
+		})
+	}
+}
+
+func TestValidateDbIdentifier(t *testing.T) {
+	validate := validator.New()
+	validate.RegisterValidation("dbIdentifier", ValidateDbIdentifier)
+
+	tests := []struct {
+		dbIdentifier string
+		valid        bool
+	}{
+		{"valid-db", true},
+		{"invalid@db", false},
+		{"valid123", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.dbIdentifier, func(t *testing.T) {
+			input := struct {
+				DbIdentifier string `validate:"required,dbIdentifier"`
+			}{
+				DbIdentifier: tt.dbIdentifier,
+			}
+			err := validate.Struct(input)
+			if (err == nil) != tt.valid {
+				t.Errorf("expected valid: %v, got error: %v", tt.valid, err)
+			}
+		})
+	}
+}
+
+func TestValidateDuration(t *testing.T) {
+	validate := validator.New()
+	validate.RegisterValidation("duration", ValidateDuration)
+
+	tests := []struct {
+		duration string
+		valid    bool
+	}{
+		{"10s", true},
+		{"1m30s", true},
+		{"invalid-duration", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.duration, func(t *testing.T) {
+			input := struct {
+				Duration string `validate:"required,duration"`
+			}{
+				Duration: tt.duration,
+			}
+			err := validate.Struct(input)
+			if (err == nil) != tt.valid {
+				t.Errorf("expected valid: %v, got error: %v", tt.valid, err)
+			}
+		})
+	}
+}
+
+func TestValidateDim(t *testing.T) {
+	validate := validator.New()
+	validate.RegisterValidation("dim", ValidateDim)
+
+	tests := []struct {
+		dimension string
+		valid     bool
+	}{
+		{"time", true},
+		{"datname", true},
+		{"invalidDim", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.dimension, func(t *testing.T) {
+			input := struct {
+				Dim string `validate:"required,dim"`
+			}{
+				Dim: tt.dimension,
+			}
+			err := validate.Struct(input)
+			if (err == nil) != tt.valid {
+				t.Errorf("expected valid: %v, got error: %v", tt.valid, err)
+			}
+		})
+	}
 }

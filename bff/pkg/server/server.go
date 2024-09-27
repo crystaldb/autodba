@@ -8,12 +8,14 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-playground/validator/v10"
 )
 
 type Server interface {
@@ -32,6 +34,7 @@ type server_imp struct {
 	port            string
 	dbIdentifiers   []string
 	webappPath      string
+	validate        *validator.Validate
 }
 
 type InstanceInfo struct {
@@ -58,8 +61,25 @@ func CORS(next http.Handler) http.Handler {
 	})
 }
 
-func CreateServer(r map[string]RouteConfig, m metrics.Service, port string, dbIdentifiers []string, webappPath string) Server {
-	return server_imp{r, m, port, dbIdentifiers, webappPath}
+func CreateServer(r map[string]RouteConfig, m metrics.Service, port string, dbIdentifiers []string, webappPath string, validate *validator.Validate) Server {
+	return server_imp{r, m, port, dbIdentifiers, webappPath, validate}
+}
+
+func CreateValidator() *validator.Validate {
+
+	validate := validator.New(validator.WithRequiredStructEnabled())
+	validate.RegisterValidation("duration", ValidateDuration)
+
+	validate.RegisterValidation("dbIdentifier", ValidateDbIdentifier)
+
+	validate.RegisterValidation("databaseList", ValidateDatabaseList)
+
+	validate.RegisterValidation("dim", ValidateDim)
+
+	validate.RegisterValidation("filterDimSelected", ValidateFilterDimSelected)
+
+	validate.RegisterValidation("afterStart", ValidateAfterStart)
+	return validate
 }
 
 func fileExists(filePath string) bool {
@@ -79,7 +99,7 @@ func (s server_imp) Run() error {
 
 	r.Use(CORS)
 
-	r.Get("/api/v1/activity", activity_handler(s.metrics_service))
+	r.Get("/api/v1/activity", activity_handler(s.metrics_service, s.validate))
 	r.Get("/api/v1/instance", info_handler(s.metrics_service, s.dbIdentifiers))
 	r.Get("/api/v1/instance/{dbIdentifier}/database", databases_handler(s.metrics_service))
 
@@ -319,67 +339,72 @@ func metrics_handler(route_configs map[string]RouteConfig, dbIdentifiers []strin
 	})
 }
 
-func activity_handler(metrics_service metrics.Service) http.HandlerFunc {
+type ActivityParams struct {
+	DbIdentifier string `validate:"required,dbIdentifier,max=50"`
+	DatabaseList string `validate:"required,databaseList,max=50"`
+
+	Start string `validate:"required"`
+	End   string `validate:"required,afterStart"`
+	Step  string `validate:"required,duration"`
+
+	Legend            string `validate:"required,dim"`
+	Dim               string `validate:"required,dim"`
+	FilterDim         string `validate:"omitempty,dim"`
+	FilterDimSelected string `validate:"omitempty,filterDimSelected"`
+
+	Limit       string `validate:"omitempty,numeric,gt=0"`
+	LimitLegend string `validate:"omitempty,numeric,gt=0"`
+}
+
+func activity_handler(metrics_service metrics.Service, validate *validator.Validate) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("Handling activity request")
 
-		database_list := r.URL.Query().Get("database_list")
-		start := r.URL.Query().Get("start")
-		end := r.URL.Query().Get("end")
-		step := r.URL.Query().Get("step")
-		legend := r.URL.Query().Get("legend")
-		dim := r.URL.Query().Get("dim")
-		filterdim := r.URL.Query().Get("filterdim")
-		filterdimselected := r.URL.Query().Get("filterdimselected")
-		limitDim := r.URL.Query().Get("limitdim")
-		limitLegend := r.URL.Query().Get("limitlegend")
-		dbIdentifier := r.URL.Query().Get("dbidentifier")
-
-		requiredParamMap := map[string]string{
-			"dbidentifier":  dbIdentifier,
-			"database_list": database_list,
-			"start":         start,
-			"end":           end,
-			"step":          step,
-			"legend":        legend,
-			"dim":           dim,
+		params := ActivityParams{
+			DbIdentifier:      r.URL.Query().Get("dbidentifier"),
+			DatabaseList:      r.URL.Query().Get("database_list"),
+			Start:             r.URL.Query().Get("start"),
+			End:               r.URL.Query().Get("end"),
+			Step:              r.URL.Query().Get("step"),
+			Legend:            r.URL.Query().Get("legend"),
+			Dim:               r.URL.Query().Get("dim"),
+			FilterDim:         r.URL.Query().Get("filterdim"),
+			FilterDimSelected: r.URL.Query().Get("filterdimselected"),
+			Limit:             r.URL.Query().Get("limitdim"),
+			LimitLegend:       r.URL.Query().Get("limitlegend"),
 		}
 
-		for paramName, paramValue := range requiredParamMap {
-			if paramValue == "" {
-				http.Error(w, fmt.Sprintf("Missing param/value: %s", paramName), http.StatusBadRequest)
-				return
-			}
+		if err := validate.Struct(params); err != nil {
+			fmt.Println("Validation failed: ", err)
+			http.Error(w, fmt.Sprintf("Validation failed: %v", err), http.StatusBadRequest)
+			return
 		}
 
-		if limitDim != "" {
-			_, err := parseAndValidateInt(limitDim, "limitdim")
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusBadRequest)
-				return
-			}
+		now := time.Now()
+
+		startTime, err := parseTimeParameter(params.Start, now)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
 		}
 
-		if limitLegend != "" {
-			_, err := parseAndValidateInt(limitLegend, "limitlegend")
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusBadRequest)
-				return
-			}
+		endTime, err := parseTimeParameter(params.End, now)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
 		}
 
 		promQLInput := PromQLInput{
-			DatabaseList:      database_list,
-			Start:             start,
-			End:               end,
-			Step:              step,
-			Legend:            legend,
-			Dim:               dim,
-			FilterDim:         filterdim,
-			FilterDimSelected: filterdimselected,
-			Limit:             limitDim,
-			LimitLegend:       limitLegend,
-			Offset:            "", // TODO not in query
+			DatabaseList:      strconv.Quote(params.DatabaseList),
+			Start:             startTime,
+			End:               endTime,
+			Legend:            params.Legend,
+			Dim:               params.Dim,
+			FilterDim:         params.FilterDim,
+			FilterDimSelected: strconv.Quote(params.FilterDimSelected),
+			Limit:             params.Limit,
+			LimitLegend:       params.LimitLegend,
+			Offset:            "",
 		}
 
 		fmt.Println("PromQLInput: ", promQLInput)
@@ -391,40 +416,17 @@ func activity_handler(metrics_service metrics.Service) http.HandlerFunc {
 		}
 
 		fmt.Println("query: ", query)
-		now := time.Now()
-
-		startTime, err := parseTimeParameter(start, now)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-
-		var endTime time.Time
-		if end != "" {
-			endTime, err = parseTimeParameter(end, now)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusBadRequest)
-				return
-			}
-		} else {
-			endTime = now
-		}
-
-		if startTime.After(endTime) {
-			http.Error(w, "Parameter 'end' must be greater than 'start'", http.StatusBadRequest)
-			return
-		}
 
 		options := map[string]string{
 			"start": strconv.FormatInt(startTime.UnixMilli(), 10),
 			"end":   strconv.FormatInt(endTime.UnixMilli(), 10),
-			"step":  step,
-			"dim":   dim,
+			"step":  params.Step,
+			"dim":   params.Dim,
 		}
 
-		if limitLegend != "" {
-			options["limitlegend"] = limitLegend
-			options["legend"] = legend
+		if params.LimitLegend != "" {
+			options["limitlegend"] = params.LimitLegend
+			options["legend"] = params.Legend
 		}
 
 		results, err := metrics_service.ExecuteRaw(query, options)
@@ -556,4 +558,61 @@ func WrapJSON(data []byte, metadata map[string]interface{}) ([]byte, error) {
 	}
 
 	return wrappedJSON, nil
+}
+
+func ValidateAfterStart(fl validator.FieldLevel) bool {
+	start := fl.Parent().FieldByName("Start").String()
+	end := fl.Field().String()
+
+	now := time.Now()
+
+	startTime, err := parseTimeParameter(start, now)
+	if err != nil {
+		return false
+	}
+
+	endTime, err := parseTimeParameter(end, now)
+	if err != nil {
+		return false
+	}
+
+	return endTime.After(startTime) || endTime.Equal(startTime)
+}
+
+func ValidateFilterDimSelected(fl validator.FieldLevel) bool {
+	filterDim := fl.Parent().FieldByName("FilterDim").String()
+	filterDimSelected := fl.Field().String()
+
+	if filterDim == "Time" {
+		if _, err := strconv.ParseInt(filterDimSelected, 10, 64); err == nil {
+			return true
+		}
+		return false
+	}
+
+	// If filterDim is not "Time", accept any arbitrary string
+	return len(filterDimSelected) > 0
+}
+
+func ValidateDatabaseList(fl validator.FieldLevel) bool {
+	regex := `^(?:[a-zA-Z0-9_-]+|\([a-zA-Z0-9_-]+(\|[a-zA-Z0-9_-]+)*\))$`
+	matched, _ := regexp.MatchString(regex, fl.Field().String())
+	return matched
+
+}
+
+func ValidateDbIdentifier(fl validator.FieldLevel) bool {
+	regex := `^[a-zA-Z0-9-]{1,63}$`
+	matched, _ := regexp.MatchString(regex, fl.Field().String())
+	return matched
+}
+
+func ValidateDuration(fl validator.FieldLevel) bool {
+	_, err := time.ParseDuration(fl.Field().String())
+	return err == nil // Return true if parsing was successful
+}
+
+func ValidateDim(fl validator.FieldLevel) bool {
+	value := fl.Field().String()
+	return isValidDimension(value)
 }

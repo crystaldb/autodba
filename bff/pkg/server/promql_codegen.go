@@ -10,17 +10,16 @@ import (
 
 // PromQLInput represents the inputs required to generate a PromQL query.
 type PromQLInput struct {
-	DatabaseList      string `json:"database_list"`
-	Start             string `json:"start"`
-	End               string `json:"end"`
-	Step              string `json:"step"`
-	Legend            string `json:"legend"`
-	Dim               string `json:"dim"`
-	FilterDim         string `json:"filterdim"`
-	FilterDimSelected string `json:"filterdimselected"`
-	Limit             string `json:"limit"`
-	LimitLegend       string `json:"limit_legend"`
-	Offset            string `json:"offset"`
+	DatabaseList      string    `json:"database_list"`
+	Start             time.Time `json:"start"`
+	End               time.Time `json:"end"`
+	Legend            string    `json:"legend"`
+	Dim               string    `json:"dim"`
+	FilterDim         string    `json:"filterdim"`
+	FilterDimSelected string    `json:"filterdimselected"`
+	Limit             string    `json:"limit"`
+	LimitLegend       string    `json:"limit_legend"`
+	Offset            string    `json:"offset"`
 }
 
 // Utility function to validate dimensions
@@ -40,13 +39,10 @@ func isValidDimension(dim string) bool {
 
 // Function to generate a PromQL query with sorting and pagination (New AST-based version)
 func GenerateActivityCubePromQLQuery(input PromQLInput) (string, error) {
-	// Get the current time at the start of the function
-	now := time.Now()
-
 	// Extract and validate parameters
 	databaseList := input.DatabaseList
-	start := input.Start
-	finish := input.End
+	startTime := input.Start
+	endTime := input.End
 	dim := input.Dim
 	legend := input.Legend
 	filterDim := input.FilterDim
@@ -54,33 +50,12 @@ func GenerateActivityCubePromQLQuery(input PromQLInput) (string, error) {
 	limit := input.Limit
 	offset := input.Offset
 
-	// Parse start and finish times
-	startTime, err := parseTimeParameter(start, now)
-	if err != nil {
-		return "", err
-	}
-
-	var endTime time.Time
-	if finish != "" {
-		endTime, err = parseTimeParameter(finish, now)
-		if err != nil {
-			return "", err
-		}
-	} else {
-		endTime = now
-	}
-
 	// Calculate time range in seconds for avg_over_time
 	timeRange := endTime.Sub(startTime).Seconds()
 
 	// Check required parameters
-	if databaseList == "" || start == "" || dim == "" || legend == "" {
+	if databaseList == "" || legend == "" {
 		return "", errors.New("missing required query parameters")
-	}
-
-	// Validate dimensions against whitelist
-	if !isValidDimension(dim) || !isValidDimension(legend) || (filterDim != "" && !isValidDimension(filterDim)) {
-		return "", errors.New("invalid dimension parameter")
 	}
 
 	// Construct the base selector
@@ -134,6 +109,8 @@ func GenerateActivityCubePromQLQuery(input PromQLInput) (string, error) {
 
 	limitValue := 0
 	offsetValue := 0
+
+	var err error
 	if limit != "" {
 		limitValue, err = strconv.Atoi(limit)
 		if err != nil {
