@@ -47,7 +47,7 @@ export function NavTopConfig1() {
       </A>
       <A
         activeClass="activeTopNav"
-        href="/metric"
+        href="/metrics"
         class="flex items-center justify-center h-16 px-4"
         end
       >
