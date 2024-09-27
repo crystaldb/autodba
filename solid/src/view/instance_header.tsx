@@ -59,7 +59,7 @@ export function InstanceHeader(props: PropsInstanceHeader) {
                     }
                   >
                     <p>{instance.systemId}</p>
-                    <InstanceDetails instance={instance} showId={true} />
+                    <InstanceDetails instance={instance} />
                   </li>
                 )}
               </For>
@@ -83,19 +83,35 @@ export function InstanceHeader(props: PropsInstanceHeader) {
     );
   }
 
-  function InstanceDetails(props: { instance: Instance; showId?: boolean }) {
+  function InstanceDetails(props: { instance: Instance }) {
     return (
       <p class="text-neutral-500 flex flex-wrap items-baseline gap-x-4 gap-y-1 dark:text-neutral-400 text-xs sm:text-sm">
-        <span>{props.instance.systemType}</span>
+        <span>{humanizeSystemType(props.instance.systemType)}</span>
         <span>{props.instance.systemScope}</span>
-        {!props.showId ? (
-          ""
-        ) : (
-          <span class="text-2xs">
-            identifier: {props.instance.dbIdentifier}
-          </span>
-        )}
       </p>
     );
+  }
+}
+
+function humanizeSystemType(systemType: string): string {
+  switch (systemType) {
+    case "amazon_rds":
+      return "Amazon RDS";
+    case "google_cloudsql":
+      return "Google Cloud SQL";
+    case "azure_database":
+      return "Azure Database";
+    case "heroku":
+      return "Heroku";
+    case "crunchy_bridge":
+      return "Crunchy Bridge";
+    case "aiven":
+      return "Aiven";
+    case "tembo":
+      return "Tembo";
+    case "self_hosted":
+      return "Self-hosted";
+    default:
+      return systemType.replace(/_/g, " ");
   }
 }
