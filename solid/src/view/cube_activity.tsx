@@ -29,8 +29,13 @@ import { produce } from "solid-js/store";
 
 const MAX_WIDTH = 500;
 
-export const cssSelectorGeneral =
-  "border border-zinc-200 bg-zinc-100 dark:border-zinc-600 dark:bg-zinc-800 dark:hover:bg-zinc-700 hover:bg-zinc-300 first:rounded-s-lg last:rounded-e-lg";
+export const cssSelectorGeneralBase =
+  "border border-zinc-200 bg-zinc-100 dark:border-zinc-600 dark:bg-zinc-800";
+
+export const cssSelectorGeneralHover =
+  "dark:hover:bg-zinc-700 hover:bg-zinc-300";
+
+export const cssSelectorGeneral = `${cssSelectorGeneralBase} ${cssSelectorGeneralHover} first:rounded-s-lg last:rounded-e-lg`;
 
 export type ILegend = {
   item: string;
@@ -251,7 +256,7 @@ function FilterBySelectButton(props: { class?: string }) {
 function DimensionTabsVertical(props: PropsDimensionTabs) {
   return (
     <div data-name="dimensionTabsVert" class="flex flex-col gap-y-4">
-      <div class="flex flex-row gap-x-4">
+      <div class="flex flex-row flex-wrap gap-4">
         <SelectButton
           label=""
           dimension={DimensionField.uiDimension1}

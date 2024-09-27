@@ -7,3 +7,7 @@ default:
 
 check-types:
   fd 'jsx' | entr -c npm run check-types
+
+eslint:
+  eslint --fix '**/*.tsx' --color
+

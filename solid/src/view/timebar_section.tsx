@@ -40,7 +40,7 @@ export function TimebarSection(props: ITimebarSectionProps) {
         () => state.apiThrottle.needDataFor,
         () => state.interval_ms,
         () => state.timeframe_ms,
-        () => state.database_instance.dbidentifier,
+        () => state.instance_active?.systemId,
         () => state.activityCube.uiLegend,
         () => state.activityCube.uiDimension1,
         () => state.activityCube.uiFilter1,
@@ -110,7 +110,7 @@ export function TimebarSection(props: ITimebarSectionProps) {
 
     untrack(() => {
       if (state.apiThrottle.needDataFor) {
-        console.log("queryEndpointData_IfLive");
+        // console.log("queryEndpointData_IfLive");
         queryEndpointDataIfLive(state.apiThrottle.needDataFor);
       }
     });

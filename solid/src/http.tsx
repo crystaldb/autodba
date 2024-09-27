@@ -41,7 +41,7 @@ export function retryQuery(
 
 export async function queryInstances(retryIfNeeded: boolean): Promise<boolean> {
   const { setState } = contextState();
-  const response = await fetch("/api/v1/info", { method: "GET" });
+  const response = await fetch("/api/v1/instance", { method: "GET" });
 
   if (!response.ok) {
     if (retryIfNeeded)
@@ -49,13 +49,42 @@ export async function queryInstances(retryIfNeeded: boolean): Promise<boolean> {
     return false;
   }
   const json = await response.json();
-  setState("database_instance", json || {});
+  const instance_list = json?.list || [];
+  const instance_active = instance_list[0]
+    ? JSON.parse(JSON.stringify(instance_list[0]))
+    : null;
+  batch(() => {
+    setState("instance_active", instance_active);
+    setState("instance_list", [
+      ...instance_list,
+      // {
+      //   dbIdentifier:
+      //     "0000000000111111111222222222233333333334444444444455555555555" +
+      //     "::" +
+      //     "amazon_rds" +
+      //     "::" +
+      //     "us-west-99",
+      //   systemId:
+      //     "0000000000111111111222222222233333333334444444444455555555555",
+      //   systemType: "amazon_rds",
+      //   systemScope: "us-west-99",
+      // },
+    ]);
+  });
   return true;
 }
 
 export async function queryDatabases(retryIfNeeded: boolean): Promise<boolean> {
-  const { setState } = contextState();
-  const response = await fetch("/api/v1/databases", { method: "GET" });
+  const { state, setState } = contextState();
+  if (!state.instance_active?.dbIdentifier) {
+    if (retryIfNeeded)
+      return retryQuery("timeout_queryDatabases", queryDatabases);
+    return false;
+  }
+  const response = await fetch(
+    `/api/v1/instance/${state.instance_active.dbIdentifier}/database`,
+    { method: "GET" },
+  );
 
   if (!response.ok) {
     if (retryIfNeeded)
@@ -100,6 +129,7 @@ async function queryActivityCube(): Promise<boolean> {
 async function queryActivityCubeFullTimeframe(): Promise<boolean> {
   const { state, setState } = contextState();
   if (!state.database_list.length) return false;
+  if (!state.instance_active?.dbIdentifier) return false;
   if (!allowInFlight(ApiEndpoint.activity)) return false;
 
   if (
@@ -141,7 +171,9 @@ async function queryActivityCubeFullTimeframe(): Promise<boolean> {
     state.activityCube.uiFilter1 !== DimensionName.none
       ? state.activityCube.uiFilter1Value || ""
       : "",
-  )}`;
+  )}&dbidentifier=${
+    state.instance_active.dbIdentifier //
+  }`;
   setInFlight(ApiEndpoint.activity, url);
   const response = await fetch(url, { method: "GET" });
   clearInFlight(ApiEndpoint.activity);
@@ -176,6 +208,7 @@ async function queryActivityCubeFullTimeframe(): Promise<boolean> {
 async function queryActivityCubeTimeWindow(): Promise<boolean> {
   const { state, setState } = contextState();
   if (!state.database_list.length) return false;
+  if (!state.instance_active?.dbIdentifier) return false;
   if (!state.server_now) return false;
   if (!allowInFlight(ApiEndpoint.activity)) return false;
 
@@ -246,7 +279,9 @@ async function queryActivityCubeTimeWindow(): Promise<boolean> {
     state.activityCube.uiFilter1 !== DimensionName.none
       ? state.activityCube.uiFilter1Value || ""
       : "",
-  )}`;
+  )}&dbidentifier=${
+    state.instance_active.dbIdentifier //
+  }`;
   setInFlight(ApiEndpoint.activity, url);
   const response = await fetch(url, { method: "GET" });
   clearInFlight(ApiEndpoint.activity);
@@ -328,6 +363,7 @@ async function queryStandardEndpointFullTimeframe(
   const { state, setState } = contextState();
   if (apiEndpoint !== ApiEndpoint.metric) return false;
   if (!state.database_list.length) return false;
+  if (!state.instance_active?.dbIdentifier) return false;
   if (!allowInFlight(ApiEndpoint.metric)) return false;
 
   if (
@@ -355,7 +391,7 @@ async function queryStandardEndpointFullTimeframe(
   }&step=${
     state.interval_ms //
   }ms&dbidentifier=${
-    state.database_instance.dbidentifier //
+    state.instance_active.dbIdentifier //
   }`;
   setInFlight(ApiEndpoint.metric, url);
   const response = await fetch(url, { method: "GET" });

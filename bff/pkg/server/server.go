@@ -34,6 +34,13 @@ type server_imp struct {
 	webappPath      string
 }
 
+type InstanceInfo struct {
+	DBIdentifier string `json:"dbIdentifier"`
+	SystemID     string `json:"systemId"`
+	SystemScope  string `json:"systemScope"`
+	SystemType   string `json:"systemType"`
+}
+
 const api_prefix = "/api"
 const replace_prefix = "$"
 
@@ -73,8 +80,8 @@ func (s server_imp) Run() error {
 	r.Use(CORS)
 
 	r.Get("/api/v1/activity", activity_handler(s.metrics_service))
-	r.Get("/api/v1/databases", databases_handler(s.metrics_service))
-	r.Get("/api/v1/info", info_handler(s.metrics_service))
+	r.Get("/api/v1/instance", info_handler(s.metrics_service, s.dbIdentifiers))
+	r.Get("/api/v1/instance/{dbIdentifier}/database", databases_handler(s.metrics_service))
 
 	r.Route(api_prefix, func(r chi.Router) {
 		r.Mount("/", metrics_handler(s.routes_config, s.dbIdentifiers, s.metrics_service))
@@ -326,8 +333,10 @@ func activity_handler(metrics_service metrics.Service) http.HandlerFunc {
 		filterdimselected := r.URL.Query().Get("filterdimselected")
 		limitDim := r.URL.Query().Get("limitdim")
 		limitLegend := r.URL.Query().Get("limitlegend")
+		dbIdentifier := r.URL.Query().Get("dbidentifier")
 
 		requiredParamMap := map[string]string{
+			"dbidentifier":  dbIdentifier,
 			"database_list": database_list,
 			"start":         start,
 			"end":           end,
@@ -447,6 +456,9 @@ func databases_handler(metrics_service metrics.Service) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("Handling database list request")
 
+		dbIdentifier := chi.URLParam(r, "dbIdentifier")
+		fmt.Printf("DBIdentifier: %s\n", dbIdentifier)
+
 		query := "crystal_all_databases"
 		options := make(map[string]string)
 
@@ -479,40 +491,36 @@ func databases_handler(metrics_service metrics.Service) http.HandlerFunc {
 	})
 }
 
-func info_handler(metrics_service metrics.Service) http.HandlerFunc {
+func info_handler(metrics_service metrics.Service, dbIdentifiers []string) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("Handling info request")
 
-		query := "rds_instance_info"
-		options := make(map[string]string)
+		var instances []InstanceInfo
 
-		results, err := metrics_service.ExecuteRaw(query, options)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
+		dummySystemScope := "us-west-2"
+		dummySystemType := "amazon_rds"
+
+		for _, dbIdentifier := range dbIdentifiers {
+			instance := InstanceInfo{
+				DBIdentifier: dbIdentifier,
+				SystemID:     dbIdentifier,
+				SystemScope:  dummySystemScope,
+				SystemType:   dummySystemType,
+			}
+			instances = append(instances, instance)
 		}
 
-		info := make(map[string]string)
-
-		for _, result := range results {
-			metric, ok := result["metric"].(map[string]interface{})
-			if !ok {
-				continue
-			}
-
-			for k, v := range metric {
-				info[k] = v.(string)
-			}
+		response := map[string]interface{}{
+			"list": instances,
 		}
 
-		js, err := json.Marshal(info)
+		js, err := json.Marshal(response)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		w.WriteHeader(http.StatusOK)
 		w.Write(js)
-
 	})
 }
 

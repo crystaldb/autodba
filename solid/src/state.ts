@@ -4,6 +4,14 @@ import { queryEndpointData } from "./http";
 
 let dateZero = +new Date();
 
+export type Instance = {
+  /** uniquely identifies instance */
+  dbIdentifier: string;
+  systemId: string;
+  systemScope: string;
+  systemType: string;
+};
+
 export type State = {
   apiThrottle: ApiThrottle;
   server_now?: number;
@@ -15,12 +23,8 @@ export type State = {
   force_refresh_by_incrementing: number;
 
   database_list: string[];
-  database_instance: {
-    dbidentifier?: string;
-    engine?: string;
-    engine_version?: string;
-    instance_class?: string;
-  };
+  instance_active?: Instance;
+  instance_list: Instance[];
   activityCube: ActivityCube;
   metricData: any[];
 };
@@ -262,8 +266,8 @@ const [state, setState]: [State, SetStoreFunction<State>] = createStore({
     uiFilter1Value: undefined,
   },
   metricData: [],
-  database_instance: {},
   database_list: [],
+  instance_list: [],
   timeframe_ms: initial_timeframe_ms,
   interval_ms: initial_interval_ms,
   range_begin: 0.0,
@@ -283,7 +287,7 @@ export const datazoomEventHandler = (event: any) => {
     const range_end: number = event.end || event.batch?.at(0)?.end || 100.0;
     setState("range_begin", range_begin);
     setState("range_end", range_end);
-    console.log("range", range_begin, range_end);
+    // console.log("range", range_begin, range_end);
 
     if (!state.apiThrottle.needDataFor) return;
 
@@ -294,7 +298,7 @@ export const datazoomEventHandler = (event: any) => {
       state.apiThrottle.needDataFor === ApiEndpoint.activity;
 
     if (rangeBecameLive || cubeBarsNeedAnUpdate) {
-      console.log("Forcing a refresh", state.force_refresh_by_incrementing);
+      // console.log("Forcing a refresh", state.force_refresh_by_incrementing);
       setState("force_refresh_by_incrementing", (prev: number) => prev + 1);
     }
   });
