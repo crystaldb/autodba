@@ -241,7 +241,7 @@ func handleCompactSnapshot(cfg *config.Config, s3Location string, collectedAt in
 		log.Printf("Processing compact snapshot with s3_location: %s and collected_at: %d", s3Location, collectedAt)
 	}
 
-	f, err := os.Open(path.Join("/usr/local/autodba/share/collector_api_server/storage", s3Location))
+	f, err := os.Open(path.Join(s3Location))
 	if err != nil {
 		return fmt.Errorf("open file: %w", err)
 	}
