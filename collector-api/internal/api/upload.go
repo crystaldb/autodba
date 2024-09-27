@@ -83,15 +83,15 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Received file [%s] with size: %d bytes\n", filename, len(data))
 	}
 
-	filePath := filepath.Join(cfg.StorageDir, filename)
-	if err := os.WriteFile(filePath, data, 0644); err != nil {
+	fullPath := filepath.Join(cfg.StorageDir, filename)
+	if err := os.WriteFile(fullPath, data, 0644); err != nil {
 		http.Error(w, "Failed to save file", http.StatusInternalServerError)
 		return
 	}
 
 	w.WriteHeader(http.StatusCreated)
 
-	resp := s3UploadResponse{Key: filename}
+	resp := s3UploadResponse{Key: fullPath}
 	responseXML, _ := xml.Marshal(resp)
 
 	w.Header().Set("Content-Type", "application/xml")

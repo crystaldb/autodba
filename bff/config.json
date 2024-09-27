@@ -35,10 +35,10 @@
         "step": "$step"
       },
       "metrics": {
-        "sessions": "count(crystal_pg_stat_activity{datname=~\"$datname\"}) by (state)",
+        "sessions": "count(cc_pg_stat_activity{datname=~\"$datname\"}) by (state)",
         "connection_utilization": "sum(pg_stat_database_numbackends{datname=~\"$datname\"})",
-        "transactions_in_progress_active_transactions": "count(crystal_pg_stat_activity{datname=~\"$datname\",state=\"active\", wait_event=\"\"})",
-        "transactions_in_progress_blocked_transactions": "count(crystal_pg_stat_activity{datname=~\"$datname\",state=\"active\", wait_event=~\".+\"})",
+        "transactions_in_progress_active_transactions": "count(cc_pg_stat_activity{datname=~\"$datname\",state=\"active\", wait_event=\"\"})",
+        "transactions_in_progress_blocked_transactions": "count(cc_pg_stat_activity{datname=~\"$datname\",state=\"active\", wait_event=~\".+\"})",
         "tuples_dml_inserted": "sum(rate(crystal_pg_stat_database{crystal_metric=\"tup_inserted\"}[1m]))",
         "tuples_dml_updated": "sum(rate(crystal_pg_stat_database{crystal_metric=\"tup_updated\"}[1m]))",
         "tuples_dml_deleted": "sum(rate(crystal_pg_stat_database{crystal_metric=\"tup_deleted\"}[1m]))",
