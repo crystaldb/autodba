@@ -405,14 +405,17 @@ func activity_handler(metrics_service metrics.Service, validate *validator.Valid
 			}
 		}
 
+		dbListEscaped := strconv.Quote(params.DatabaseList)[1 : len(params.DatabaseList)-1]
+		filterDimSelectedEscaped := strconv.Quote(params.FilterDimSelected)[1 : len(params.FilterDimSelected)-1]
+
 		promQLInput := PromQLInput{
-			DatabaseList:      params.DatabaseList,
+			DatabaseList:      dbListEscaped,
 			Start:             startTime,
 			End:               endTime,
 			Legend:            params.Legend,
 			Dim:               params.Dim,
 			FilterDim:         params.FilterDim,
-			FilterDimSelected: strconv.Quote(params.FilterDimSelected),
+			FilterDimSelected: filterDimSelectedEscaped,
 			Limit:             limitValue,
 			LimitLegend:       limitLegendValue,
 			Offset:            offsetValue,
