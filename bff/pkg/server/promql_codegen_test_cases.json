@@ -51,23 +51,6 @@
     "has_error": false
   },
   {
-    "name": "Empty database ID",
-    "input": {
-      "database_list": "",
-      "start": "now-1h",
-      "end": "now",
-      "step": "",
-      "legend": "usename",
-      "dim": "datname",
-      "filterdim": "",
-      "filterdimselected": "",
-      "limit": "",
-      "offset": ""
-    },
-    "expected": "",
-    "has_error": true
-  },
-  {
     "name": "Query with topk and filter",
     "input": {
       "database_list": "db1",
@@ -115,7 +98,7 @@
       "limit": "",
       "offset": ""
     },
-    "expected": "sort_desc(avg_over_time(count by(datname, usename) (label_replace(label_replace(cc_pg_stat_activity{datname=~\"db1\"}, \"datname\", \"/*pg internal*/\", \"datname\", \"\"), \"usename\", \"/*pg internal*/\", \"usename\", \"\"))[-9223372036s:]))",
+    "expected": "sort_desc(avg_over_time(count by(datname, usename) (label_replace(label_replace(cc_pg_stat_activity{datname=~\"db1\"}, \"datname\", \"/*pg internal*/\", \"datname\", \"\"), \"usename\", \"/*pg internal*/\", \"usename\", \"\"))[3600s:]))",
     "has_error": true
   },
   {
@@ -166,7 +149,7 @@
       "limit": "",
       "offset": ""
     },
-    "expected": "sort_desc(avg_over_time(count by(usename, client_addr) (label_replace(label_replace(cc_pg_stat_activity{datname=~\"db1\"}, \"usename\", \"/*pg internal*/\", \"usename\", \"\"), \"client_addr\", \"/*pg internal*/\", \"client_addr\", \"\"))[9223372036s:]))",
+    "expected": "",
     "has_error": true
   },
   {

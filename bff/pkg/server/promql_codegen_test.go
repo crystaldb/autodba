@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"testing"
 	"time"
 )
@@ -94,6 +95,25 @@ func TestGenerateActivityCubePromQLQuery(t *testing.T) {
 				return
 			}
 
+			limitValue := 0
+			offsetValue := 0
+
+			if rawInput["limit"].(string) != "" {
+				limitValue, err = strconv.Atoi(rawInput["limit"].(string))
+				if err != nil {
+					t.Errorf("unexpected error parsing limit %v", err)
+					return
+				}
+			}
+
+			if rawInput["offset"].(string) != "" {
+				offsetValue, err = strconv.Atoi(rawInput["offset"].(string))
+				if err != nil {
+					t.Errorf("unexpected error parsing offset %v", err)
+					return
+				}
+			}
+
 			input := PromQLInput{
 				DatabaseList:      rawInput["database_list"].(string),
 				Start:             startTime,
@@ -102,8 +122,8 @@ func TestGenerateActivityCubePromQLQuery(t *testing.T) {
 				Dim:               rawInput["dim"].(string),
 				FilterDim:         rawInput["filterdim"].(string),
 				FilterDimSelected: rawInput["filterdimselected"].(string),
-				Limit:             rawInput["limit"].(string),
-				Offset:            rawInput["offset"].(string),
+				Limit:             limitValue,
+				Offset:            offsetValue,
 			}
 
 			query, err := GenerateActivityCubePromQLQuery(input)

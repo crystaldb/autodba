@@ -3,11 +3,11 @@ package prometheus
 import (
 	"context"
 	"errors"
-	"fmt"
 	"github.com/prometheus/client_golang/api"
 	v1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/common/model"
 	"local/bff/pkg/metrics"
+	"log"
 	"sort"
 	"strconv"
 	"time"
@@ -50,6 +50,8 @@ type Stream struct {
 
 type Metric map[model.LabelName]model.LabelValue
 
+const TIMEOUT = 60 * time.Second
+
 func parseTimeRange(options map[string]string) (*v1.Range, error) {
 	var rangeConfig v1.Range
 
@@ -58,7 +60,7 @@ func parseTimeRange(options map[string]string) (*v1.Range, error) {
 		millis, err := strconv.ParseInt(start, 10, 64)
 
 		if err != nil {
-			fmt.Println("Error parsing timestamp:", err)
+			log.Println("Error parsing timestamp:", err)
 			return nil, err
 		}
 
@@ -69,7 +71,7 @@ func parseTimeRange(options map[string]string) (*v1.Range, error) {
 		if end, ok := options["end"]; ok && end != "" {
 			millis, err := strconv.ParseInt(end, 10, 64)
 			if err != nil {
-				fmt.Println("Error parsing timestamp:", err)
+				log.Println("Error parsing timestamp:", err)
 				return nil, err
 			}
 			endTime = time.UnixMilli(millis)
@@ -80,7 +82,7 @@ func parseTimeRange(options map[string]string) (*v1.Range, error) {
 		if stepStr, ok := options["step"]; ok && stepStr != "" {
 			step, err = time.ParseDuration(stepStr)
 			if err != nil {
-				fmt.Println("Error parsing step:", err)
+				log.Println("Error parsing step:", err)
 				return nil, err
 			}
 		} else {
@@ -106,28 +108,28 @@ func parseTimeRange(options map[string]string) (*v1.Range, error) {
 
 func (r repository) Execute(query string, options map[string]string) (*map[int64]map[string]float64, error) {
 
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), TIMEOUT)
 	defer cancel()
 
 	rangeConfig, err := parseTimeRange(options)
 	if err != nil {
-		fmt.Println("Error parsing time range:", err)
+		log.Println("Error parsing time range:", err)
 		return nil, err
 	}
 
-	result, warnings, err := r.Api.QueryRange(ctx, query, *rangeConfig, v1.WithTimeout(60*time.Second))
+	result, warnings, err := r.Api.QueryRange(ctx, query, *rangeConfig, v1.WithTimeout(TIMEOUT))
 	if err != nil {
-		fmt.Println("Error executing query: ", err)
+		log.Println("Error executing query: ", err)
 		return nil, err
 	}
 
 	if len(warnings) > 0 {
-		fmt.Printf("Warnings: %v\n", warnings)
+		log.Printf("Warnings: %v\n", warnings)
 	}
 
 	matrix, ok := result.(model.Matrix)
 	if !ok {
-		fmt.Println("Result is not a matrix")
+		log.Println("Result is not a matrix")
 		return nil, errors.New("Failed to parse prometheus result. Result is not a matrix")
 	}
 
@@ -154,12 +156,12 @@ func (r repository) Execute(query string, options map[string]string) (*map[int64
 
 func (r repository) ExecuteRaw(query string, options map[string]string) ([]map[string]interface{}, error) {
 
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), TIMEOUT)
 	defer cancel()
 
 	rangeConfig, err := parseTimeRange(options)
 	if err != nil {
-		fmt.Println("Error parsing time range:", err)
+		log.Println("Error parsing time range:", err)
 		return nil, err
 	}
 
@@ -172,7 +174,7 @@ func (r repository) ExecuteRaw(query string, options map[string]string) ([]map[s
 	if value, ok := options["limitlegend"]; ok {
 		limitLegend, err = strconv.Atoi(value)
 		if err != nil {
-			fmt.Println("Error parsing limit_legend:", err)
+			log.Println("Error parsing limit_legend:", err)
 			return nil, err
 		}
 	}
@@ -186,21 +188,21 @@ func (r repository) ExecuteRaw(query string, options map[string]string) ([]map[s
 	var warnings v1.Warnings
 
 	if isTimeSeriesQuery {
-		result, warnings, err = r.Api.QueryRange(ctx, query, *rangeConfig, v1.WithTimeout(60*time.Second))
+		result, warnings, err = r.Api.QueryRange(ctx, query, *rangeConfig, v1.WithTimeout(TIMEOUT))
 	} else {
-		result, warnings, err = r.Api.Query(ctx, query, rangeConfig.End, v1.WithTimeout(60*time.Second))
+		result, warnings, err = r.Api.Query(ctx, query, rangeConfig.End, v1.WithTimeout(TIMEOUT))
 	}
 	if err != nil {
-		fmt.Println("Error executing query: ", err)
+		log.Println("Error executing query: ", err)
 		return nil, err
 	}
 
 	if len(warnings) > 0 {
-		fmt.Printf("Warnings: %v\n", warnings)
+		log.Printf("Warnings: %v\n", warnings)
 	}
 	switch r := result.(type) {
 	case model.Vector:
-		fmt.Printf("Vector: %v\n", r)
+		log.Printf("Vector: %v\n", r)
 		jsonVector, err := processVector(r, legend, limitLegend)
 		if err != nil {
 			return nil, err
@@ -212,11 +214,11 @@ func (r repository) ExecuteRaw(query string, options map[string]string) ([]map[s
 		// 	return nil, err
 		// }
 
-		fmt.Println("Vector result (pretty-printed JSON):")
+		log.Println("Vector result (pretty-printed JSON):")
 		// fmt.Println(string(jsonData))
 		return jsonVector, nil
 	case model.Matrix:
-		fmt.Printf("Matrix: %v\n", r)
+		log.Printf("Matrix: %v\n", r)
 		jsonMatrix, err := processMatrix(r, isTimeSeriesQuery, legend, limitLegend)
 		if err != nil {
 			return nil, err
@@ -228,12 +230,12 @@ func (r repository) ExecuteRaw(query string, options map[string]string) ([]map[s
 		// 	return nil, err
 		// }
 
-		fmt.Println("Matrix result (pretty-printed JSON):")
+		log.Println("Matrix result (pretty-printed JSON):")
 		// fmt.Println(string(jsonData))
 
 		return jsonMatrix, nil
 	default:
-		fmt.Println("Result is of unknown type")
+		log.Println("Result is of unknown type")
 		return nil, errors.New("Failed to parse Prometheus result. Result is of unknown type")
 	}
 }

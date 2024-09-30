@@ -34,7 +34,7 @@ type server_imp struct {
 	port            string
 	dbIdentifiers   []string
 	webappPath      string
-	validate        *validator.Validate
+	inputValidator  *validator.Validate
 }
 
 type InstanceInfo struct {
@@ -44,8 +44,25 @@ type InstanceInfo struct {
 	SystemType   string `json:"systemType"`
 }
 
+type ValidationErrorResponse struct {
+	Field   string `json:"field"`
+	Message string `json:"message"`
+}
+
 const api_prefix = "/api"
 const replace_prefix = "$"
+
+const (
+	SYSTEM_ID_MAX_LENGTH      = 63
+	AWS_REGION_MAX_LENGTH     = 50
+	CLUSTER_PREFIX_MAX_LENGTH = 11
+	AWS_ACCOUNT_ID_LENGTH     = 12
+	SYSTEM_SCOPE_MIN_LENGTH   = 13
+	SYSTEM_SCOPE_MAX_LENGTH   = 73
+)
+const awsRegionRegexPattern = `^[a-z]{1,20}(-[a-z0-9]{1,20})*$`
+
+var awsRegionRegex = regexp.MustCompile(awsRegionRegexPattern)
 
 func CORS(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -61,8 +78,8 @@ func CORS(next http.Handler) http.Handler {
 	})
 }
 
-func CreateServer(r map[string]RouteConfig, m metrics.Service, port string, dbIdentifiers []string, webappPath string, validate *validator.Validate) Server {
-	return server_imp{r, m, port, dbIdentifiers, webappPath, validate}
+func CreateServer(r map[string]RouteConfig, m metrics.Service, port string, dbIdentifiers []string, webappPath string) Server {
+	return server_imp{r, m, port, dbIdentifiers, webappPath, CreateValidator()}
 }
 
 func CreateValidator() *validator.Validate {
@@ -88,7 +105,6 @@ func fileExists(filePath string) bool {
 		if os.IsNotExist(err) {
 			return false
 		}
-		fmt.Printf("Error checking file existence: %v\n", err)
 		return false
 	}
 	return true
@@ -99,7 +115,7 @@ func (s server_imp) Run() error {
 
 	r.Use(CORS)
 
-	r.Get("/api/v1/activity", activity_handler(s.metrics_service, s.validate))
+	r.Get("/api/v1/activity", activity_handler(s.metrics_service, s.inputValidator))
 	r.Get("/api/v1/instance", info_handler(s.metrics_service, s.dbIdentifiers))
 	r.Get("/api/v1/instance/{dbIdentifier}/database", databases_handler(s.metrics_service))
 
@@ -177,10 +193,8 @@ func convertDbIdentifiersToPromQLParam(identifiers []string) string {
 
 func metrics_handler(route_configs map[string]RouteConfig, dbIdentifiers []string, metrics_service metrics.Service) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Println("Handling metrics request")
 
 		route := strings.TrimPrefix(r.URL.Path, api_prefix)
-		fmt.Println("ROUTE: ", route)
 
 		start := r.URL.Query().Get("start")
 		end := r.URL.Query().Get("end")
@@ -216,7 +230,6 @@ func metrics_handler(route_configs map[string]RouteConfig, dbIdentifiers []strin
 		metrics := make(map[string]string)
 
 		if route_config, ok := route_configs[route]; ok {
-			fmt.Println("matching route found: extracting params")
 			for _, param := range route_config.Params {
 				value := r.URL.Query().Get(param)
 				if param == "start" || param == "end" {
@@ -234,14 +247,8 @@ func metrics_handler(route_configs map[string]RouteConfig, dbIdentifiers []strin
 
 						metrics[metric] = strings.ReplaceAll(current_query, replace_prefix+param, convertDbIdentifiersToPromQLParam(dbIdentifiers))
 
-						fmt.Println("metric: ", metric)
-						fmt.Println("query: ", query)
-						fmt.Println("populated metric: ", metrics[metric])
 					}
 				} else if value != "" {
-					fmt.Println("-----param: ", param)
-					fmt.Println("value: ", value)
-					fmt.Println("==Populating Queries for : ", param)
 					for metric, query := range route_config.Metrics {
 						var current_query string
 						if metrics[metric] == "" {
@@ -252,12 +259,8 @@ func metrics_handler(route_configs map[string]RouteConfig, dbIdentifiers []strin
 
 						metrics[metric] = strings.ReplaceAll(current_query, replace_prefix+param, value)
 
-						fmt.Println("metric: ", metric)
-						fmt.Println("query: ", query)
-						fmt.Println("populated metric: ", metrics[metric])
 					}
 
-					fmt.Println("==Populating Options for : ", param)
 					for option, input := range route_config.Options {
 						var current_input string
 						if options[option] == "" {
@@ -268,17 +271,9 @@ func metrics_handler(route_configs map[string]RouteConfig, dbIdentifiers []strin
 
 						options[option] = strings.ReplaceAll(current_input, replace_prefix+param, value)
 
-						fmt.Println("option: ", option)
-						fmt.Println("input: ", input)
-						fmt.Println("populated options: ", options[option])
 					}
-				} else {
-					fmt.Println("param: ", param, " not found in request")
-					fmt.Println("Route: ", route)
-					fmt.Println("Params: ", r.URL.Query())
 				}
 
-				fmt.Println("_____________________________________")
 			}
 			for metric, query := range metrics {
 				if strings.Contains(query, replace_prefix) {
@@ -293,9 +288,6 @@ func metrics_handler(route_configs map[string]RouteConfig, dbIdentifiers []strin
 					return
 				}
 			}
-
-			fmt.Println("metrics: ", metrics)
-			fmt.Println("options: ", options)
 
 			results, err := metrics_service.Execute(metrics, options)
 			if err != nil {
@@ -340,8 +332,8 @@ func metrics_handler(route_configs map[string]RouteConfig, dbIdentifiers []strin
 }
 
 type ActivityParams struct {
-	DbIdentifier string `validate:"required,dbIdentifier,max=50"`
-	DatabaseList string `validate:"required,databaseList,max=50"`
+	DbIdentifier string `validate:"required,dbIdentifier"`
+	DatabaseList string `validate:"required,databaseList"`
 
 	Start string `validate:"required"`
 	End   string `validate:"required,afterStart"`
@@ -358,7 +350,6 @@ type ActivityParams struct {
 
 func activity_handler(metrics_service metrics.Service, validate *validator.Validate) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Println("Handling activity request")
 
 		params := ActivityParams{
 			DbIdentifier:      r.URL.Query().Get("dbidentifier"),
@@ -394,28 +385,44 @@ func activity_handler(metrics_service metrics.Service, validate *validator.Valid
 			return
 		}
 
+		limitValue := 0
+		limitLegendValue := 0
+		offsetValue := 0
+
+		if params.Limit != "" {
+			limitValue, err = strconv.Atoi(params.Limit)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+		}
+
+		if params.LimitLegend != "" {
+			limitLegendValue, err = strconv.Atoi(params.LimitLegend)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+		}
+
 		promQLInput := PromQLInput{
-			DatabaseList:      strconv.Quote(params.DatabaseList),
+			DatabaseList:      params.DatabaseList,
 			Start:             startTime,
 			End:               endTime,
 			Legend:            params.Legend,
 			Dim:               params.Dim,
 			FilterDim:         params.FilterDim,
 			FilterDimSelected: strconv.Quote(params.FilterDimSelected),
-			Limit:             params.Limit,
-			LimitLegend:       params.LimitLegend,
-			Offset:            "",
+			Limit:             limitValue,
+			LimitLegend:       limitLegendValue,
+			Offset:            offsetValue,
 		}
-
-		fmt.Println("PromQLInput: ", promQLInput)
 
 		query, err := GenerateActivityCubePromQLQuery(promQLInput)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-
-		fmt.Println("query: ", query)
 
 		options := map[string]string{
 			"start": strconv.FormatInt(startTime.UnixMilli(), 10),
@@ -456,10 +463,8 @@ func activity_handler(metrics_service metrics.Service, validate *validator.Valid
 
 func databases_handler(metrics_service metrics.Service) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Println("Handling database list request")
 
-		dbIdentifier := chi.URLParam(r, "dbIdentifier")
-		fmt.Printf("DBIdentifier: %s\n", dbIdentifier)
+		// dbIdentifier := chi.URLParam(r, "dbIdentifier")
 
 		query := "crystal_all_databases"
 		options := make(map[string]string)
@@ -495,7 +500,6 @@ func databases_handler(metrics_service metrics.Service) http.HandlerFunc {
 
 func info_handler(metrics_service metrics.Service, dbIdentifiers []string) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Println("Handling info request")
 
 		var instances []InstanceInfo
 
@@ -601,12 +605,6 @@ func ValidateDatabaseList(fl validator.FieldLevel) bool {
 
 }
 
-func ValidateDbIdentifier(fl validator.FieldLevel) bool {
-	regex := `^[a-zA-Z0-9-]{1,63}$`
-	matched, _ := regexp.MatchString(regex, fl.Field().String())
-	return matched
-}
-
 func ValidateDuration(fl validator.FieldLevel) bool {
 	_, err := time.ParseDuration(fl.Field().String())
 	return err == nil // Return true if parsing was successful
@@ -615,4 +613,95 @@ func ValidateDuration(fl validator.FieldLevel) bool {
 func ValidateDim(fl validator.FieldLevel) bool {
 	value := fl.Field().String()
 	return isValidDimension(value)
+}
+
+var validSystemTypes = []string{
+	"amazon_rds",
+	"google_cloudsql",
+	"azure_database",
+	"heroku",
+	"crunchy_bridge",
+	"aiven",
+	"tembo",
+	"self_hosted",
+}
+
+// A dbIdentifer is defined as <SystemID>-<SystemScope>-<SystemType>
+// SystemID: min 1 char maxx 63char
+// SystemScope:  <AWS_REGION>/<CLUSTER_PREFIX><AWS_ACCOUNT_ID> where AWS_REGION is between 1 and 50 characters, CLUSTER_PREFIX is between 0 and 11 characters, and AWS_ACCOUNT_ID is 12 characters. Then, the whole SystemScope is betwen 13 and 73 characters.
+// SystemType: One of the following values :
+// amazon_rds
+// google_cloudsql
+// azure_database
+// heroku
+// crunchy_bridge
+// aiven
+// tembo
+// self_hosted
+
+func ValidateDbIdentifier(fl validator.FieldLevel) bool {
+	dbIdentifier := fl.Field().String()
+
+	// TODO remove
+	return true
+
+	// Split the dbIdentifier into components using "+" as the separator
+	parts := strings.Split(dbIdentifier, "+")
+	if len(parts) != 3 {
+		return false
+	}
+
+	systemID := parts[0]
+	systemScope := parts[1]
+	systemType := parts[2]
+
+	// Validate SystemID
+	if len(systemID) < 1 || len(systemID) > SYSTEM_ID_MAX_LENGTH {
+		return false
+	}
+
+	// Validate SystemScope
+	scopeParts := strings.Split(systemScope, "/")
+	if len(scopeParts) != 2 {
+		return false
+	}
+
+	awsRegion := scopeParts[0]
+	clusterPrefixAccountID := scopeParts[1]
+
+	// Validate AWS_REGION using regex
+	if !awsRegionRegex.MatchString(awsRegion) {
+		return false
+	}
+
+	// Validate length of clusterPrefixAccountID
+	if len(clusterPrefixAccountID) < AWS_ACCOUNT_ID_LENGTH || len(clusterPrefixAccountID) > (AWS_ACCOUNT_ID_LENGTH+CLUSTER_PREFIX_MAX_LENGTH) {
+		return false // Ensure total length is within limits
+	}
+
+	// Extract CLUSTER_PREFIX and AWS_ACCOUNT_ID
+	clusterPrefix := clusterPrefixAccountID[:len(clusterPrefixAccountID)-AWS_ACCOUNT_ID_LENGTH]
+	awsAccountID := clusterPrefixAccountID[len(clusterPrefixAccountID)-AWS_ACCOUNT_ID_LENGTH:]
+
+	// Validate lengths of clusterPrefix and awsAccountID
+	if len(clusterPrefix) > CLUSTER_PREFIX_MAX_LENGTH || len(awsAccountID) != AWS_ACCOUNT_ID_LENGTH {
+		return false
+	}
+
+	// Validate SystemScope length
+	totalScopeLength := len(awsRegion) + len(clusterPrefixAccountID) + 1 // +1 for '/'
+	if totalScopeLength < SYSTEM_SCOPE_MIN_LENGTH || totalScopeLength > SYSTEM_SCOPE_MAX_LENGTH {
+		return false
+	}
+
+	// Validate SystemType
+	isValidType := false
+	for _, validType := range validSystemTypes {
+		if systemType == validType {
+			isValidType = true
+			break
+		}
+	}
+
+	return isValidType
 }
