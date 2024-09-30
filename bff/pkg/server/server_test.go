@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 
 	"local/bff/pkg/utils"
@@ -54,17 +53,17 @@ func TestEndpointsGeneration(t *testing.T) {
 		},
 	}
 
-	handler := metrics_handler(routesConfig, []string{""}, mockMetricsService)
+	handler := metrics_handler(routesConfig, mockMetricsService)
 
 	// TEST configured route exists
 	record := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/health?start=now", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/health?start=now&dbidentifier=default_db", nil)
 	handler.ServeHTTP(record, req)
 	assert.Equal(t, http.StatusOK, record.Code)
 
 	// TEST route not found
 	record = httptest.NewRecorder()
-	req = httptest.NewRequest(http.MethodGet, "/api/v2/health?start=now", nil)
+	req = httptest.NewRequest(http.MethodGet, "/api/v2/health?start=now&dbidentifier=default_db", nil)
 	handler.ServeHTTP(record, req)
 	assert.Equal(t, http.StatusNotFound, record.Code)
 }
@@ -103,17 +102,17 @@ func TestParamsPopulation(t *testing.T) {
 		return true
 	})).Return(map[int64]map[string]float64{}, nil)
 
-	handler := metrics_handler(routesConfig, []string{""}, mockMetricsService)
+	handler := metrics_handler(routesConfig, mockMetricsService)
 
 	// TEST params population
 	record := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/health?datname=test_db&start=0000&end=1111", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/health?datname=test_db&start=0000&end=1111&dbidentifier=default_db", nil)
 	handler.ServeHTTP(record, req)
 	assert.Equal(t, http.StatusOK, record.Code)
 
 	// Arbitrary param order
 	record = httptest.NewRecorder()
-	req = httptest.NewRequest(http.MethodGet, "/api/v1/health?end=1111&start=0000&datname=test_db", nil)
+	req = httptest.NewRequest(http.MethodGet, "/api/v1/health?end=1111&start=0000&datname=test_db&dbidentifier=default_db", nil)
 	handler.ServeHTTP(record, req)
 	assert.Equal(t, http.StatusOK, record.Code)
 
@@ -142,11 +141,11 @@ func TestMissingParams(t *testing.T) {
 		},
 		nil,
 	)
-	handler := metrics_handler(routesConfig, []string{""}, mockMetricsService)
+	handler := metrics_handler(routesConfig, mockMetricsService)
 
 	record := httptest.NewRecorder()
 
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/health?start=0000", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/health?start=0000&dbidentifier=default_db", nil)
 	handler.ServeHTTP(record, req)
 	assert.Equal(t, http.StatusBadRequest, record.Code)
 
@@ -177,10 +176,10 @@ func TestMetricsHandlerJSONFormat(t *testing.T) {
 		},
 	}
 
-	handler := metrics_handler(routesConfig, []string{""}, mockMetricsService)
+	handler := metrics_handler(routesConfig, mockMetricsService)
 
 	record := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/metrics?start=now", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/metrics?start=now&dbidentifier=default_db", nil)
 	handler.ServeHTTP(record, req)
 	assert.Equal(t, http.StatusOK, record.Code)
 
@@ -319,8 +318,6 @@ func TestDefaultDBIdentifier(t *testing.T) {
 		},
 	}
 
-	defaultDBIdentifier := "default_db"
-
 	mockService.On("Execute", mock.Anything, mock.Anything).
 		Run(func(args mock.Arguments) {
 			metrics := args.Get(0).(map[string]string)
@@ -330,8 +327,8 @@ func TestDefaultDBIdentifier(t *testing.T) {
 
 	// Create a request without the dbidentifier parameter
 	record := httptest.NewRecorder()
-	req := httptest.NewRequest("GET", "/api/v1/test?start=now", nil)
-	handler := metrics_handler(routeConfigs, []string{defaultDBIdentifier}, mockService)
+	req := httptest.NewRequest("GET", "/api/v1/test?start=now&dbidentifier=default_db", nil)
+	handler := metrics_handler(routeConfigs, mockService)
 	handler.ServeHTTP(record, req)
 
 	mockService.AssertExpectations(t)
@@ -390,8 +387,21 @@ func TestDatabasesHandler(t *testing.T) {
 func TestInfoHandler(t *testing.T) {
 	mockService := new(MockMetricsService)
 
-	dbIdentifiers := []string{"test1", "test2"}
-	handler := info_handler(mockService, dbIdentifiers)
+	dbIdentifiers := []InstanceInfo{
+		{
+			DBIdentifier: "test1",
+			SystemID:     "test1",
+			SystemScope:  "us-west-2",
+			SystemType:   "amazon_rds",
+		},
+		{
+			DBIdentifier: "test2",
+			SystemID:     "test2",
+			SystemScope:  "us-west-2",
+			SystemType:   "amazon_rds",
+		},
+	}
+	handler := info_handler_internal(mockService, dbIdentifiers)
 
 	record := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/instance", nil)
@@ -429,55 +439,6 @@ func TestInfoHandler(t *testing.T) {
 
 	assert.JSONEq(t, string(expectedJSON), record.Body.String(), "Response should match the expected JSON")
 
-}
-
-func TestReadDbIdentifiers(t *testing.T) {
-	// Create a temporary config file for testing
-	content := `
-[pganalyze]
-api_key = your-secure-api-key
-api_base_url = http://localhost:7080
-
-[server1]
-aws_db_instance_id = instance1
-
-[server2]
-aws_db_instance_id = instance2
-
-# Commented out instance
-# aws_db_instance_id = instance3
-
-aws_db_instance_id = instance4
-`
-	tmpfile, err := os.CreateTemp("", "config.*.conf")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.Remove(tmpfile.Name())
-
-	if _, err := tmpfile.Write([]byte(content)); err != nil {
-		t.Fatal(err)
-	}
-	if err := tmpfile.Close(); err != nil {
-		t.Fatal(err)
-	}
-
-	// Test readDbIdentifiers function
-	identifiers, err := ReadDbIdentifiers(tmpfile.Name())
-	if err != nil {
-		t.Fatalf("readDbIdentifiers failed: %v", err)
-	}
-
-	expected := []string{"instance1", "instance2", "instance4"}
-	if len(identifiers) != len(expected) {
-		t.Fatalf("Expected %d identifiers, got %d", len(expected), len(identifiers))
-	}
-
-	for i, id := range identifiers {
-		if id != expected[i] {
-			t.Errorf("Expected identifier %s, got %s", expected[i], id)
-		}
-	}
 }
 
 func TestConvertDbIdentifiersToPromQLParam(t *testing.T) {
