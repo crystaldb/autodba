@@ -112,7 +112,7 @@ func SnapshotHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // Dummy function for handling the snapshot submission
-func handleFullSnapshot(cfg *config.Config, s3Location string, collectedAt int64, systemInfo map[string]string) error {
+func handleFullSnapshot(cfg *config.Config, s3Location string, collectedAt int64, systemInfo SystemInfo) error {
 	// Here, implement your actual logic for processing the snapshot
 	// e.g., saving to local storage, uploading to S3, etc.
 	if cfg.Debug {
@@ -208,8 +208,17 @@ func CompactSnapshotHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, "Compact snapshot successfully processed")
 }
 
+type SystemInfo struct {
+	SystemID            string
+	SystemIDFallback    string
+	SystemScope         string
+	SystemScopeFallback string
+	SystemType          string
+	SystemTypeFallback  string
+}
+
 // extractSystemInfo extracts system information from request headers
-func extractSystemInfo(r *http.Request) map[string]string {
+func extractSystemInfo(r *http.Request) SystemInfo {
 	systemInfo := make(map[string]string)
 	headers := []string{
 		"Pganalyze-System-Id",
@@ -229,14 +238,27 @@ func extractSystemInfo(r *http.Request) map[string]string {
 		}
 	}
 
-	return systemInfo
+	sysInfo := SystemInfo{
+		SystemID:            systemInfo["system_id"],
+		SystemIDFallback:    systemInfo["system_id_fallback"],
+		SystemScope:         systemInfo["system_scope"],
+		SystemScopeFallback: systemInfo["system_scope_fallback"],
+		SystemType:          systemInfo["system_type"],
+		SystemTypeFallback:  systemInfo["system_type_fallback"],
+	}
+
+	return sysInfo
 }
 
-var previousBackends map[BackendKey]bool
+var previousBackends map[SystemInfo]map[BackendKey]bool
+
+func init() {
+	previousBackends = make(map[SystemInfo]map[BackendKey]bool)
+}
 
 // handleCompactSnapshot processes a compact snapshot, generates metrics and stale markers,
 // and sends them to Prometheus
-func handleCompactSnapshot(cfg *config.Config, s3Location string, collectedAt int64, systemInfo map[string]string) error {
+func handleCompactSnapshot(cfg *config.Config, s3Location string, collectedAt int64, systemInfo SystemInfo) error {
 	if cfg.Debug {
 		log.Printf("Processing compact snapshot with s3_location: %s and collected_at: %d", s3Location, collectedAt)
 	}
@@ -272,7 +294,7 @@ func handleCompactSnapshot(cfg *config.Config, s3Location string, collectedAt in
 	metrics, currentBackends := compactSnapshotMetrics(&compactSnapshot, systemInfo)
 
 	// Generate stale markers for time-series (identified by a unique set of labels) no longer present
-	staleMarkers := createStaleMarkers(previousBackends, currentBackends, compactSnapshot.CollectedAt.AsTime().UnixMilli())
+	staleMarkers := createStaleMarkers(previousBackends[systemInfo], currentBackends, compactSnapshot.CollectedAt.AsTime().UnixMilli())
 
 	// Combine active metrics and stale markers
 	allMetrics := append(metrics, staleMarkers...)
@@ -283,7 +305,7 @@ func handleCompactSnapshot(cfg *config.Config, s3Location string, collectedAt in
 	}
 
 	// Update previousBackends for the next snapshot comparison
-	previousBackends = currentBackends
+	previousBackends[systemInfo] = currentBackends
 
 	if cfg.Debug {
 		log.Println("Compact snapshot processed successfully!")
