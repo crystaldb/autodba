@@ -15,7 +15,6 @@ type Config struct {
 	Port             string                        `json:"port"`
 	PrometheusServer string                        `json:"prometheus_server"`
 	RoutesConfig     map[string]server.RouteConfig `json:"routes_config"`
-	DBIdentifiers    []string                      `json:"dbidentifiers"`
 	WebappPath       string                        `json:"webapp_path"`
 }
 
@@ -61,10 +60,6 @@ func run(collectorConfigFile, webappPath string) error {
 	}
 
 	var config Config
-	config.DBIdentifiers, err = server.ReadDbIdentifiers(collectorConfigFile)
-	if err != nil {
-		return err
-	}
 	config.WebappPath = webappPath
 	config.Port = rawConfig["port"].(string)
 	config.PrometheusServer = rawConfig["prometheus_server"].(string)
@@ -104,7 +99,7 @@ func run(collectorConfigFile, webappPath string) error {
 	metrics_repo := prometheus.New(config.PrometheusServer)
 	metrics_service := metrics.CreateService(metrics_repo)
 
-	server := server.CreateServer(config.RoutesConfig, metrics_service, config.Port, config.DBIdentifiers, config.WebappPath)
+	server := server.CreateServer(config.RoutesConfig, metrics_service, config.Port, config.WebappPath)
 
 	if err = server.Run(); err != nil {
 		return err

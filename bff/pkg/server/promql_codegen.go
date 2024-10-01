@@ -21,6 +21,7 @@ type PromQLInput struct {
 	Limit             string `json:"limit"`
 	LimitLegend       string `json:"limit_legend"`
 	Offset            string `json:"offset"`
+	DbIdentifier      string `json:"dbidentifier"`
 }
 
 // Utility function to validate dimensions
@@ -53,6 +54,7 @@ func GenerateActivityCubePromQLQuery(input PromQLInput) (string, error) {
 	filterDimSelected := input.FilterDimSelected
 	limit := input.Limit
 	offset := input.Offset
+	dbIdentifier := input.DbIdentifier
 
 	// Parse start and finish times
 	startTime, err := parseTimeParameter(start, now)
@@ -83,9 +85,17 @@ func GenerateActivityCubePromQLQuery(input PromQLInput) (string, error) {
 		return "", errors.New("invalid dimension parameter")
 	}
 
+	systemType, systemID, systemScope, err := splitDbIdentifier(dbIdentifier)
+	if err != nil {
+		return "", fmt.Errorf("error in splitting dbIdentifier: %w", err)
+	}
+
 	// Construct the base selector
 	labels := map[string]string{
-		"datname": escapePromQLLabelValue(databaseList),
+		"datname":   escapePromQLLabelValue(databaseList),
+		"sys_id":    systemID,
+		"sys_scope": systemScope,
+		"sys_type":  systemType,
 	}
 
 	if dim == "query" {
@@ -362,7 +372,7 @@ func parseTimeParameter(param string, now time.Time) (time.Time, error) {
 		// Assume epoch time as an integer string
 		epoch, err := strconv.ParseInt(param, 10, 64)
 		if err != nil {
-			return time.Time{}, errors.New("invalid time format")
+			return time.Time{}, errors.New("invalid time format for parameter: " + param)
 		}
 		return time.UnixMilli(epoch), nil
 	}
