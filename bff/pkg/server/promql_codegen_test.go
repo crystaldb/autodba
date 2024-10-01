@@ -63,6 +63,7 @@ func TestGenerateActivityCubePromQLQuery(t *testing.T) {
 	now := time.Now()
 
 	for _, tt := range testCases {
+
 		t.Run(tt.Name, func(t *testing.T) {
 			var rawInput map[string]interface{}
 			err := json.Unmarshal(tt.Input, &rawInput)
@@ -124,6 +125,7 @@ func TestGenerateActivityCubePromQLQuery(t *testing.T) {
 				FilterDimSelected: rawInput["filterdimselected"].(string),
 				Limit:             limitValue,
 				Offset:            offsetValue,
+				DbIdentifier:      rawInput["dbidentifier"].(string),
 			}
 
 			query, err := GenerateActivityCubePromQLQuery(input)

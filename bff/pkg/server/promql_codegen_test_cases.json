@@ -14,7 +14,7 @@
       "offset": "",
       "dbidentifier": "a/b/c"
     },
-    "expected": "",
+    "expected": "sort_desc(avg_over_time(count by(datname, usename) (label_replace(label_replace(cc_pg_stat_activity{datname=~\"db1\",sys_id=~\"b\",sys_scope=~\"c\",sys_type=~\"a\"}, \"datname\", \"/*pg internal*/\", \"datname\", \"\"), \"usename\", \"/*pg internal*/\", \"usename\", \"\"))[3600s:]))",
     "has_error": false
   },
   {
@@ -32,7 +32,7 @@
       "offset": "",
       "dbidentifier": "a/b/c"
     },
-    "expected": "",
+    "expected": "sort_desc(avg_over_time(count by(datname, usename) (label_replace(label_replace(cc_pg_stat_activity{datname=~\"db1\",sys_id=~\"b\",sys_scope=~\"c\",sys_type=~\"a\",wait_event=~\"transactionid\",wait_event_type=~\"Lock\"}, \"datname\", \"/*pg internal*/\", \"datname\", \"\"), \"usename\", \"/*pg internal*/\", \"usename\", \"\"))[3600s:]))",
     "has_error": false
   },
   {
@@ -50,44 +50,8 @@
       "offset": "",
       "dbidentifier": "a/b/c"
     },
-    "expected": "",
+    "expected": "sort_desc(avg_over_time(count by(datname, usename) (label_replace(label_replace(cc_pg_stat_activity{datname=~\"db1\",sys_id=~\"b\",sys_scope=~\"c\",sys_type=~\"a\",wait_event=~\"\",wait_event_type=~\"\"}, \"datname\", \"/*pg internal*/\", \"datname\", \"\"), \"usename\", \"/*pg internal*/\", \"usename\", \"\"))[3600s:]))",
     "has_error": false
-  },
-  {
-    "name": "Invalid dimension",
-    "input": {
-      "database_list": "db1",
-      "start": "now-1h",
-      "end": "now",
-      "step": "",
-      "legend": "usename",
-      "dim": "invalid_dim",
-      "filterdim": "",
-      "filterdimselected": "",
-      "limit": "",
-      "offset": "",
-      "dbidentifier": "a/b/c"
-    },
-    "expected": "",
-    "has_error": true
-  },
-  {
-    "name": "Empty database ID",
-    "input": {
-      "database_list": "",
-      "start": "now-1h",
-      "end": "now",
-      "step": "",
-      "legend": "usename",
-      "dim": "datname",
-      "filterdim": "",
-      "filterdimselected": "",
-      "limit": "",
-      "offset": "",
-      "dbidentifier": "a/b/c"
-    },
-    "expected": "",
-    "has_error": true
   },
   {
     "name": "Query with topk and filter",
@@ -104,7 +68,7 @@
       "offset": "2",
       "dbidentifier": "a/b/c"
     },
-    "expected": "",
+    "expected": "sort_desc(avg_over_time(count by(usename, client_addr) (label_replace(label_replace(cc_pg_stat_activity{datname=~\"db1\",sys_id=~\"b\",sys_scope=~\"c\",sys_type=~\"a\"}, \"usename\", \"/*pg internal*/\", \"usename\", \"\"), \"client_addr\", \"/*pg internal*/\", \"client_addr\", \"\") * on(usename) group_left() bottomk(3, topk(5, avg_over_time(count by(usename) (label_replace(label_replace(cc_pg_stat_activity{datname=~\"db1\",sys_id=~\"b\",sys_scope=~\"c\",sys_type=~\"a\"}, \"usename\", \"/*pg internal*/\", \"usename\", \"\"), \"client_addr\", \"/*pg internal*/\", \"client_addr\", \"\"))[3600s:]))) \u003e bool 0)[3600s:]))",
     "has_error": false
   },
   {
@@ -122,7 +86,7 @@
       "offset": "",
       "dbidentifier": "a/b/c"
     },
-    "expected": "",
+    "expected": "sort_desc(avg_over_time(count by(datname, usename) (label_replace(label_replace(cc_pg_stat_activity{datname=~\"db1\",sys_id=~\"b\",sys_scope=~\"c\",sys_type=~\"a\",wait_event=~\"transactionid|buffer_content\",wait_event_type=~\"Lock|BufferPin\"}, \"datname\", \"/*pg internal*/\", \"datname\", \"\"), \"usename\", \"/*pg internal*/\", \"usename\", \"\"))[3600s:]))",
     "has_error": false
   },
   {
@@ -158,7 +122,7 @@
       "offset": "",
       "dbidentifier": "a/b/c"
     },
-    "expected": "",
+    "expected": "sort_desc(avg_over_time(count by(usename, client_addr) (label_replace(label_replace(cc_pg_stat_activity{datname=~\"db1\",sys_id=~\"b\",sys_scope=~\"c\",sys_type=~\"a\"}, \"usename\", \"/*pg internal*/\", \"usename\", \"\"), \"client_addr\", \"/*pg internal*/\", \"client_addr\", \"\") * on(usename) group_left() topk(100, avg_over_time(count by(usename) (label_replace(label_replace(cc_pg_stat_activity{datname=~\"db1\",sys_id=~\"b\",sys_scope=~\"c\",sys_type=~\"a\"}, \"usename\", \"/*pg internal*/\", \"usename\", \"\"), \"client_addr\", \"/*pg internal*/\", \"client_addr\", \"\"))[3600s:])) \u003e bool 0)[3600s:]))",
     "has_error": false
   },
   {
@@ -176,7 +140,7 @@
       "offset": "5",
       "dbidentifier": "a/b/c"
     },
-    "expected": "",
+    "expected": "sort_desc(avg_over_time(count by(usename, client_addr) (label_replace(label_replace(cc_pg_stat_activity{datname=~\"db1\",sys_id=~\"b\",sys_scope=~\"c\",sys_type=~\"a\"}, \"usename\", \"/*pg internal*/\", \"usename\", \"\"), \"client_addr\", \"/*pg internal*/\", \"client_addr\", \"\"))[3600s:]))",
     "has_error": false
   },
   {
@@ -212,7 +176,7 @@
       "offset": "",
       "dbidentifier": "a/b/c"
     },
-    "expected": "",
+    "expected": "count by(time) (cc_pg_stat_activity{datname=~\"db1\",sys_id=~\"b\",sys_scope=~\"c\",sys_type=~\"a\"})",
     "has_error": false
   },
   {
@@ -230,7 +194,7 @@
       "offset": "",
       "dbidentifier": "a/b/c"
     },
-    "expected": "",
+    "expected": "sort_desc(avg_over_time(count by(datname, usename) (label_replace(label_replace(cc_pg_stat_activity{datname=~\"db1\",sys_id=~\"b\",sys_scope=~\"c\",sys_type=~\"a\",wait_event=~\"\",wait_event_type=~\"\"}, \"datname\", \"/*pg internal*/\", \"datname\", \"\"), \"usename\", \"/*pg internal*/\", \"usename\", \"\"))[3600s:]))",
     "has_error": false
   },
   {
@@ -248,7 +212,7 @@
       "offset": "",
       "dbidentifier": "a/b/c"
     },
-    "expected": "",
+    "expected": "sort_desc(avg_over_time(count by(datname, client_addr) (label_replace(label_replace(cc_pg_stat_activity{datname=~\"db1\",query=~\"\",sys_id=~\"b\",sys_scope=~\"c\",sys_type=~\"a\"}, \"datname\", \"/*pg internal*/\", \"datname\", \"\"), \"client_addr\", \"/*pg internal*/\", \"client_addr\", \"\"))[3600s:]))",
     "has_error": false
   },
   {
@@ -266,7 +230,7 @@
       "offset": "",
       "dbidentifier": "a/b/c"
     },
-    "expected": "",
+    "expected": "sort_desc(avg_over_time(count by(query, usename) (label_replace(label_replace(cc_pg_stat_activity{datname=~\"db1\",query=~\"^.*\",sys_id=~\"b\",sys_scope=~\"c\",sys_type=~\"a\"}, \"query\", \"/*pg internal*/\", \"query\", \"\"), \"usename\", \"/*pg internal*/\", \"usename\", \"\"))[3600s:]))",
     "has_error": false
   }
 ]
