@@ -65,37 +65,46 @@ tar -xzvf autodba-0.2.0-amd64.tar.gz
 cd autodba-0.2.0
 ```
 
-3. Create a configuration file `autodba_config.json` and populate it with values appropriate to your environment.
+3. Create a configuration file `autodba.conf` and populate it with values appropriate to your environment.
 
-```json
-{
-    "DB_CONN_STRING": "<CONNECTION_STRING_TO_YOUR_POSTGRES_DB>",
-    "AWS_ACCESS_KEY_ID": "<YOUR_AWS_ACCESS_KEY_ID>",
-    "AWS_SECRET_ACCESS_KEY": "<YOUR_AWS_SECRET_ACCESS_KEY>",
-    "AWS_REGION": "<YOUR_AWS_REGION>",
-    "AWS_RDS_INSTANCE": "<YOUR_RDS_POSTGRES_INSTANCE_NAME>"
-}
+```conf
+[pganalyze]
+api_key = your-secure-api-key
+api_base_url = http://localhost:7080
+
+[server1]
+db_host = <YOUR_PG_DATABASE_HOST, e.g., xyz.abcdefgh.us-west-2.rds.amazonaws.com>
+db_name = <YOUR_PG_DATABASE_NAMES, e.g., postgres>
+db_username = <YOUR_PG_DATABASE_USER_NAME, e.g., postgres>
+db_password = <YOUR_PG_DATABASE_PASSWORD>
+db_port = <YOUR_PG_DATABASE_PASSWORD, e.g., 5432>
+aws_db_instance_id = <YOUR_AWS_RDS_INSTANCE_ID, e.g., xyz>
+aws_region = <YOUR_AWS_RDS_REGION, e.g., us-west-2>
+aws_access_key_id = <YOUR_AWS_ACCESS_KEY_ID>
+aws_secret_access_key = <YOUR_AWS_SECRET_ACCESS_KEY>
 ```
 
-PostgreSQL connection strings (`<CONNECTION_STRING_TO_YOUR_POSTGRES_DB>`) should be of the form `postgres://<POSTGRES_USERNAME>:<POSTGRES_PASSWORD>@<HOST>:<PORT>/<DATABASE_NAME>`.
+PostgreSQL connection strings are of the form `postgres://<db_username>:<db_password>@<db_host>:<db_port>/<db_name>`.
+
+If you're using AWS RDS, then your `<db_host>` is in this format: `<aws_db_instance_id>.<aws_account_id>.<aws_region>.rds.amazonaws.com`
 
 4. Run the `install.sh` script to install AutoDBA.
 
 For system-wide installation:
 
 ```bash
-sudo ./install.sh --config autodba_config.json --system
+sudo ./install.sh --config autodba.conf --system
 ```
 
 Or for a user-specific installation, specify your preferred install directory:
 
 ```bash
-./install.sh --config autodba_config.json --install-dir "$HOME/autodba"
+./install.sh --config autodba.conf --install-dir "$HOME/autodba"
 ```
 
 Or to install in the same extracted directory:
 ```bash
-./install.sh --config autodba_config.json
+./install.sh --config autodba.conf
 ```
 
 5. Verify the AutoDBA service is running
