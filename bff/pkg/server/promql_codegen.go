@@ -362,7 +362,7 @@ func parseTimeParameter(param string, now time.Time) (time.Time, error) {
 		// Assume epoch time as an integer string
 		epoch, err := strconv.ParseInt(param, 10, 64)
 		if err != nil {
-			return time.Time{}, errors.New("invalid time format")
+			return time.Time{}, errors.New("invalid time format for parameter: " + param)
 		}
 		return time.UnixMilli(epoch), nil
 	}

@@ -79,7 +79,7 @@ func (s server_imp) Run() error {
 
 	r.Get("/api/v1/activity", activity_handler(s.metrics_service))
 	r.Get("/api/v1/instance", info_handler(s.metrics_service))
-	r.Get("/api/v1/instance/{dbIdentifier}/database", databases_handler(s.metrics_service))
+	r.Get("/api/v1/instance/database", databases_handler(s.metrics_service))
 
 	r.Route(api_prefix, func(r chi.Router) {
 		r.Mount("/", metrics_handler(s.routes_config, s.metrics_service))
@@ -117,6 +117,14 @@ func convertDbIdentifiersToPromQLParam(identifiers []string) string {
 	}
 
 	return result
+}
+
+func getActualDbIdentifier(dbIdentifier string) (string, error) {
+	parts := strings.Split(dbIdentifier, "/")
+	if len(parts) < 2 {
+		return "", fmt.Errorf("invalid dbidentifier format: %s", dbIdentifier)
+	}
+	return parts[1], nil
 }
 
 func metrics_handler(route_configs map[string]RouteConfig, metrics_service metrics.Service) http.Handler {
@@ -169,10 +177,19 @@ func metrics_handler(route_configs map[string]RouteConfig, metrics_service metri
 
 				if param == "dbidentifier" && value == "" {
 					http.Error(w, "The 'dbidentifier' parameter is required and cannot be empty.", http.StatusBadRequest)
+					return
 				} else if value != "" {
 					fmt.Println("-----param: ", param)
 					fmt.Println("value: ", value)
 					fmt.Println("==Populating Queries for : ", param)
+
+					if param == "dbidentifier" {
+						value, err = getActualDbIdentifier(value)
+						if err != nil {
+							http.Error(w, "The 'dbidentifier' is malformatted.", http.StatusBadRequest)
+							return
+						}
+					}
 					for metric, query := range route_config.Metrics {
 						var current_query string
 						if metrics[metric] == "" {
@@ -407,7 +424,7 @@ func databases_handler(metrics_service metrics.Service) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("Handling database list request")
 
-		dbIdentifier := chi.URLParam(r, "dbIdentifier")
+		dbIdentifier := r.URL.Query().Get("dbidentifier")
 		fmt.Printf("DBIdentifier: %s\n", dbIdentifier)
 
 		query := "crystal_all_databases"
