@@ -103,7 +103,16 @@ if [ -z "$DISABLE_DATA_COLLECTION" ] || [ "$DISABLE_DATA_COLLECTION" = false ]; 
     # Start up Collector
     if [ -f "${CONFIG_FILE}" ]; then
       echo "Starting Collector..."
-      $PARENT_DIR/share/collector/collector --config="${CONFIG_FILE}" --statefile="$PARENT_DIR/share/collector/state" --verbose &
+      # Create a temporary file with the prefix and original content
+      TEMP_CONFIG=$(mktemp)
+      {
+        echo "[pganalyze]"
+        echo "api_key = your-secure-api-key"
+        echo "api_base_url = http://localhost:7080"
+        echo ""
+        cat "${CONFIG_FILE}"
+      } > "$TEMP_CONFIG"
+      $PARENT_DIR/share/collector/collector --config="${TEMP_CONFIG}" --statefile="$PARENT_DIR/share/collector/state" --verbose &
       COLLECTOR_COLLECTOR_PID=$!
     else
       # Check if config file exists
