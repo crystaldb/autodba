@@ -58,9 +58,6 @@ const (
 	SYSTEM_SCOPE_MIN_LENGTH   = 13
 	SYSTEM_SCOPE_MAX_LENGTH   = 73
 )
-const awsRegionRegexPattern = `^[a-z]{1,20}(-[a-z0-9]{1,20})*$`
-
-var awsRegionRegex = regexp.MustCompile(awsRegionRegexPattern)
 
 func CORS(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
