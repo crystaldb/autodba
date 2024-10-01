@@ -1,7 +1,6 @@
 package server
 
 import (
-	"bufio"
 	"encoding/json"
 	"fmt"
 	"local/bff/pkg/metrics"
@@ -32,7 +31,6 @@ type server_imp struct {
 	routes_config   map[string]RouteConfig
 	metrics_service metrics.Service
 	port            string
-	dbIdentifiers   []string
 	webappPath      string
 	inputValidator  *validator.Validate
 }
@@ -78,8 +76,8 @@ func CORS(next http.Handler) http.Handler {
 	})
 }
 
-func CreateServer(r map[string]RouteConfig, m metrics.Service, port string, dbIdentifiers []string, webappPath string) Server {
-	return server_imp{r, m, port, dbIdentifiers, webappPath, CreateValidator()}
+func CreateServer(r map[string]RouteConfig, m metrics.Service, port string, webappPath string) Server {
+	return server_imp{r, m, port, webappPath, CreateValidator()}
 }
 
 func CreateValidator() *validator.Validate {
@@ -116,11 +114,11 @@ func (s server_imp) Run() error {
 	r.Use(CORS)
 
 	r.Get("/api/v1/activity", activity_handler(s.metrics_service, s.inputValidator))
-	r.Get("/api/v1/instance", info_handler(s.metrics_service, s.dbIdentifiers))
-	r.Get("/api/v1/instance/{dbIdentifier}/database", databases_handler(s.metrics_service))
+	r.Get("/api/v1/instance", info_handler(s.metrics_service))
+	r.Get("/api/v1/instance/database", databases_handler(s.metrics_service))
 
 	r.Route(api_prefix, func(r chi.Router) {
-		r.Mount("/", metrics_handler(s.routes_config, s.dbIdentifiers, s.metrics_service))
+		r.Mount("/", metrics_handler(s.routes_config, s.metrics_service))
 	})
 
 	fs := http.FileServer(http.Dir(s.webappPath))
@@ -135,40 +133,6 @@ func (s server_imp) Run() error {
 	}))
 
 	return http.ListenAndServe(":"+s.port, r)
-}
-
-func ReadDbIdentifiers(configFile string) ([]string, error) {
-	file, err := os.Open(configFile)
-	if err != nil {
-		return nil, fmt.Errorf("error opening config file: %v", err)
-	}
-	defer file.Close()
-
-	var identifiers []string
-	scanner := bufio.NewScanner(file)
-
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if !strings.HasPrefix(line, "#") {
-			if strings.HasPrefix(line, "aws_db_instance_id") {
-				parts := strings.SplitN(line, "=", 2)
-				if len(parts) == 2 {
-					identifier := strings.TrimSpace(parts[1])
-					identifiers = append(identifiers, identifier)
-				}
-			}
-		}
-	}
-
-	if err := scanner.Err(); err != nil {
-		return nil, fmt.Errorf("error reading config file: %v", err)
-	}
-
-	if len(identifiers) == 0 {
-		return []string{}, nil
-	}
-
-	return identifiers, nil
 }
 
 func convertDbIdentifiersToPromQLParam(identifiers []string) string {
@@ -191,7 +155,26 @@ func convertDbIdentifiersToPromQLParam(identifiers []string) string {
 	return result
 }
 
-func metrics_handler(route_configs map[string]RouteConfig, dbIdentifiers []string, metrics_service metrics.Service) http.Handler {
+func getActualDbIdentifier(dbIdentifier string) (string, error) {
+	_, systemID, _, err := splitDbIdentifier(dbIdentifier)
+	return systemID, err
+}
+
+func splitDbIdentifier(dbIdentifier string) (string, string, string, error) {
+	parts := strings.SplitN(dbIdentifier, "/", 3)
+
+	if len(parts) != 3 {
+		return "", "", "", fmt.Errorf("invalid dbidentifier format: %s", dbIdentifier)
+	}
+
+	systemType := parts[0]
+	systemID := parts[1]
+	systemScope := parts[2]
+
+	return systemType, systemID, systemScope, nil
+}
+
+func metrics_handler(route_configs map[string]RouteConfig, metrics_service metrics.Service) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 		route := strings.TrimPrefix(r.URL.Path, api_prefix)
@@ -237,18 +220,16 @@ func metrics_handler(route_configs map[string]RouteConfig, dbIdentifiers []strin
 				}
 
 				if param == "dbidentifier" && value == "" {
-					for metric, query := range route_config.Metrics {
-						var current_query string
-						if metrics[metric] == "" {
-							current_query = query
-						} else {
-							current_query = metrics[metric]
-						}
-
-						metrics[metric] = strings.ReplaceAll(current_query, replace_prefix+param, convertDbIdentifiersToPromQLParam(dbIdentifiers))
-
-					}
+					http.Error(w, "The 'dbidentifier' parameter is required and cannot be empty.", http.StatusBadRequest)
+					return
 				} else if value != "" {
+					if param == "dbidentifier" {
+						value, err = getActualDbIdentifier(value)
+						if err != nil {
+							http.Error(w, "The 'dbidentifier' is malformatted.", http.StatusBadRequest)
+							return
+						}
+					}
 					for metric, query := range route_config.Metrics {
 						var current_query string
 						if metrics[metric] == "" {
@@ -442,6 +423,12 @@ func activity_handler(metrics_service metrics.Service, validate *validator.Valid
 			filterDimSelectedEscaped = filterDimSelectedEscaped[1 : len(filterDimSelectedEscaped)-1]
 		}
 
+		dbIdentiferEscaped := ""
+		if params.DbIdentifier != "" {
+			dbIdentiferEscaped = strconv.Quote(params.DbIdentifier)
+			dbIdentiferEscaped = dbIdentiferEscaped[1 : len(dbIdentiferEscaped)-1]
+		}
+
 		promQLInput := PromQLInput{
 			DatabaseList:      dbListEscaped,
 			Start:             startTime,
@@ -453,6 +440,7 @@ func activity_handler(metrics_service metrics.Service, validate *validator.Valid
 			Limit:             limitValue,
 			LimitLegend:       limitLegendValue,
 			Offset:            offsetValue,
+			DbIdentifier:      dbIdentiferEscaped,
 		}
 
 		query, err := GenerateActivityCubePromQLQuery(promQLInput)
@@ -535,23 +523,60 @@ func databases_handler(metrics_service metrics.Service) http.HandlerFunc {
 	})
 }
 
-func info_handler(metrics_service metrics.Service, dbIdentifiers []string) http.HandlerFunc {
+func info_handler(metrics_service metrics.Service) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
-		var instances []InstanceInfo
-
-		dummySystemScope := "us-west-2"
-		dummySystemType := "amazon_rds"
-
-		for _, dbIdentifier := range dbIdentifiers {
-			instance := InstanceInfo{
-				DBIdentifier: dbIdentifier,
-				SystemID:     dbIdentifier,
-				SystemScope:  dummySystemScope,
-				SystemType:   dummySystemType,
-			}
-			instances = append(instances, instance)
+		query := `count(cc_pg_stat_activity) by (sys_id, sys_scope, sys_scope_fallback,sys_type)`
+		now := time.Now().UnixMilli()
+		options := map[string]string{
+			"start": strconv.FormatInt(now-15*60*1000, 10), // 15 minutes ago
+			"end":   strconv.FormatInt(now, 10),            // now
 		}
+
+		result, err := metrics_service.ExecuteRaw(query, options)
+		if err != nil {
+			http.Error(w, "Error querying list of instances.", http.StatusInternalServerError)
+			return
+		}
+
+		instanceInfoMap := make(map[string]InstanceInfo)
+
+		for _, sample := range result {
+			sysID := getValue(sample, "sys_id")
+			sysScope := getValue(sample, "sys_scope")
+			sysType := getValue(sample, "sys_type")
+
+			dbIdentifier := sysType + "/" + sysID + "/" + sysScope
+
+			if _, exists := instanceInfoMap[dbIdentifier]; !exists {
+				instanceInfoMap[dbIdentifier] = InstanceInfo{
+					DBIdentifier: dbIdentifier,
+					SystemID:     sysID,
+					SystemScope:  sysScope,
+					SystemType:   sysType,
+				}
+			}
+		}
+
+		var instanceInfos []InstanceInfo
+		for _, info := range instanceInfoMap {
+			instanceInfos = append(instanceInfos, info)
+		}
+
+		info_handler_internal(instanceInfos).ServeHTTP(w, r)
+	})
+}
+
+func getValue(sample map[string]interface{}, key string) string {
+	if mapValue, ok := sample["metric"].(map[string]interface{}); ok {
+		if value, ok := mapValue[key].(string); ok && value != "" {
+			return value
+		}
+	}
+	return ""
+}
+
+func info_handler_internal(instances []InstanceInfo) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 		response := map[string]interface{}{
 			"list": instances,

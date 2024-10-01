@@ -82,7 +82,7 @@ export async function queryDatabases(retryIfNeeded: boolean): Promise<boolean> {
     return false;
   }
   const response = await fetch(
-    `/api/v1/instance/${state.instance_active.dbIdentifier}/database`,
+    `/api/v1/instance/database?dbidentifier=${state.instance_active.dbIdentifier}`,
     { method: "GET" },
   );
 
