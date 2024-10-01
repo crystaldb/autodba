@@ -742,6 +742,15 @@ func TestValidateDbIdentifier(t *testing.T) {
 		// Valid case
 		{"amazon_rds/mohammad-dashti-rds-1/us-west-2/cvirkksghnig", true},
 
+		// Multiple ids
+		{"(amazon_rds/mohammad-dashti-rds-1/us-west-2/cvirkksghnig|amazon_rds/mohammad-dashti-rds-1/us-west-2/cvirkksghnig)", true},
+
+		// One invalid id
+		{"(amazon_rds/mohammad-dashti-rds-1/us-west-2/cvirkksghnig|amazon_rds/mohammad-dashti-rds-1/us-west-2/cvirkksghnig|invalid)", false},
+
+		// Invalid list format
+		{"amazon_rds/mohammad-dashti-rds-1/us-west-2/cvirkksghnig,amazon_rds/mohammad-dashti-rds-1/us-west-2/cvirkksghnig", false},
+
 		// Invalid cases
 		// Invalid SystemID (too short)
 		{"amazon_rds/+us-east-1/cvirkksghnig", false}, // SystemID is empty
