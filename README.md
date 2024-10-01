@@ -68,10 +68,6 @@ cd autodba-0.2.0
 3. Create a configuration file `autodba.conf` and populate it with values appropriate to your environment.
 
 ```conf
-[pganalyze]
-api_key = your-secure-api-key
-api_base_url = http://localhost:7080
-
 [server1]
 db_host = <YOUR_PG_DATABASE_HOST, e.g., xyz.abcdefgh.us-west-2.rds.amazonaws.com>
 db_name = <YOUR_PG_DATABASE_NAMES, e.g., postgres>
@@ -82,6 +78,18 @@ aws_db_instance_id = <YOUR_AWS_RDS_INSTANCE_ID, e.g., xyz>
 aws_region = <YOUR_AWS_RDS_REGION, e.g., us-west-2>
 aws_access_key_id = <YOUR_AWS_ACCESS_KEY_ID>
 aws_secret_access_key = <YOUR_AWS_SECRET_ACCESS_KEY>
+
+# You can optionally add more servers by adding more sections similar to the above
+# [server2]
+# db_host = <YOUR_PG_DATABASE_HOST, e.g., xyz.abcdefgh.us-west-2.rds.amazonaws.com>
+# db_name = <YOUR_PG_DATABASE_NAMES, e.g., postgres>
+# db_username = <YOUR_PG_DATABASE_USER_NAME, e.g., postgres>
+# db_password = <YOUR_PG_DATABASE_PASSWORD>
+# db_port = <YOUR_PG_DATABASE_PASSWORD, e.g., 5432>
+# aws_db_instance_id = <YOUR_AWS_RDS_INSTANCE_ID, e.g., xyz>
+# aws_region = <YOUR_AWS_RDS_REGION, e.g., us-west-2>
+# aws_access_key_id = <YOUR_AWS_ACCESS_KEY_ID>
+# aws_secret_access_key = <YOUR_AWS_SECRET_ACCESS_KEY>
 ```
 
 PostgreSQL connection strings are of the form `postgres://<db_username>:<db_password>@<db_host>:<db_port>/<db_name>`.
