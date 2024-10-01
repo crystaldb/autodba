@@ -366,8 +366,20 @@ func activity_handler(metrics_service metrics.Service, validate *validator.Valid
 		}
 
 		if err := validate.Struct(params); err != nil {
-			fmt.Println("Validation failed: ", err)
-			http.Error(w, fmt.Sprintf("Validation failed: %v", err), http.StatusBadRequest)
+			if validationErrors, ok := err.(validator.ValidationErrors); ok {
+				for _, validationError := range validationErrors {
+					switch validationError.Tag() {
+					case "required":
+						http.Error(w, fmt.Sprintf("%s is required.", validationError.Field()), http.StatusBadRequest)
+						return
+					case "afterStart":
+						http.Error(w, "End time must be after Start time.", http.StatusBadRequest)
+						return
+					}
+				}
+			}
+			// Generic error response for other validation failures
+			http.Error(w, "Invalid input", http.StatusBadRequest)
 			return
 		}
 
@@ -633,83 +645,94 @@ var validSystemTypes = []string{
 	"tembo",
 	"self_hosted",
 }
+var validClusterPrefixes = []string{
+	"cluster-ro-",
+	"cluster-",
+	"", // Allow empty cluster prefix
+}
 
-// A dbIdentifer is defined as <SystemID>-<SystemScope>-<SystemType>
-// SystemID: min 1 char maxx 63char
-// SystemScope:  <AWS_REGION>/<CLUSTER_PREFIX><AWS_ACCOUNT_ID> where AWS_REGION is between 1 and 50 characters, CLUSTER_PREFIX is between 0 and 11 characters, and AWS_ACCOUNT_ID is 12 characters. Then, the whole SystemScope is betwen 13 and 73 characters.
-// SystemType: One of the following values :
-// amazon_rds
-// google_cloudsql
-// azure_database
-// heroku
-// crunchy_bridge
-// aiven
-// tembo
-// self_hosted
+// - A dbIdentifer is defined as <SystemType>/<SystemID>/<SystemScope>
+// - SystemID: min 1 char max 63char
+// - SystemScope:  <AWS_REGION>/<CLUSTER_PREFIX><AWS_ACCOUNT_ID> where AWS_REGION is between 1 and 50 characters, CLUSTER_PREFIX is between 0 and 11 characters, and AWS_ACCOUNT_ID is 12 characters. Then, the whole SystemScope is betwen 13 and 73 characters.
+// - SystemType: One of the following values :
+//   - amazon_rds
+//   - google_cloudsql
+//   - azure_database
+//   - heroku
+//   - crunchy_bridge
+//   - aiven
+//   - tembo
+//   - self_hosted
 
 func ValidateDbIdentifier(fl validator.FieldLevel) bool {
-	dbIdentifier := fl.Field().String()
+	dbIdentifier := strings.TrimSpace(fl.Field().String())
 
-	// TODO remove
-	return true
-
-	// Split the dbIdentifier into components using "+" as the separator
-	parts := strings.Split(dbIdentifier, "+")
-	if len(parts) != 3 {
-		return false
+	// Remove leading and trailing parentheses if they exist
+	if strings.HasPrefix(dbIdentifier, "(") && strings.HasSuffix(dbIdentifier, ")") {
+		dbIdentifier = dbIdentifier[1 : len(dbIdentifier)-1]
 	}
 
-	systemID := parts[0]
-	systemScope := parts[1]
-	systemType := parts[2]
+	// Split by pipe for multiple identifiers
+	identifiers := strings.Split(dbIdentifier, "|")
 
-	// Validate SystemID
-	if len(systemID) < 1 || len(systemID) > SYSTEM_ID_MAX_LENGTH {
-		return false
-	}
+	for _, id := range identifiers {
+		id = strings.TrimSpace(id)
 
-	// Validate SystemScope
-	scopeParts := strings.Split(systemScope, "/")
-	if len(scopeParts) != 2 {
-		return false
-	}
+		parts := strings.SplitN(id, "/", 4)
+		if len(parts) != 4 {
+			return false
+		}
 
-	awsRegion := scopeParts[0]
-	clusterPrefixAccountID := scopeParts[1]
+		systemType := parts[0]
+		systemID := parts[1]
+		systemRegion := parts[2]
+		clusterPrefixAccountID := parts[3]
 
-	// Validate AWS_REGION using regex
-	if !awsRegionRegex.MatchString(awsRegion) {
-		return false
-	}
+		if !isValidSystemType(systemType) {
+			return false
+		}
 
-	// Validate length of clusterPrefixAccountID
-	if len(clusterPrefixAccountID) < AWS_ACCOUNT_ID_LENGTH || len(clusterPrefixAccountID) > (AWS_ACCOUNT_ID_LENGTH+CLUSTER_PREFIX_MAX_LENGTH) {
-		return false // Ensure total length is within limits
-	}
+		if len(systemID) < 1 || len(systemID) > SYSTEM_ID_MAX_LENGTH {
+			return false
+		}
 
-	// Extract CLUSTER_PREFIX and AWS_ACCOUNT_ID
-	clusterPrefix := clusterPrefixAccountID[:len(clusterPrefixAccountID)-AWS_ACCOUNT_ID_LENGTH]
-	awsAccountID := clusterPrefixAccountID[len(clusterPrefixAccountID)-AWS_ACCOUNT_ID_LENGTH:]
+		if len(systemRegion) < 1 || len(systemRegion) > AWS_REGION_MAX_LENGTH {
+			return false
+		}
 
-	// Validate lengths of clusterPrefix and awsAccountID
-	if len(clusterPrefix) > CLUSTER_PREFIX_MAX_LENGTH || len(awsAccountID) != AWS_ACCOUNT_ID_LENGTH {
-		return false
-	}
+		awsAccountID := clusterPrefixAccountID[len(clusterPrefixAccountID)-AWS_ACCOUNT_ID_LENGTH:]
+		clusterPrefix := clusterPrefixAccountID[:len(clusterPrefixAccountID)-AWS_ACCOUNT_ID_LENGTH]
 
-	// Validate SystemScope length
-	totalScopeLength := len(awsRegion) + len(clusterPrefixAccountID) + 1 // +1 for '/'
-	if totalScopeLength < SYSTEM_SCOPE_MIN_LENGTH || totalScopeLength > SYSTEM_SCOPE_MAX_LENGTH {
-		return false
-	}
+		if !isValidClusterPrefix(clusterPrefix) {
+			return false
+		}
 
-	// Validate SystemType
-	isValidType := false
-	for _, validType := range validSystemTypes {
-		if systemType == validType {
-			isValidType = true
-			break
+		if len(awsAccountID) != AWS_ACCOUNT_ID_LENGTH {
+			return false
+		}
+
+		if len(clusterPrefixAccountID) < 1 || len(clusterPrefixAccountID) > (CLUSTER_PREFIX_MAX_LENGTH+AWS_ACCOUNT_ID_LENGTH) {
+			return false
 		}
 	}
 
-	return isValidType
+	return true
+}
+
+func isValidSystemType(systemType string) bool {
+	for _, validType := range validSystemTypes {
+		if systemType == validType {
+			return true
+		}
+	}
+	return false
+}
+
+func isValidClusterPrefix(clusterPrefix string) bool {
+	for _, validPrefix := range validClusterPrefixes {
+		if clusterPrefix == validPrefix {
+			return true
+		}
+	}
+	return false
 }

@@ -264,7 +264,7 @@ func TestActivityValidationLogic(t *testing.T) {
 		{
 			name: "Valid parameters",
 			queryParams: map[string]string{
-				"dbidentifier":  "valid-db",
+				"dbidentifier":  "amazon_rds/mohammad-dashti-rds-1/us-west-2/cvirkksghnig",
 				"database_list": "postgres",
 				"start":         "now-1h",
 				"end":           "now",
@@ -289,7 +289,7 @@ func TestActivityValidationLogic(t *testing.T) {
 		{
 			name: "Missing database_list",
 			queryParams: map[string]string{
-				"dbidentifier": "valid-db",
+				"dbidentifier": "amazon_rds/mohammad-dashti-rds-1/us-west-2/cvirkksghnig",
 				"start":        "now-1h",
 				"end":          "now",
 				"step":         "1m",
@@ -301,7 +301,7 @@ func TestActivityValidationLogic(t *testing.T) {
 		{
 			name: "Missing start",
 			queryParams: map[string]string{
-				"dbidentifier":  "valid-db",
+				"dbidentifier":  "amazon_rds/mohammad-dashti-rds-1/us-west-2/cvirkksghnig",
 				"database_list": "postgres",
 				"end":           "now",
 				"step":          "1m",
@@ -313,7 +313,7 @@ func TestActivityValidationLogic(t *testing.T) {
 		{
 			name: "Missing end",
 			queryParams: map[string]string{
-				"dbidentifier":  "valid-db",
+				"dbidentifier":  "amazon_rds/mohammad-dashti-rds-1/us-west-2/cvirkksghnig",
 				"database_list": "postgres",
 				"start":         "now",
 				"step":          "1m",
@@ -325,7 +325,7 @@ func TestActivityValidationLogic(t *testing.T) {
 		{
 			name: "Missing legend",
 			queryParams: map[string]string{
-				"dbidentifier":  "valid-db",
+				"dbidentifier":  "amazon_rds/mohammad-dashti-rds-1/us-west-2/cvirkksghnig",
 				"database_list": "postgres",
 				"start":         "now-1h",
 				"end":           "now",
@@ -337,7 +337,7 @@ func TestActivityValidationLogic(t *testing.T) {
 		{
 			name: "Missing Dim",
 			queryParams: map[string]string{
-				"dbidentifier":  "valid-db",
+				"dbidentifier":  "amazon_rds/mohammad-dashti-rds-1/us-west-2/cvirkksghnig",
 				"database_list": "postgres",
 				"start":         "now-1h",
 				"end":           "now",
@@ -349,7 +349,7 @@ func TestActivityValidationLogic(t *testing.T) {
 		{
 			name: "Bad Dim",
 			queryParams: map[string]string{
-				"dbidentifier":  "valid-db",
+				"dbidentifier":  "amazon_rds/mohammad-dashti-rds-1/us-west-2/cvirkksghnig",
 				"database_list": "postgres",
 				"start":         "now-1h",
 				"end":           "now",
@@ -364,7 +364,7 @@ func TestActivityValidationLogic(t *testing.T) {
 			queryParams: map[string]string{
 				"start":         "now",
 				"end":           "now-1h", // end before start
-				"dbidentifier":  "valid-db",
+				"dbidentifier":  "amazon_rds/mohammad-dashti-rds-1/us-west-2/cvirkksghnig",
 				"database_list": "postgres",
 				"step":          "1m",
 				"legend":        "wait_event_name",
@@ -399,7 +399,7 @@ func TestOptions(t *testing.T) {
 	}
 
 	params := map[string]string{
-		"dbidentifier":  "test",
+		"dbidentifier":  "amazon_rds/mohammad-dashti-rds-1/us-west-2/cvirkksghnig",
 		"database_list": "postgres",
 		"start":         "10",
 		"end":           "20",
@@ -731,58 +731,55 @@ func TestValidateDatabaseList(t *testing.T) {
 		})
 	}
 }
+func TestValidateDbIdentifier(t *testing.T) {
+	validate := validator.New()
+	validate.RegisterValidation("dbIdentifier", ValidateDbIdentifier)
 
-// func TestValidateDbIdentifier(t *testing.T) {
-//     validate := validator.New()
-//     validate.RegisterValidation("dbIdentifier", ValidateDbIdentifier)
+	tests := []struct {
+		dbIdentifier string
+		valid        bool
+	}{
+		// Valid case
+		{"amazon_rds/mohammad-dashti-rds-1/us-west-2/cvirkksghnig", true},
 
-//     tests := []struct {
-//         dbIdentifier string
-//         valid        bool
-//     }{
-//         // Valid case
-//         {"mySystemID+us-east-1/myCluster123456789012+amazon_rds", true},
+		// Invalid cases
+		// Invalid SystemID (too short)
+		{"amazon_rds/+us-east-1/cvirkksghnig", false}, // SystemID is empty
+		// Invalid SystemID (too long)
+		{"amazon_rds/aVeryLongSystemIDThatExceedsTheMaximumAllowedLengthForSystemIDThatIs63Chars/us-east-1/cvirkksghnig", false},
 
-//         // Invalid cases
-//         // Invalid SystemID (too short)
-//         {"-us-east-1/myCluster123456789012+amazon_rds", false},
-//         // Invalid SystemID (too long)
-//         {"aVeryLongSystemIDThatExceedsTheMaximumAllowedLengthForSystemIDThatIs63Chars+us-east-1/myCluster123456789012+amazon_rds", false},
+		// Invalid AWS_REGION (too long)
+		{"amazon_rds/mohammad-dashti-rds-1/us-east-1-verylongregionname-whichisnotvalidbecauseitisverylong/cvirkksghnig", false},
 
-//         // Invalid AWS_REGION (too short)
-//         {"mySystemID+/myCluster123456789012+amazon_rds", false},
-//         // Invalid AWS_REGION (too long)
-//         {"mySystemID+us-east-1-verylongregionname-whichisnotvalid/myCluster123456789012+amazon_rds", false},
+		// Invalid CLUSTER_PREFIX (too long)
+		{"amazon_rds/mohammad-dashti-rds-1/us-west-1/verylongclusterprefix123456789012/cvirkksghnig", false},
+		// Invalid AWS_ACCOUNT_ID (too short)
+		{"amazon_rds/mohammad-dashti-rds-1/us-west-1/cvirkksghnig123/cvirkksghnig", false},
+		// Invalid AWS_ACCOUNT_ID (too long)
+		{"amazon_rds/mohammad-dashti-rds-1/us-west-1/cvirkksghnig12345/cvirkksghnig", false},
 
-//         // Invalid CLUSTER_PREFIX (too long)
-//         {"mySystemID+us-east-1/longClusterPrefix123456789012+amazon_rds", false},
-//         // Invalid AWS_ACCOUNT_ID (too short)
-//         {"mySystemID+us-east-1/myCluster123456789+amazon_rds", false},
-//         // Invalid AWS_ACCOUNT_ID (too long)
-//         {"mySystemID+us-east-1/myCluster1234567890123+amazon_rds", false},
+		// Invalid SystemType (not valid)
+		{"amazon_rds/mohammad-dashti-rds-1/us-west-1/cvirkksghnig/invalid_system_type", false},
 
-//         // Invalid SystemType (not valid)
-//         {"mySystemID+us-east-1/myCluster123456789012+invalid_system_type", false},
+		// Invalid format (missing parts)
+		{"amazon_rds/mohammad-dashti-rds-1/us-west-1", false},                               // Missing AWS_ACCOUNT_ID
+		{"amazon_rds/mohammad-dashti-rds-1/us-west-1/cluster-ro-cvirkksghnig/extra", false}, // Extra part
+	}
 
-//         // Invalid format (missing parts)
-//         {"mySystemID+us-east-1/myCluster123456789012", false}, // Missing SystemType
-//         {"mySystemID+us-east-1/myCluster123456789012+amazon_rds+extra", false}, // Extra part
-//     }
-
-//     for _, tt := range tests {
-//         t.Run(tt.dbIdentifier, func(t *testing.T) {
-//             input := struct {
-//                 DbIdentifier string `validate:"required,dbIdentifier"`
-//             }{
-//                 DbIdentifier: tt.dbIdentifier,
-//             }
-//             err := validate.Struct(input)
-//             if (err == nil) != tt.valid {
-//                 t.Errorf("expected valid: %v, got error: %v", tt.valid, err)
-//             }
-//         })
-//     }
-// }
+	for _, tt := range tests {
+		t.Run(tt.dbIdentifier, func(t *testing.T) {
+			input := struct {
+				DbIdentifier string `validate:"required,dbIdentifier"`
+			}{
+				DbIdentifier: tt.dbIdentifier,
+			}
+			err := validate.Struct(input)
+			if (err == nil) != tt.valid {
+				t.Errorf("expected valid: %v, got error: %v", tt.valid, err)
+			}
+		})
+	}
+}
 
 func TestValidateDuration(t *testing.T) {
 	validate := validator.New()
