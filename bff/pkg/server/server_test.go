@@ -385,8 +385,6 @@ func TestDatabasesHandler(t *testing.T) {
 }
 
 func TestInfoHandler(t *testing.T) {
-	mockService := new(MockMetricsService)
-
 	dbIdentifiers := []InstanceInfo{
 		{
 			DBIdentifier: "test1",
@@ -401,7 +399,7 @@ func TestInfoHandler(t *testing.T) {
 			SystemType:   "amazon_rds",
 		},
 	}
-	handler := info_handler_internal(mockService, dbIdentifiers)
+	handler := info_handler_internal(dbIdentifiers)
 
 	record := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/instance", nil)

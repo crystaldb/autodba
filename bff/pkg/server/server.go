@@ -443,26 +443,58 @@ func databases_handler(metrics_service metrics.Service) http.HandlerFunc {
 }
 
 func info_handler(metrics_service metrics.Service) http.HandlerFunc {
-	dbIdentifiers := []string{"mohammad-dashti-rds-1"}
-	var instances []InstanceInfo
-
-	dummySystemScope := "us-west-2"
-	dummySystemType := "amazon_rds"
-
-	for _, dbIdentifier := range dbIdentifiers {
-		instance := InstanceInfo{
-			DBIdentifier: dbIdentifier,
-			SystemID:     dbIdentifier,
-			SystemScope:  dummySystemScope,
-			SystemType:   dummySystemType,
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		query := `count(cc_pg_stat_activity) by (sys_id, sys_scope, sys_scope_fallback,sys_type)`
+		now := time.Now().UnixMilli()
+		options := map[string]string{
+			"start": strconv.FormatInt(now-15*60*1000, 10), // 15 minutes ago
+			"end":   strconv.FormatInt(now, 10),            // now
 		}
-		instances = append(instances, instance)
-	}
 
-	return info_handler_internal(metrics_service, instances)
+		result, err := metrics_service.ExecuteRaw(query, options)
+		if err != nil {
+			http.Error(w, "Error querying list of instances.", http.StatusInternalServerError)
+			return
+		}
+
+		instanceInfoMap := make(map[string]InstanceInfo)
+
+		for _, sample := range result {
+			sysID := getValue(sample, "sys_id")
+			sysScope := getValue(sample, "sys_scope")
+			sysType := getValue(sample, "sys_type")
+
+			dbIdentifier := sysType + "/" + sysID + "/" + sysScope
+
+			if _, exists := instanceInfoMap[dbIdentifier]; !exists {
+				instanceInfoMap[dbIdentifier] = InstanceInfo{
+					DBIdentifier: dbIdentifier,
+					SystemID:     sysID,
+					SystemScope:  sysScope,
+					SystemType:   sysType,
+				}
+			}
+		}
+
+		var instanceInfos []InstanceInfo
+		for _, info := range instanceInfoMap {
+			instanceInfos = append(instanceInfos, info)
+		}
+
+		info_handler_internal(instanceInfos).ServeHTTP(w, r)
+	})
 }
 
-func info_handler_internal(metrics_service metrics.Service, instances []InstanceInfo) http.HandlerFunc {
+func getValue(sample map[string]interface{}, key string) string {
+	if mapValue, ok := sample["metric"].(map[string]interface{}); ok {
+		if value, ok := mapValue[key].(string); ok && value != "" {
+			return value
+		}
+	}
+	return ""
+}
+
+func info_handler_internal(instances []InstanceInfo) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("Handling info request")
 
