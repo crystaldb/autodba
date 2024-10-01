@@ -75,6 +75,11 @@ func TestGenerateActivityCubePromQLQuery(t *testing.T) {
 				limitValue = ""
 			}
 
+			offsetValue, offsetExists := rawInput["offset"].(string)
+			if !offsetExists {
+				offsetValue = ""
+			}
+
 			params := ActivityParams{
 				DbIdentifier:      rawInput["dbidentifier"].(string),
 				DatabaseList:      rawInput["database_list"].(string),
@@ -85,6 +90,7 @@ func TestGenerateActivityCubePromQLQuery(t *testing.T) {
 				FilterDim:         rawInput["filterdim"].(string),
 				FilterDimSelected: rawInput["filterdimselected"].(string),
 				Limit:             limitValue,
+				Offset:            offsetValue,
 			}
 
 			input, err := extractPromQLInput(params, now)

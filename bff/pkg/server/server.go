@@ -324,6 +324,8 @@ type ActivityParams struct {
 
 	Limit       string `validate:"omitempty,numeric,gt=0"`
 	LimitLegend string `validate:"omitempty,numeric,gt=0"`
+
+	Offset string `validate:"omitempty,numeric,gt=0"`
 }
 
 func extractPromQLInput(params ActivityParams, now time.Time) (PromQLInput, error) {
@@ -342,6 +344,14 @@ func extractPromQLInput(params ActivityParams, now time.Time) (PromQLInput, erro
 	limitLegendValue := 0
 	if params.Limit != "" {
 		limitValue, err = strconv.Atoi(params.Limit)
+		if err != nil {
+			return PromQLInput{}, err
+		}
+	}
+
+	offsetValue := 0
+	if params.Offset != "" {
+		offsetValue, err = strconv.Atoi(params.Offset)
 		if err != nil {
 			return PromQLInput{}, err
 		}
@@ -378,7 +388,7 @@ func extractPromQLInput(params ActivityParams, now time.Time) (PromQLInput, erro
 		End:               endTime,
 		Limit:             limitValue,
 		LimitLegend:       limitLegendValue,
-		Offset:            0,
+		Offset:            offsetValue,
 		Legend:            params.Legend,
 		Dim:               params.Dim,
 		FilterDim:         params.FilterDim,
@@ -402,6 +412,7 @@ func activity_handler(metrics_service metrics.Service, validate *validator.Valid
 			FilterDimSelected: r.URL.Query().Get("filterdimselected"),
 			Limit:             r.URL.Query().Get("limitdim"),
 			LimitLegend:       r.URL.Query().Get("limitlegend"),
+			Offset:            r.URL.Query().Get("offset"),
 		}
 
 		if err := validate.Struct(params); err != nil {
