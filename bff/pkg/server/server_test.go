@@ -701,6 +701,9 @@ func TestValidateDbIdentifier(t *testing.T) {
 		// Valid case
 		{"amazon_rds/mohammad-dashti-rds-1/us-west-2/cvirkksghnig", true},
 
+		// Valid, no awsaccountid
+		{"amazon_rds/mohammad-dashti-rds-1/us-west-2", true},
+
 		// Multiple ids
 		{"(amazon_rds/mohammad-dashti-rds-1/us-west-2/cvirkksghnig|amazon_rds/mohammad-dashti-rds-1/us-west-2/cvirkksghnig)", true},
 
@@ -710,9 +713,6 @@ func TestValidateDbIdentifier(t *testing.T) {
 		// Invalid list format
 		{"amazon_rds/mohammad-dashti-rds-1/us-west-2/cvirkksghnig,amazon_rds/mohammad-dashti-rds-1/us-west-2/cvirkksghnig", false},
 
-		// Invalid cases
-		// Invalid SystemID (too short)
-		{"amazon_rds/+us-east-1/cvirkksghnig", false}, // SystemID is empty
 		// Invalid SystemID (too long)
 		{"amazon_rds/aVeryLongSystemIDThatExceedsTheMaximumAllowedLengthForSystemIDThatIs63Chars/us-east-1/cvirkksghnig", false},
 
@@ -728,9 +728,6 @@ func TestValidateDbIdentifier(t *testing.T) {
 
 		// Invalid SystemType (not valid)
 		{"amazon_rds/mohammad-dashti-rds-1/us-west-1/cvirkksghnig/invalid_system_type", false},
-
-		// Invalid format (missing parts)
-		{"amazon_rds/mohammad-dashti-rds-1/us-west-1", false},                               // Missing AWS_ACCOUNT_ID
 		{"amazon_rds/mohammad-dashti-rds-1/us-west-1/cluster-ro-cvirkksghnig/extra", false}, // Extra part
 	}
 

@@ -720,15 +720,14 @@ func ValidateDbIdentifier(fl validator.FieldLevel) bool {
 	for _, id := range identifiers {
 		id = strings.TrimSpace(id)
 
-		parts := strings.SplitN(id, "/", 4)
-		if len(parts) != 4 {
+		parts := strings.SplitN(id, "/", 3)
+		if len(parts) != 3 {
 			return false
 		}
 
 		systemType := parts[0]
 		systemID := parts[1]
-		systemRegion := parts[2]
-		clusterPrefixAccountID := parts[3]
+		systemScope := parts[2]
 
 		if !isValidSystemType(systemType) {
 			return false
@@ -738,23 +737,37 @@ func ValidateDbIdentifier(fl validator.FieldLevel) bool {
 			return false
 		}
 
+		// Split the systemScope into region and optional clusterPrefixAccountID
+		scopeParts := strings.SplitN(systemScope, "/", 2)
+		systemRegion := scopeParts[0]
+		clusterPrefixAccountID := ""
+		if len(scopeParts) > 1 {
+			clusterPrefixAccountID = scopeParts[1]
+		}
+
 		if len(systemRegion) < 1 || len(systemRegion) > AWS_REGION_MAX_LENGTH {
 			return false
 		}
 
-		awsAccountID := clusterPrefixAccountID[len(clusterPrefixAccountID)-AWS_ACCOUNT_ID_LENGTH:]
-		clusterPrefix := clusterPrefixAccountID[:len(clusterPrefixAccountID)-AWS_ACCOUNT_ID_LENGTH]
+		if clusterPrefixAccountID != "" {
+			if len(clusterPrefixAccountID) < AWS_ACCOUNT_ID_LENGTH {
+				return false
+			}
 
-		if !isValidClusterPrefix(clusterPrefix) {
-			return false
-		}
+			awsAccountID := clusterPrefixAccountID[len(clusterPrefixAccountID)-AWS_ACCOUNT_ID_LENGTH:]
+			clusterPrefix := clusterPrefixAccountID[:len(clusterPrefixAccountID)-AWS_ACCOUNT_ID_LENGTH]
 
-		if len(awsAccountID) != AWS_ACCOUNT_ID_LENGTH {
-			return false
-		}
+			if !isValidClusterPrefix(clusterPrefix) {
+				return false
+			}
 
-		if len(clusterPrefixAccountID) < 1 || len(clusterPrefixAccountID) > (CLUSTER_PREFIX_MAX_LENGTH+AWS_ACCOUNT_ID_LENGTH) {
-			return false
+			if len(awsAccountID) != AWS_ACCOUNT_ID_LENGTH {
+				return false
+			}
+
+			if len(clusterPrefixAccountID) > (CLUSTER_PREFIX_MAX_LENGTH + AWS_ACCOUNT_ID_LENGTH) {
+				return false
+			}
 		}
 	}
 
