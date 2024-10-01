@@ -120,11 +120,22 @@ func convertDbIdentifiersToPromQLParam(identifiers []string) string {
 }
 
 func getActualDbIdentifier(dbIdentifier string) (string, error) {
-	parts := strings.Split(dbIdentifier, "/")
-	if len(parts) < 2 {
-		return "", fmt.Errorf("invalid dbidentifier format: %s", dbIdentifier)
+	_, systemID, _, err := splitDbIdentifier(dbIdentifier)
+	return systemID, err
+}
+
+func splitDbIdentifier(dbIdentifier string) (string, string, string, error) {
+	parts := strings.SplitN(dbIdentifier, "/", 3)
+
+	if len(parts) != 3 {
+		return "", "", "", fmt.Errorf("invalid dbidentifier format: %s", dbIdentifier)
 	}
-	return parts[1], nil
+
+	systemType := parts[0]
+	systemID := parts[1]
+	systemScope := parts[2]
+
+	return systemType, systemID, systemScope, nil
 }
 
 func metrics_handler(route_configs map[string]RouteConfig, metrics_service metrics.Service) http.Handler {
@@ -348,6 +359,7 @@ func activity_handler(metrics_service metrics.Service) http.HandlerFunc {
 			Limit:             limitDim,
 			LimitLegend:       limitLegend,
 			Offset:            "", // TODO not in query
+			DbIdentifier:      dbIdentifier,
 		}
 
 		fmt.Println("PromQLInput: ", promQLInput)
