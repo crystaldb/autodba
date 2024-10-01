@@ -326,6 +326,67 @@ type ActivityParams struct {
 	LimitLegend string `validate:"omitempty,numeric,gt=0"`
 }
 
+func extractPromQLInput(params ActivityParams, now time.Time) (PromQLInput, error) {
+
+	startTime, err := parseTimeParameter(params.Start, now)
+	if err != nil {
+		return PromQLInput{}, err
+	}
+
+	endTime, err := parseTimeParameter(params.End, now)
+	if err != nil {
+		return PromQLInput{}, err
+	}
+
+	limitValue := 0
+	limitLegendValue := 0
+	if params.Limit != "" {
+		limitValue, err = strconv.Atoi(params.Limit)
+		if err != nil {
+			return PromQLInput{}, err
+		}
+	}
+
+	if params.LimitLegend != "" {
+		limitLegendValue, err = strconv.Atoi(params.LimitLegend)
+		if err != nil {
+			return PromQLInput{}, err
+		}
+	}
+
+	dbListEscaped := ""
+	if params.DatabaseList != "" {
+		dbListEscaped = strconv.Quote(params.DatabaseList)
+		dbListEscaped = dbListEscaped[1 : len(dbListEscaped)-1]
+	}
+
+	filterDimSelectedEscaped := ""
+	if params.FilterDimSelected != "" {
+		filterDimSelectedEscaped = strconv.Quote(params.FilterDimSelected)
+		filterDimSelectedEscaped = filterDimSelectedEscaped[1 : len(filterDimSelectedEscaped)-1]
+	}
+
+	dbIdentifierEscaped := ""
+	if params.DbIdentifier != "" {
+		dbIdentifierEscaped = strconv.Quote(params.DbIdentifier)
+		dbIdentifierEscaped = dbIdentifierEscaped[1 : len(dbIdentifierEscaped)-1]
+	}
+
+	return PromQLInput{
+		DatabaseList:      dbListEscaped,
+		Start:             startTime,
+		End:               endTime,
+		Limit:             limitValue,
+		LimitLegend:       limitLegendValue,
+		Offset:            0,
+		Legend:            params.Legend,
+		Dim:               params.Dim,
+		FilterDim:         params.FilterDim,
+		FilterDimSelected: filterDimSelectedEscaped,
+		DbIdentifier:      dbIdentifierEscaped,
+	}, nil
+}
+
 func activity_handler(metrics_service metrics.Service, validate *validator.Validate) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
@@ -362,18 +423,7 @@ func activity_handler(metrics_service metrics.Service, validate *validator.Valid
 		}
 
 		now := time.Now()
-
-		startTime, err := parseTimeParameter(params.Start, now)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-
-		endTime, err := parseTimeParameter(params.End, now)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
+		promQLInput, err := extractPromQLInput(params, now)
 
 		stepDuration, err := time.ParseDuration(params.Step)
 		if err != nil {
@@ -381,63 +431,11 @@ func activity_handler(metrics_service metrics.Service, validate *validator.Valid
 			return
 		}
 
-		totalDuration := endTime.Sub(startTime)
+		totalDuration := promQLInput.End.Sub(promQLInput.Start)
 		totalSamples := int(totalDuration / stepDuration)
 		if totalSamples > 11000 {
 			http.Error(w, "Maximum time samples exceeded. 11000 samples max per query", http.StatusBadRequest)
 			return
-		}
-
-		limitValue := 0
-		limitLegendValue := 0
-		offsetValue := 0
-
-		if params.Limit != "" {
-			limitValue, err = strconv.Atoi(params.Limit)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusBadRequest)
-				return
-			}
-		}
-
-		if params.LimitLegend != "" {
-			limitLegendValue, err = strconv.Atoi(params.LimitLegend)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusBadRequest)
-				return
-			}
-		}
-
-		dbListEscaped := ""
-		if params.DatabaseList != "" {
-			dbListEscaped = strconv.Quote(params.DatabaseList)
-			dbListEscaped = dbListEscaped[1 : len(dbListEscaped)-1]
-		}
-
-		filterDimSelectedEscaped := ""
-		if params.FilterDimSelected != "" {
-			filterDimSelectedEscaped = strconv.Quote(params.FilterDimSelected)
-			filterDimSelectedEscaped = filterDimSelectedEscaped[1 : len(filterDimSelectedEscaped)-1]
-		}
-
-		dbIdentiferEscaped := ""
-		if params.DbIdentifier != "" {
-			dbIdentiferEscaped = strconv.Quote(params.DbIdentifier)
-			dbIdentiferEscaped = dbIdentiferEscaped[1 : len(dbIdentiferEscaped)-1]
-		}
-
-		promQLInput := PromQLInput{
-			DatabaseList:      dbListEscaped,
-			Start:             startTime,
-			End:               endTime,
-			Legend:            params.Legend,
-			Dim:               params.Dim,
-			FilterDim:         params.FilterDim,
-			FilterDimSelected: filterDimSelectedEscaped,
-			Limit:             limitValue,
-			LimitLegend:       limitLegendValue,
-			Offset:            offsetValue,
-			DbIdentifier:      dbIdentiferEscaped,
 		}
 
 		query, err := GenerateActivityCubePromQLQuery(promQLInput)
@@ -447,8 +445,8 @@ func activity_handler(metrics_service metrics.Service, validate *validator.Valid
 		}
 
 		options := map[string]string{
-			"start": strconv.FormatInt(startTime.UnixMilli(), 10),
-			"end":   strconv.FormatInt(endTime.UnixMilli(), 10),
+			"start": strconv.FormatInt(promQLInput.Start.UnixMilli(), 10),
+			"end":   strconv.FormatInt(promQLInput.End.UnixMilli(), 10),
 			"step":  params.Step,
 			"dim":   params.Dim,
 		}

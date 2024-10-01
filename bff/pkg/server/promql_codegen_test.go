@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"strconv"
 	"testing"
 	"time"
 )
@@ -71,61 +70,27 @@ func TestGenerateActivityCubePromQLQuery(t *testing.T) {
 				t.Fatalf("Failed to unmarshal input: %v", err)
 			}
 
-			startStr, ok := rawInput["start"].(string)
-			if !ok {
-				t.Fatalf("Invalid type for start: %v", rawInput["start"])
-			}
-			endStr, ok := rawInput["end"].(string)
-			if !ok {
-				t.Fatalf("Invalid type for end: %v", rawInput["end"])
+			limitValue, limitExists := rawInput["limit"].(string)
+			if !limitExists {
+				limitValue = ""
 			}
 
-			startTime, err := parseTimeParameter(startStr, now)
-			if err != nil {
-				if !tt.HasError {
-					t.Errorf("unexpected error parsing start time %v", err)
-				}
-				return
-			}
-
-			endTime, err := parseTimeParameter(endStr, now)
-			if err != nil {
-				if !tt.HasError {
-					t.Errorf("unexpected error parsing start time %v", err)
-				}
-				return
-			}
-
-			limitValue := 0
-			offsetValue := 0
-
-			if rawInput["limit"].(string) != "" {
-				limitValue, err = strconv.Atoi(rawInput["limit"].(string))
-				if err != nil {
-					t.Errorf("unexpected error parsing limit %v", err)
-					return
-				}
-			}
-
-			if rawInput["offset"].(string) != "" {
-				offsetValue, err = strconv.Atoi(rawInput["offset"].(string))
-				if err != nil {
-					t.Errorf("unexpected error parsing offset %v", err)
-					return
-				}
-			}
-
-			input := PromQLInput{
+			params := ActivityParams{
+				DbIdentifier:      rawInput["dbidentifier"].(string),
 				DatabaseList:      rawInput["database_list"].(string),
-				Start:             startTime,
-				End:               endTime,
+				Start:             rawInput["start"].(string),
+				End:               rawInput["end"].(string),
 				Legend:            rawInput["legend"].(string),
 				Dim:               rawInput["dim"].(string),
 				FilterDim:         rawInput["filterdim"].(string),
 				FilterDimSelected: rawInput["filterdimselected"].(string),
 				Limit:             limitValue,
-				Offset:            offsetValue,
-				DbIdentifier:      rawInput["dbidentifier"].(string),
+			}
+
+			input, err := extractPromQLInput(params, now)
+			if (err != nil) != tt.HasError {
+				t.Errorf("expected error: %v, got: %v", tt.HasError, err)
+				return
 			}
 
 			query, err := GenerateActivityCubePromQLQuery(input)

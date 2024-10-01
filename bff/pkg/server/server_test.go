@@ -11,6 +11,8 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"strconv"
+	"time"
 )
 
 type MockMetricsService struct {
@@ -690,6 +692,7 @@ func TestValidateDatabaseList(t *testing.T) {
 		})
 	}
 }
+
 func TestValidateDbIdentifier(t *testing.T) {
 	validate := validator.New()
 	validate.RegisterValidation("dbIdentifier", ValidateDbIdentifier)
@@ -797,6 +800,147 @@ func TestValidateDim(t *testing.T) {
 			err := validate.Struct(input)
 			if (err == nil) != tt.valid {
 				t.Errorf("expected valid: %v, got error: %v", tt.valid, err)
+			}
+		})
+	}
+}
+func TestExtractPromQLInput(t *testing.T) {
+	now := time.Now()
+	startTime := now.Add(-10 * time.Minute)
+
+	tests := []struct {
+		name        string
+		params      ActivityParams
+		expected    PromQLInput
+		expectError bool
+	}{
+		{
+			name: "Valid Parameters with Limits",
+			params: ActivityParams{
+				DbIdentifier:      "test_db",
+				DatabaseList:      "db1",
+				Start:             strconv.FormatInt(startTime.UnixMilli(), 10),
+				End:               strconv.FormatInt(now.UnixMilli(), 10),
+				Step:              "10s",
+				Legend:            "Test Legend",
+				Dim:               "dim",
+				FilterDim:         "filter",
+				FilterDimSelected: "selected",
+				Limit:             "100",
+				LimitLegend:       "0",
+			},
+			expected: PromQLInput{
+				DatabaseList:      "db1",
+				Start:             startTime,
+				End:               now,
+				Legend:            "Test Legend",
+				Dim:               "dim",
+				FilterDim:         "filter",
+				FilterDimSelected: "selected",
+				Limit:             100,
+				LimitLegend:       0,
+				Offset:            0,
+				DbIdentifier:      "test_db",
+			},
+			expectError: false,
+		},
+		{
+			name: "Valid Parameters with Fixed Unix Timestamps",
+			params: ActivityParams{
+				DbIdentifier: "test_db",
+				DatabaseList: "db1",
+				Start:        strconv.FormatInt(startTime.UnixMilli(), 10),
+				End:          strconv.FormatInt(now.UnixMilli(), 10),
+				Step:         "10s",
+				Limit:        "100",
+				LimitLegend:  "0",
+			},
+			expected: PromQLInput{
+				DatabaseList:      "db1",
+				Start:             startTime,
+				End:               now,
+				Legend:            "",
+				Dim:               "",
+				FilterDim:         "",
+				FilterDimSelected: "",
+				Limit:             100,
+				LimitLegend:       0,
+				Offset:            0,
+				DbIdentifier:      "test_db",
+			},
+			expectError: false,
+		},
+		{
+			name: "Invalid Start Time",
+			params: ActivityParams{
+				DbIdentifier: "test_db",
+				DatabaseList: "db1",
+				Start:        "invalid-time",
+				End:          strconv.FormatInt(now.UnixMilli(), 10),
+				Step:         "10s",
+				Limit:        "100",
+				LimitLegend:  "0",
+			},
+			expected:    PromQLInput{},
+			expectError: true,
+		},
+		{
+			name: "Invalid Limit",
+			params: ActivityParams{
+				DbIdentifier: "test_db",
+				DatabaseList: "db1",
+				Start:        strconv.FormatInt(now.UnixMilli(), 10),
+				End:          strconv.FormatInt(now.UnixMilli(), 10),
+				Step:         "10s",
+				Limit:        "invalid-limit",
+				LimitLegend:  "0",
+			},
+			expected:    PromQLInput{},
+			expectError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := extractPromQLInput(tt.params, now)
+
+			if (err != nil) != tt.expectError {
+				t.Errorf("expected error: %v, got: %v", tt.expectError, err)
+				return
+			}
+
+			if result.DatabaseList != tt.expected.DatabaseList {
+				t.Errorf("DatabaseList: expected %s, got %s", tt.expected.DatabaseList, result.DatabaseList)
+			}
+			if result.Start.UnixMilli() != tt.expected.Start.UnixMilli() {
+				t.Errorf("Start: expected %v, got %v", tt.expected.Start, result.Start)
+			}
+			if result.End.UnixMilli() != tt.expected.End.UnixMilli() {
+				t.Errorf("End: expected %v, got %v", tt.expected.End, result.End)
+			}
+			if result.Legend != tt.expected.Legend {
+				t.Errorf("Legend: expected %s, got %s", tt.expected.Legend, result.Legend)
+			}
+			if result.Dim != tt.expected.Dim {
+				t.Errorf("Dim: expected %s, got %s", tt.expected.Dim, result.Dim)
+			}
+			if result.FilterDim != tt.expected.FilterDim {
+				t.Errorf("FilterDim: expected %s, got %s", tt.expected.FilterDim, result.FilterDim)
+			}
+			if result.FilterDimSelected != tt.expected.FilterDimSelected {
+				t.Errorf("FilterDimSelected: expected %s, got %s", tt.expected.FilterDimSelected, result.FilterDimSelected)
+			}
+			if result.Limit != tt.expected.Limit {
+				t.Errorf("Limit: expected %d, got %d", tt.expected.Limit, result.Limit)
+			}
+			if result.LimitLegend != tt.expected.LimitLegend {
+				t.Errorf("LimitLegend: expected %d, got %d", tt.expected.LimitLegend, result.LimitLegend)
+			}
+			if result.Offset != tt.expected.Offset {
+				t.Errorf("Offset: expected %d, got %d", tt.expected.Offset, result.Offset)
+			}
+			if result.DbIdentifier != tt.expected.DbIdentifier {
+				t.Errorf("DbIdentifier: expected %s, got %s", tt.expected.DbIdentifier, result.DbIdentifier)
 			}
 		})
 	}
