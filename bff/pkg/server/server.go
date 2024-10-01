@@ -397,6 +397,19 @@ func activity_handler(metrics_service metrics.Service, validate *validator.Valid
 			return
 		}
 
+		stepDuration, err := time.ParseDuration(params.Step)
+		if err != nil {
+			http.Error(w, "Invalid step duration format.", http.StatusBadRequest)
+			return
+		}
+
+		totalDuration := endTime.Sub(startTime)
+		totalSamples := int(totalDuration / stepDuration)
+		if totalSamples > 11000 {
+			http.Error(w, "Maximum time samples exceeded. 11000 samples max per query", http.StatusBadRequest)
+			return
+		}
+
 		limitValue := 0
 		limitLegendValue := 0
 		offsetValue := 0
@@ -417,12 +430,16 @@ func activity_handler(metrics_service metrics.Service, validate *validator.Valid
 			}
 		}
 
-		dbListEscaped := strconv.Quote(params.DatabaseList)[1 : len(params.DatabaseList)-1]
+		dbListEscaped := ""
+		if params.DatabaseList != "" {
+			dbListEscaped = strconv.Quote(params.DatabaseList)
+			dbListEscaped = dbListEscaped[1 : len(dbListEscaped)-1]
+		}
 
 		filterDimSelectedEscaped := ""
-
 		if params.FilterDimSelected != "" {
-			filterDimSelectedEscaped = strconv.Quote(params.FilterDimSelected)[1 : len(params.FilterDimSelected)-1]
+			filterDimSelectedEscaped = strconv.Quote(params.FilterDimSelected)
+			filterDimSelectedEscaped = filterDimSelectedEscaped[1 : len(filterDimSelectedEscaped)-1]
 		}
 
 		promQLInput := PromQLInput{
