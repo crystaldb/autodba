@@ -86,6 +86,9 @@ func GenerateActivityCubePromQLQuery(input PromQLInput) (string, error) {
 	}
 
 	systemType, systemID, systemScope, err := splitDbIdentifier(dbIdentifier)
+	if err != nil {
+		return "", fmt.Errorf("error in splitting dbIdentifier: %w", err)
+	}
 
 	// Construct the base selector
 	labels := map[string]string{

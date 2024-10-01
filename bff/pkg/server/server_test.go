@@ -106,13 +106,13 @@ func TestParamsPopulation(t *testing.T) {
 
 	// TEST params population
 	record := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/health?datname=test_db&start=0000&end=1111&dbidentifier=default_db", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/health?datname=test_db&start=0000&end=1111&dbidentifier=a/default_db/c", nil)
 	handler.ServeHTTP(record, req)
 	assert.Equal(t, http.StatusOK, record.Code)
 
 	// Arbitrary param order
 	record = httptest.NewRecorder()
-	req = httptest.NewRequest(http.MethodGet, "/api/v1/health?end=1111&start=0000&datname=test_db&dbidentifier=default_db", nil)
+	req = httptest.NewRequest(http.MethodGet, "/api/v1/health?end=1111&start=0000&datname=test_db&dbidentifier=a/default_db/c", nil)
 	handler.ServeHTTP(record, req)
 	assert.Equal(t, http.StatusOK, record.Code)
 
@@ -262,7 +262,7 @@ func TestActivityValidationLogic(t *testing.T) {
 		{map[string]string{"start": "10", "end": "20", "limitlegend": "0"}, http.StatusBadRequest, "limitlegend must be a positive integer"},
 	}
 
-	defaultParams := map[string]string{"dbidentifier": "test", "database_list": "postgres", "step": "5000ms", "legend": "wait_event_name", "dim": "time", "filterdim": ""}
+	defaultParams := map[string]string{"dbidentifier": "a/test/c", "database_list": "postgres", "step": "5000ms", "legend": "wait_event_name", "dim": "time", "filterdim": ""}
 
 	mockService.On("ExecuteRaw", mock.Anything, mock.Anything).Return([]map[string]interface{}{}, nil)
 
@@ -288,7 +288,7 @@ func TestOptions(t *testing.T) {
 	}
 
 	params := map[string]string{
-		"dbidentifier":  "test",
+		"dbidentifier":  "a/test/c",
 		"database_list": "postgres",
 		"start":         "10",
 		"end":           "20",
@@ -327,7 +327,7 @@ func TestDefaultDBIdentifier(t *testing.T) {
 
 	// Create a request without the dbidentifier parameter
 	record := httptest.NewRecorder()
-	req := httptest.NewRequest("GET", "/api/v1/test?start=now&dbidentifier=default_db", nil)
+	req := httptest.NewRequest("GET", "/api/v1/test?start=now&dbidentifier=a/default_db/c", nil)
 	handler := metrics_handler(routeConfigs, mockService)
 	handler.ServeHTTP(record, req)
 
@@ -387,13 +387,13 @@ func TestDatabasesHandler(t *testing.T) {
 func TestInfoHandler(t *testing.T) {
 	dbIdentifiers := []InstanceInfo{
 		{
-			DBIdentifier: "test1",
+			DBIdentifier: "amazon_rds/test1/us-west-2",
 			SystemID:     "test1",
 			SystemScope:  "us-west-2",
 			SystemType:   "amazon_rds",
 		},
 		{
-			DBIdentifier: "test2",
+			DBIdentifier: "amazon_rds/test2/us-west-2",
 			SystemID:     "test2",
 			SystemScope:  "us-west-2",
 			SystemType:   "amazon_rds",
@@ -411,13 +411,13 @@ func TestInfoHandler(t *testing.T) {
 
 	expectedInstances := []InstanceInfo{
 		{
-			DBIdentifier: "test1",
+			DBIdentifier: "amazon_rds/test1/us-west-2",
 			SystemID:     "test1",
 			SystemScope:  "us-west-2",
 			SystemType:   "amazon_rds",
 		},
 		{
-			DBIdentifier: "test2",
+			DBIdentifier: "amazon_rds/test2/us-west-2",
 			SystemID:     "test2",
 			SystemScope:  "us-west-2",
 			SystemType:   "amazon_rds",
