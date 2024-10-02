@@ -45,7 +45,8 @@ However, the following *temporary limitations* are presently in place:
 
 ### Prerequisites
 
-1. Linux server with network access to your PostgreSQL database
+1. Linux server with network access to your PostgreSQL database.
+We recommend using a machine with at least 2&nbsp;GB of RAM and 10&nbsp;GB of disk space (e.g., `t3.small` on AWS).
 2. A database user with access to read the metrics
 3. AWS credentials with permissions to read database metrics
 
