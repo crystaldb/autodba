@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Added
 - **Support for multiple databases** allowing better management of database fleets, and also improving scalability and flexibility.
+- **PII filtering** to prevent sensitive information from being collected from the query arguments.
+- **SQL normalization** to ensure that similar queries are grouped together for analysis and reporting.
 - **Collector API Server stubs** to enable a smoother collector integration.
 - **Activity cube filters** to refine data views within the Activity Cube.
 - **Longer timeframes in time bar** for improved historical data analysis in the UI.
