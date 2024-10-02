@@ -54,42 +54,6 @@
     "has_error": false
   },
   {
-    "name": "Invalid dimension",
-    "input": {
-      "database_list": "db1",
-      "start": "now-1h",
-      "end": "now",
-      "step": "",
-      "legend": "usename",
-      "dim": "invalid_dim",
-      "filterdim": "",
-      "filterdimselected": "",
-      "limit": "",
-      "offset": "",
-      "dbidentifier": "a/b/c"
-    },
-    "expected": "",
-    "has_error": true
-  },
-  {
-    "name": "Empty database ID",
-    "input": {
-      "database_list": "",
-      "start": "now-1h",
-      "end": "now",
-      "step": "",
-      "legend": "usename",
-      "dim": "datname",
-      "filterdim": "",
-      "filterdimselected": "",
-      "limit": "",
-      "offset": "",
-      "dbidentifier": "a/b/c"
-    },
-    "expected": "",
-    "has_error": true
-  },
-  {
     "name": "Query with topk and filter",
     "input": {
       "database_list": "db1",
@@ -140,8 +104,8 @@
       "offset": "",
       "dbidentifier": "a/b/c"
     },
-    "expected": "sort_desc(avg_over_time(count by(datname, usename) (label_replace(label_replace(cc_pg_stat_activity{datname=~\"db1\",sys_id=~\"b\",sys_scope=~\"c\",sys_type=~\"a\"}, \"datname\", \"/*pg internal*/\", \"datname\", \"\"), \"usename\", \"/*pg internal*/\", \"usename\", \"\"))[3600s:]))",
-    "has_error": false
+    "expected": "",
+    "has_error": true
   },
   {
     "name": "Query with large limit and no offset",

@@ -1,12 +1,12 @@
-package server_test
+package server
 
 import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"local/bff/pkg/server" // Replace with the actual import path to your server package
 	"os"
 	"testing"
+	"time"
 )
 
 type TestCase struct {
@@ -59,15 +59,47 @@ func TestGenerateActivityCubePromQLQuery(t *testing.T) {
 	// Track whether any changes were made
 	anyMismatch := false
 
+	now := time.Now()
+
 	for _, tt := range testCases {
+
 		t.Run(tt.Name, func(t *testing.T) {
-			var input server.PromQLInput
-			err := json.Unmarshal(tt.Input, &input)
+			var rawInput map[string]interface{}
+			err := json.Unmarshal(tt.Input, &rawInput)
 			if err != nil {
 				t.Fatalf("Failed to unmarshal input: %v", err)
 			}
 
-			query, err := server.GenerateActivityCubePromQLQuery(input)
+			limitValue, limitExists := rawInput["limit"].(string)
+			if !limitExists {
+				limitValue = ""
+			}
+
+			offsetValue, offsetExists := rawInput["offset"].(string)
+			if !offsetExists {
+				offsetValue = ""
+			}
+
+			params := ActivityParams{
+				DbIdentifier:      rawInput["dbidentifier"].(string),
+				DatabaseList:      rawInput["database_list"].(string),
+				Start:             rawInput["start"].(string),
+				End:               rawInput["end"].(string),
+				Legend:            rawInput["legend"].(string),
+				Dim:               rawInput["dim"].(string),
+				FilterDim:         rawInput["filterdim"].(string),
+				FilterDimSelected: rawInput["filterdimselected"].(string),
+				Limit:             limitValue,
+				Offset:            offsetValue,
+			}
+
+			input, err := extractPromQLInput(params, now)
+			if (err != nil) != tt.HasError {
+				t.Errorf("expected error: %v, got: %v", tt.HasError, err)
+				return
+			}
+
+			query, err := GenerateActivityCubePromQLQuery(input)
 			if (err != nil) != tt.HasError {
 				t.Errorf("expected error: %v, got: %v", tt.HasError, err)
 				anyMismatch = true
