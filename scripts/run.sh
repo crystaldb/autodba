@@ -13,6 +13,9 @@ IMAGE_NAME="autodba-image"
 DOCKERFILE="Dockerfile"
 DB_CONN_STRING= # 'postgresql://autodba_db_user:autodba_db_pass@localhost:5432/autodba_db'
 AWS_RDS_INSTANCE="" # 'YOURNAME-rds-EXAMPLE'
+AWS_REGION=""
+AWS_ACCESS_KEY_ID=""
+AWS_SECRET_ACCESS_KEY=""
 INSTANCE_ID=0  # Default value for instance-id
 DEFAULT_METRIC_COLLECTION_PERIOD_SECONDS=5 # Default value for metric collection period (in seconds)
 WARM_UP_TIME_SECONDS=60  # Default value for warm-up time (in seconds)
@@ -115,6 +118,23 @@ while [[ "$#" -gt 0 ]]; do
             ;;
     esac
 done
+# Check if AWS CLI is available
+if [[ -n "$AWS_RDS_INSTANCE" ]]; then
+    if command_exists "aws"; then
+        AWS_ACCESS_KEY_ID=$(aws configure get aws_access_key_id || echo "")
+        AWS_SECRET_ACCESS_KEY=$(aws configure get aws_secret_access_key || echo "")
+        AWS_REGION=$(aws configure get region || echo "")
+
+        if [[ -z "$AWS_ACCESS_KEY_ID" || -z "$AWS_SECRET_ACCESS_KEY" || -z "$AWS_REGION" ]]; then
+            echo "Warning: AWS credentials or region are not configured properly. Proceeding without AWS integration."
+        fi
+    else
+        echo "Warning: AWS CLI is not installed. Proceeding without AWS integration."
+    fi
+else
+    echo "Warning: --rds-instance not specified. Starting without RDS Instance metrics."
+fi
+
 
 # Function to extract parts from the DB connection string
 function parse_db_conn_string() {
@@ -163,25 +183,6 @@ if [[ -z "$CONFIG_FILE" ]]; then
     if [[ -z "$DB_CONN_STRING" ]]; then
         echo "Missing required parameters"
         usage
-    fi
-
-    if [[ -z "$AWS_RDS_INSTANCE" ]]; then
-        echo "Warning: --rds-instance not specified. Starting without RDS Instance metrics."
-    fi
-
-    if [[ -n "$AWS_RDS_INSTANCE" ]]; then
-    if ! command_exists "aws"; then
-        echo "Warning: AWS CLI is not installed. Please install AWS CLI to fetch AWS credentials."
-    else
-        # Fetch AWS Access Key and AWS Secret Key
-        AWS_ACCESS_KEY_ID=$(aws configure get aws_access_key_id || echo "")
-        AWS_SECRET_ACCESS_KEY=$(aws configure get aws_secret_access_key || echo "")
-        AWS_REGION=$(aws configure get region || echo "")
-
-        if [[ -z "$AWS_ACCESS_KEY_ID" || -z "$AWS_SECRET_ACCESS_KEY" || -z "$AWS_REGION" ]]; then
-            echo "Warning: AWS credentials or region are not configured properly. Proceeding without AWS integration."
-        fi
-    fi
     fi
 
     CONFIG_FILE="./autodba-collector.conf"
