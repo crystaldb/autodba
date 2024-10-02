@@ -77,14 +77,18 @@ if [ -z "$DISABLE_DATA_COLLECTION" ] || [ "$DISABLE_DATA_COLLECTION" = false ]; 
 
   # Start up Prometheus RDS Exporter
   if [[ -n "$AWS_ACCESS_KEY_ID" && -n "$AWS_SECRET_ACCESS_KEY" && -n "$AWS_REGION" ]]; then
-    AWS_ACCESS_KEY_ID="$AWS_ACCESS_KEY_ID" \
-    AWS_SECRET_ACCESS_KEY="$AWS_SECRET_ACCESS_KEY" \
-    "$PARENT_DIR/share/prometheus_exporters/rds_exporter/prometheus-rds-exporter" \
-      -c "$PARENT_DIR/share/prometheus_exporters/rds_exporter/prometheus-rds-exporter.yaml" \
-      --filter-instances "$AWS_RDS_INSTANCE" &
-    RDS_EXPORTER_PID=$!
+      if [[ -n "$AWS_RDS_INSTANCE" ]]; then
+          AWS_ACCESS_KEY_ID="$AWS_ACCESS_KEY_ID" \
+                           AWS_SECRET_ACCESS_KEY="$AWS_SECRET_ACCESS_KEY" \
+                           "$PARENT_DIR/share/prometheus_exporters/rds_exporter/prometheus-rds-exporter" \
+                           -c "$PARENT_DIR/share/prometheus_exporters/rds_exporter/prometheus-rds-exporter.yaml" \
+                           --filter-instances "$AWS_RDS_INSTANCE" &
+          RDS_EXPORTER_PID=$!
+      else
+          echo "Warning: AWS_RDS_INSTANCE is not set; not running the RDS Exporter."
+      fi
   else
-    echo "AWS environment variables are missing or empty, so not running the RDS Exporter."
+      echo "AWS environment variables are missing or empty, so not running the RDS Exporter."
   fi
 
   echo "Starting Collector API Server..."
