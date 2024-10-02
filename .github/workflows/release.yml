@@ -19,20 +19,21 @@ jobs:
         run: |
           TAG=${GITHUB_REF##*/}
           STRIPPED_TAG=${TAG#v}
-          echo "STRIPPED_RELEASE_TAG=\"${STRIPPED_TAG}\"" >> $GITHUB_ENV
+          echo "RELEASE_TAG=${STRIPPED_TAG}" >> $GITHUB_ENV
 
       - name: Get previous tag
         id: get_prev_tag
         run: |
-          PREV_VERSION=$(grep -oP 'autodba-\K[0-9]+\.[0-9]+\.[0-9]+' "README.md")
-          echo "STRIPPED_PREV_RELEASE_TAG=\"${PREV_VERSION}\"" >> $GITHUB_ENV
+          PREV_VERSION=$(grep -oP 'autodba-\K[0-9]+\.[0-9]+\.[0-9]+$' "README.md")
+          echo "PREV_VERSION is \"$PREV_VERSION\""
+          echo "PREV_RELEASE_TAG=${PREV_VERSION}" >> $GITHUB_ENV
       
       - name: Update README
         uses: MathieuSoysal/file-updater-for-release@v1.0.3
         with:
           files: README.md
-          version: ${{ env.STRIPPED_RELEASE_TAG }}
-          old-version: ${{ env.STRIPPED_PREV_RELEASE_TAG }}
+          version: ${{ env.RELEASE_TAG }}
+          old-version: ${{ env.PREV_RELEASE_TAG }}
           with-checkout: false
       
       - name: Push changes
@@ -58,9 +59,9 @@ jobs:
         id: extract_changelog
         run: |
           # Strip the 'v' prefix from the tag
-          STRIPPED_TAG=${{ env.STRIPPED_RELEASE_TAG }}
+          TAG=${{ env.RELEASE_TAG }}
           # Extract everything between the current tag and the next tag or end of file
-          sed -n "/## \[$STRIPPED_TAG\]/,/## \[[0-9]\+\.[0-9]\+\.[0-9]\+\]/p" CHANGELOG.md | sed '$d' | sed '1d' > release_notes.md
+          sed -n "/## \[$TAG\]/,/## \[[0-9]\+\.[0-9]\+\.[0-9]\+\]/p" CHANGELOG.md | sed '$d' | sed '1d' > release_notes.md
           # If the release_notes.md file is empty, write a default message
           if [ ! -s release_notes.md ]; then
             echo "Automated release for tag ${{ github.ref }}" > release_notes.md
