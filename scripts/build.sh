@@ -70,6 +70,7 @@ for arch in amd64 arm64; do
     AUTODBA_CONFIG_DIR="$PARENT_DIR/config/autodba"
     PROMETHEUS_INSTALL_DIR="$PARENT_DIR/prometheus"
     COLLECTOR_DIR="${PARENT_DIR}/share/collector"
+    COLLECTOR_API_SERVER_DIR="${PARENT_DIR}/share/collector_api_server"
 
     echo "Downloading Prometheus tarball for ${arch}..."
     # Prepare clean
@@ -132,6 +133,13 @@ for arch in amd64 arm64; do
     mv pganalyze-collector collector
     mv pganalyze-collector-helper collector-helper
     mv pganalyze-collector-setup collector-setup
+    cd -
+
+    echo "Building collector-api-server..."
+    mkdir -p "${COLLECTOR_API_SERVER_DIR}"
+    cp -r collector-api/* "${COLLECTOR_API_SERVER_DIR}/"
+    cd "${COLLECTOR_API_SERVER_DIR}"
+    go build -o collector-api-server ./cmd/server/main.go
     cd -
 
     # Prepare directories for install

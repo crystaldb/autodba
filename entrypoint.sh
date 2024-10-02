@@ -87,40 +87,30 @@ if [ -z "$DISABLE_DATA_COLLECTION" ] || [ "$DISABLE_DATA_COLLECTION" = false ]; 
     echo "AWS environment variables are missing or empty, so not running the RDS Exporter."
   fi
 
-  # Check if collector_api_server exists before starting it. This acts as a feature-flag.
-  if [ -d "$PARENT_DIR/share/collector_api_server" ]; then
-    echo "Starting Collector API Server..."
-    pushd "$PARENT_DIR/share/collector_api_server"
-    ./collector-api-server &
-    COLLECTOR_API_SERVER_PID=$!
-    popd
-  else
-    echo "Warning: Skipping Collector API Server. Directory does not exist: $PARENT_DIR/share/collector_api_server"
-  fi
+  echo "Starting Collector API Server..."
+  pushd "$PARENT_DIR/share/collector_api_server"
+  ./collector-api-server &
+  COLLECTOR_API_SERVER_PID=$!
+  popd
   
-  # Check if collector exists before starting it. This acts as a feature-flag.
-  if [ -d "$PARENT_DIR/share/collector" ]; then
-    # Start up Collector
-    if [ -f "${CONFIG_FILE}" ]; then
-      echo "Starting Collector..."
-      # Create a temporary file with the prefix and original content
-      TEMP_CONFIG=$(mktemp)
-      {
-        echo "[pganalyze]"
-        echo "api_key = your-secure-api-key"
-        echo "api_base_url = http://localhost:7080"
-        echo ""
-        cat "${CONFIG_FILE}"
-      } > "$TEMP_CONFIG"
-      $PARENT_DIR/share/collector/collector --config="${TEMP_CONFIG}" --statefile="$PARENT_DIR/share/collector/state" --verbose &
-      COLLECTOR_COLLECTOR_PID=$!
-    else
-      # Check if config file exists
-      echo "Error: Collector configuration file not found at ${CONFIG_FILE}"
-      exit 1
-    fi
+  # Start up Collector
+  if [ -f "${CONFIG_FILE}" ]; then
+    echo "Starting Collector..."
+    # Create a temporary file with the prefix and original content
+    TEMP_CONFIG=$(mktemp)
+    {
+      echo "[pganalyze]"
+      echo "api_key = your-secure-api-key"
+      echo "api_base_url = http://localhost:7080"
+      echo ""
+      cat "${CONFIG_FILE}"
+    } > "$TEMP_CONFIG"
+    $PARENT_DIR/share/collector/collector --config="${TEMP_CONFIG}" --statefile="$PARENT_DIR/share/collector/state" --verbose &
+    COLLECTOR_COLLECTOR_PID=$!
   else
-    echo "Warning: Skipping Collector. Directory does not exist: $PARENT_DIR/share/collector"
+    # Check if config file exists
+    echo "Error: Collector configuration file not found at ${CONFIG_FILE}"
+    exit 1
   fi
 fi
 
