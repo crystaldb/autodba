@@ -252,10 +252,6 @@ echo "        bff port: $BFF_PORT"
 echo ""
 echo "=============================================================="
 
-if [[ -z "$AWS_RDS_INSTANCE" ]]; then
-    echo "Warning: --rds-instance not specified. Starting without RDS Instance metrics."
-fi
-
 docker run --name "$CONTAINER_NAME" \
     -p "$PROMETHEUS_PORT":9090 \
     -p "$BFF_PORT":4000 \
