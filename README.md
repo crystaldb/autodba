@@ -136,7 +136,7 @@ Our near-term roadmap includes the following:
 - Observability
     - [x] Database and system metrics
     - [x] Wait events
-    - [ ] Query normalization + PII filtering
+    - [X] Query normalization + PII filtering
     - [ ] Log analysis
     - [ ] Fleet overview
 - Alerting
