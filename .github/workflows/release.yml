@@ -20,13 +20,19 @@ jobs:
           TAG=${GITHUB_REF##*/}
           STRIPPED_TAG=${TAG#v}
           echo "STRIPPED_RELEASE_TAG=${STRIPPED_TAG}" >> $GITHUB_ENV
+
+      - name: Get previous tag
+        id: get_prev_tag
+        run: |
+          PREV_VERSION=$(grep -oP 'autodba-\K[0-9]+\.[0-9]+\.[0-9]+' "README.md")
+          echo "STRIPPED_PREV_RELEASE_TAG=${PREV_VERSION}" >> $GITHUB_ENV
       
       - name: Update README
         uses: MathieuSoysal/file-updater-for-release@v1.0.3
         with:
           files: README.md
           version: ${{ env.STRIPPED_RELEASE_TAG }}
-          prefix: "autodba-"
+          old-version: ${{ env.STRIPPED_PREV_RELEASE_TAG }}
           with-checkout: false
       
       - name: Push changes
