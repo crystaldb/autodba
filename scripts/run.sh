@@ -142,10 +142,6 @@ create_config_file() {
     parse_db_conn_string "$DB_CONN_STRING"
 
     cat > "$config_file" <<EOF
-[pganalyze]
-api_key = your-secure-api-key
-api_base_url = http://localhost:7080
-
 [server1]
 db_host = $db_host
 db_name = $db_name
