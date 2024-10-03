@@ -10,17 +10,17 @@ import (
 
 // PromQLInput represents the inputs required to generate a PromQL query.
 type PromQLInput struct {
-	DatabaseList      string `json:"database_list"`
-	Start             string `json:"start"`
-	End               string `json:"end"`
-	Step              string `json:"step"`
-	Legend            string `json:"legend"`
-	Dim               string `json:"dim"`
-	FilterDim         string `json:"filterdim"`
-	FilterDimSelected string `json:"filterdimselected"`
-	Limit             string `json:"limit"`
-	LimitLegend       string `json:"limit_legend"`
-	Offset            string `json:"offset"`
+	DatabaseList      string    `json:"database_list"`
+	Start             time.Time `json:"start"`
+	End               time.Time `json:"end"`
+	Legend            string    `json:"legend"`
+	Dim               string    `json:"dim"`
+	FilterDim         string    `json:"filterdim"`
+	FilterDimSelected string    `json:"filterdimselected"`
+	Limit             int       `json:"limit"`
+	LimitLegend       int       `json:"limit_legend"`
+	Offset            int       `json:"offset"`
+	DbIdentifier      string    `json:"dbidentifier"`
 }
 
 // Utility function to validate dimensions
@@ -40,52 +40,32 @@ func isValidDimension(dim string) bool {
 
 // Function to generate a PromQL query with sorting and pagination (New AST-based version)
 func GenerateActivityCubePromQLQuery(input PromQLInput) (string, error) {
-	// Get the current time at the start of the function
-	now := time.Now()
-
 	// Extract and validate parameters
 	databaseList := input.DatabaseList
-	start := input.Start
-	finish := input.End
+	startTime := input.Start
+	endTime := input.End
 	dim := input.Dim
 	legend := input.Legend
 	filterDim := input.FilterDim
 	filterDimSelected := input.FilterDimSelected
-	limit := input.Limit
-	offset := input.Offset
-
-	// Parse start and finish times
-	startTime, err := parseTimeParameter(start, now)
-	if err != nil {
-		return "", err
-	}
-
-	var endTime time.Time
-	if finish != "" {
-		endTime, err = parseTimeParameter(finish, now)
-		if err != nil {
-			return "", err
-		}
-	} else {
-		endTime = now
-	}
+	limitValue := input.Limit
+	offsetValue := input.Offset
+	dbIdentifier := input.DbIdentifier
 
 	// Calculate time range in seconds for avg_over_time
 	timeRange := endTime.Sub(startTime).Seconds()
 
-	// Check required parameters
-	if databaseList == "" || start == "" || dim == "" || legend == "" {
-		return "", errors.New("missing required query parameters")
-	}
-
-	// Validate dimensions against whitelist
-	if !isValidDimension(dim) || !isValidDimension(legend) || (filterDim != "" && !isValidDimension(filterDim)) {
-		return "", errors.New("invalid dimension parameter")
+	systemType, systemID, systemScope, err := splitDbIdentifier(dbIdentifier)
+	if err != nil {
+		return "", fmt.Errorf("error in splitting dbIdentifier: %w", err)
 	}
 
 	// Construct the base selector
 	labels := map[string]string{
-		"datname": escapePromQLLabelValue(databaseList),
+		"datname":   escapePromQLLabelValue(databaseList),
+		"sys_id":    systemID,
+		"sys_scope": systemScope,
+		"sys_type":  systemType,
 	}
 
 	if dim == "query" {
@@ -132,22 +112,6 @@ func GenerateActivityCubePromQLQuery(input PromQLInput) (string, error) {
 		expr = applyLabelReplaceAST(expr, legend)
 	}
 
-	limitValue := 0
-	offsetValue := 0
-	if limit != "" {
-		limitValue, err = strconv.Atoi(limit)
-		if err != nil {
-			return "", errors.New("invalid limit value")
-		}
-	}
-
-	if offset != "" {
-		offsetValue, err = strconv.Atoi(offset)
-		if err != nil {
-			return "", errors.New("invalid offset value")
-		}
-	}
-
 	// Construct the aggregation node
 	var query Node
 	if dim == "time" {
@@ -159,8 +123,8 @@ func GenerateActivityCubePromQLQuery(input PromQLInput) (string, error) {
 	} else {
 		avgOverTimeWindow := fmt.Sprintf("%ds", int(timeRange))
 		if dim == legend {
-			query = genAvgOverDimQuery(dim, expr, avgOverTimeWindow, limit, limitValue, offset, offsetValue)
-		} else if limit == "" {
+			query = genAvgOverDimQuery(dim, expr, avgOverTimeWindow, limitValue, offsetValue)
+		} else if limitValue == 0 {
 			query = &FunctionCall{
 				Func: "avg_over_time",
 				Args: []Node{
@@ -174,7 +138,7 @@ func GenerateActivityCubePromQLQuery(input PromQLInput) (string, error) {
 			}
 		} else { // dim != legend and limit != ""
 			// Step 1: Generate `limitOffsetAgg` with limit and offset
-			limitOffsetAgg := genAvgOverDimQuery(dim, expr, avgOverTimeWindow, limit, limitValue, offset, offsetValue)
+			limitOffsetAgg := genAvgOverDimQuery(dim, expr, avgOverTimeWindow, limitValue, offsetValue)
 
 			// Step 2: Convert all values in `limitOffsetAgg` to `1`
 			scaledLimitOffsetAgg := &BinaryExpr{
@@ -220,7 +184,7 @@ func GenerateActivityCubePromQLQuery(input PromQLInput) (string, error) {
 	return query.String(), nil
 }
 
-func genAvgOverDimQuery(dim string, expr Node, avgOverTimeWindow string, limit string, limitValue int, offset string, offsetValue int) Node {
+func genAvgOverDimQuery(dim string, expr Node, avgOverTimeWindow string, limitValue int, offsetValue int) Node {
 	avgByDim := &FunctionCall{
 		Func: "avg_over_time",
 		Args: []Node{
@@ -236,13 +200,13 @@ func genAvgOverDimQuery(dim string, expr Node, avgOverTimeWindow string, limit s
 	var limitOffsetAgg Node
 	limitOffsetAgg = avgByDim
 
-	if limit != "" && limitValue > 0 {
+	if limitValue > 0 {
 		limitOffsetAgg = &Topk{
 			Limit: limitValue + offsetValue,
 			Expr:  limitOffsetAgg,
 		}
 
-		if offset != "" && offsetValue > 0 {
+		if offsetValue > 0 {
 			// Apply `bottomk(limit)` to get the correct subset
 			limitOffsetAgg = &Bottomk{
 				Limit: limitValue,
@@ -362,7 +326,7 @@ func parseTimeParameter(param string, now time.Time) (time.Time, error) {
 		// Assume epoch time as an integer string
 		epoch, err := strconv.ParseInt(param, 10, 64)
 		if err != nil {
-			return time.Time{}, errors.New("invalid time format")
+			return time.Time{}, errors.New("invalid time format for parameter: " + param)
 		}
 		return time.UnixMilli(epoch), nil
 	}

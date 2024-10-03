@@ -112,7 +112,6 @@ WORKDIR /home/autodba/bff
 COPY bff/go.mod bff/go.sum ./
 RUN go mod download
 COPY bff/ ./
-RUN go test ./pkg/server/promql_codegen_test.go -v
 RUN go test ./pkg/server -v
 RUN go test ./pkg/metrics -v
 RUN go test ./pkg/prometheus -v
