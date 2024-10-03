@@ -11,6 +11,38 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Get current tag
+        id: get_tag
+        run: |
+          TAG=${GITHUB_REF##*/}
+          STRIPPED_TAG=${TAG#v}
+          echo "RELEASE_TAG=${STRIPPED_TAG}" >> $GITHUB_ENV
+
+      - name: Get previous tag
+        id: get_prev_tag
+        run: |
+          PREV_VERSION=$(grep -oP 'autodba-\K[0-9]+\.[0-9]+\.[0-9]+$' "README.md")
+          echo "PREV_VERSION is \"$PREV_VERSION\""
+          echo "PREV_RELEASE_TAG=${PREV_VERSION}" >> $GITHUB_ENV
+      
+      - name: Update README
+        uses: MathieuSoysal/file-updater-for-release@v1.0.3
+        with:
+          files: README.md
+          version: ${{ env.RELEASE_TAG }}
+          old-version: ${{ env.PREV_RELEASE_TAG }}
+          with-checkout: false
+      
+      - name: Push changes
+        uses: EndBug/add-and-commit@v9
+        with:
+          committer_name: GitHub Actions
+          committer_email: actions@github.com
+          add: .
+          message: 'Updated README.md for the new release.'
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -23,18 +55,13 @@ jobs:
         run: |
           docker run --rm -v ./release_output:/release_output autodbarelease /bin/bash -c "cp /home/autodba/release_output/* /release_output"
 
-      - name: Get current tag
-        id: get_tag
-        run: echo "RELEASE_TAG=${GITHUB_REF##*/}" >> $GITHUB_ENV
-
       - name: Extract changelog for current release
         id: extract_changelog
         run: |
           # Strip the 'v' prefix from the tag
           TAG=${{ env.RELEASE_TAG }}
-          STRIPPED_TAG=${TAG#v}
           # Extract everything between the current tag and the next tag or end of file
-          sed -n "/## \[$STRIPPED_TAG\]/,/## \[[0-9]\+\.[0-9]\+\.[0-9]\+\]/p" CHANGELOG.md | sed '$d' | sed '1d' > release_notes.md
+          sed -n "/## \[$TAG\]/,/## \[[0-9]\+\.[0-9]\+\.[0-9]\+\]/p" CHANGELOG.md | sed '$d' | sed '1d' > release_notes.md
           # If the release_notes.md file is empty, write a default message
           if [ ! -s release_notes.md ]; then
             echo "Automated release for tag ${{ github.ref }}" > release_notes.md
