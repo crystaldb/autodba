@@ -72,6 +72,22 @@ func systemLabels(systemInfo SystemInfo) []prompb.Label {
 	}
 }
 
+// Helper function to create a time series
+func createTimeSeries(systemInfo SystemInfo, metricName string, additionalLabels []prompb.Label, value float64, timestamp int64) prompb.TimeSeries {
+	labels := append(systemLabels(systemInfo), additionalLabels...)
+	labels = append(labels, prompb.Label{Name: "__name__", Value: metricName})
+
+	return prompb.TimeSeries{
+		Labels: labels,
+		Samples: []prompb.Sample{
+			{
+				Timestamp: timestamp,
+				Value:     value,
+			},
+		},
+	}
+}
+
 // fullSnapshotMetrics processes a FullSnapshot and generates Prometheus metrics, along with individual time-series tracking
 func fullSnapshotMetrics(snapshot *collector_proto.FullSnapshot, systemInfo SystemInfo) ([]prompb.TimeSeries, map[string]map[string]bool) {
 	var ts []prompb.TimeSeries
@@ -112,18 +128,9 @@ func processSystemStats(snapshot *collector_proto.FullSnapshot, systemInfo Syste
 			metricKey := fmt.Sprintf("cpu_%d", cpuStat.CpuIdx)
 			seenMetrics["cpu"][metricKey] = true
 
-			ts = append(ts, prompb.TimeSeries{
-				Labels: append(systemLabels(systemInfo), []prompb.Label{
-					{Name: "__name__", Value: "cc_system_cpu_usage"},
-					{Name: "cpu_id", Value: strconv.Itoa(int(cpuStat.CpuIdx))},
-				}...),
-				Samples: []prompb.Sample{
-					{
-						Timestamp: timestamp,
-						Value:     cpuStat.UserPercent,
-					},
-				},
-			})
+			ts = append(ts, createTimeSeries(systemInfo, "cc_system_cpu_usage", []prompb.Label{
+				{Name: "cpu_id", Value: strconv.Itoa(int(cpuStat.CpuIdx))},
+			}, cpuStat.UserPercent, timestamp))
 		}
 	}
 
@@ -131,17 +138,7 @@ func processSystemStats(snapshot *collector_proto.FullSnapshot, systemInfo Syste
 	if snapshot.System.MemoryStatistic != nil {
 		seenMetrics["memory"]["system_memory"] = true
 
-		ts = append(ts, prompb.TimeSeries{
-			Labels: append(systemLabels(systemInfo), []prompb.Label{
-				{Name: "__name__", Value: "cc_system_memory_usage"},
-			}...),
-			Samples: []prompb.Sample{
-				{
-					Timestamp: timestamp,
-					Value:     float64(snapshot.System.MemoryStatistic.TotalBytes),
-				},
-			},
-		})
+		ts = append(ts, createTimeSeries(systemInfo, "cc_system_memory_usage", nil, float64(snapshot.System.MemoryStatistic.TotalBytes), timestamp))
 	}
 
 	return ts
@@ -157,46 +154,19 @@ func processDatabaseStats(snapshot *collector_proto.FullSnapshot, systemInfo Sys
 		seenMetrics["db"][dbName] = true
 
 		// Transaction commit statistics
-		ts = append(ts, prompb.TimeSeries{
-			Labels: append(systemLabels(systemInfo), []prompb.Label{
-				{Name: "__name__", Value: "cc_db_xact_commit"},
-				{Name: "database", Value: dbName},
-			}...),
-			Samples: []prompb.Sample{
-				{
-					Timestamp: timestamp,
-					Value:     float64(dbStat.XactCommit),
-				},
-			},
-		})
+		ts = append(ts, createTimeSeries(systemInfo, "cc_db_xact_commit", []prompb.Label{
+			{Name: "database", Value: dbName},
+		}, float64(dbStat.XactCommit), timestamp))
 
 		// Transaction rollback statistics
-		ts = append(ts, prompb.TimeSeries{
-			Labels: append(systemLabels(systemInfo), []prompb.Label{
-				{Name: "__name__", Value: "cc_db_xact_rollback"},
-				{Name: "database", Value: dbName},
-			}...),
-			Samples: []prompb.Sample{
-				{
-					Timestamp: timestamp,
-					Value:     float64(dbStat.XactRollback),
-				},
-			},
-		})
+		ts = append(ts, createTimeSeries(systemInfo, "cc_db_xact_rollback", []prompb.Label{
+			{Name: "database", Value: dbName},
+		}, float64(dbStat.XactRollback), timestamp))
 
 		// Frozen XID age
-		ts = append(ts, prompb.TimeSeries{
-			Labels: append(systemLabels(systemInfo), []prompb.Label{
-				{Name: "__name__", Value: "cc_db_frozen_xid_age"},
-				{Name: "database", Value: dbName},
-			}...),
-			Samples: []prompb.Sample{
-				{
-					Timestamp: timestamp,
-					Value:     float64(dbStat.FrozenxidAge),
-				},
-			},
-		})
+		ts = append(ts, createTimeSeries(systemInfo, "cc_db_frozen_xid_age", []prompb.Label{
+			{Name: "database", Value: dbName},
+		}, float64(dbStat.FrozenxidAge), timestamp))
 	}
 
 	return ts
@@ -211,31 +181,13 @@ func processQueryStats(snapshot *collector_proto.FullSnapshot, systemInfo System
 
 		seenMetrics["query"][query] = true
 
-		ts = append(ts, prompb.TimeSeries{
-			Labels: append(systemLabels(systemInfo), []prompb.Label{
-				{Name: "__name__", Value: "cc_query_calls"},
-				{Name: "query", Value: query},
-			}...),
-			Samples: []prompb.Sample{
-				{
-					Timestamp: timestamp,
-					Value:     float64(queryStat.Calls),
-				},
-			},
-		})
+		ts = append(ts, createTimeSeries(systemInfo, "cc_query_calls", []prompb.Label{
+			{Name: "query", Value: query},
+		}, float64(queryStat.Calls), timestamp))
 
-		ts = append(ts, prompb.TimeSeries{
-			Labels: append(systemLabels(systemInfo), []prompb.Label{
-				{Name: "__name__", Value: "cc_query_total_time_seconds"},
-				{Name: "query", Value: query},
-			}...),
-			Samples: []prompb.Sample{
-				{
-					Timestamp: timestamp,
-					Value:     queryStat.TotalTime,
-				},
-			},
-		})
+		ts = append(ts, createTimeSeries(systemInfo, "cc_query_total_time_seconds", []prompb.Label{
+			{Name: "query", Value: query},
+		}, queryStat.TotalTime, timestamp))
 	}
 
 	return ts
@@ -250,31 +202,13 @@ func processRelationAndIndexStats(snapshot *collector_proto.FullSnapshot, system
 
 		seenMetrics["relation"][relationName] = true
 
-		ts = append(ts, prompb.TimeSeries{
-			Labels: append(systemLabels(systemInfo), []prompb.Label{
-				{Name: "__name__", Value: "cc_relation_size_bytes"},
-				{Name: "relation", Value: relationName},
-			}...),
-			Samples: []prompb.Sample{
-				{
-					Timestamp: timestamp,
-					Value:     float64(relStat.SizeBytes),
-				},
-			},
-		})
+		ts = append(ts, createTimeSeries(systemInfo, "cc_relation_size_bytes", []prompb.Label{
+			{Name: "relation", Value: relationName},
+		}, float64(relStat.SizeBytes), timestamp))
 
-		ts = append(ts, prompb.TimeSeries{
-			Labels: append(systemLabels(systemInfo), []prompb.Label{
-				{Name: "__name__", Value: "cc_relation_seq_scan"},
-				{Name: "relation", Value: relationName},
-			}...),
-			Samples: []prompb.Sample{
-				{
-					Timestamp: timestamp,
-					Value:     float64(relStat.SeqScan),
-				},
-			},
-		})
+		ts = append(ts, createTimeSeries(systemInfo, "cc_relation_seq_scan", []prompb.Label{
+			{Name: "relation", Value: relationName},
+		}, float64(relStat.SeqScan), timestamp))
 	}
 
 	for _, idxStat := range snapshot.IndexStatistics {
@@ -282,31 +216,13 @@ func processRelationAndIndexStats(snapshot *collector_proto.FullSnapshot, system
 
 		seenMetrics["index"][indexName] = true
 
-		ts = append(ts, prompb.TimeSeries{
-			Labels: append(systemLabels(systemInfo), []prompb.Label{
-				{Name: "__name__", Value: "cc_index_size_bytes"},
-				{Name: "index", Value: indexName},
-			}...),
-			Samples: []prompb.Sample{
-				{
-					Timestamp: timestamp,
-					Value:     float64(idxStat.SizeBytes),
-				},
-			},
-		})
+		ts = append(ts, createTimeSeries(systemInfo, "cc_index_size_bytes", []prompb.Label{
+			{Name: "index", Value: indexName},
+		}, float64(idxStat.SizeBytes), timestamp))
 
-		ts = append(ts, prompb.TimeSeries{
-			Labels: append(systemLabels(systemInfo), []prompb.Label{
-				{Name: "__name__", Value: "cc_index_scan_count"},
-				{Name: "index", Value: indexName},
-			}...),
-			Samples: []prompb.Sample{
-				{
-					Timestamp: timestamp,
-					Value:     float64(idxStat.IdxScan),
-				},
-			},
-		})
+		ts = append(ts, createTimeSeries(systemInfo, "cc_index_scan_count", []prompb.Label{
+			{Name: "index", Value: indexName},
+		}, float64(idxStat.IdxScan), timestamp))
 	}
 
 	return ts
