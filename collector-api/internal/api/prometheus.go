@@ -447,3 +447,27 @@ func compactSnapshotMetrics(snapshot *collector_proto.CompactSnapshot, systemInf
 
 	return ts, seenBackends
 }
+
+// createCompactSnapshotActivityStaleMarkers generates stale markers for backends that were present in the previous snapshot
+// but are missing in the current one
+func createCompactSnapshotActivityStaleMarkers(previousBackends, currentBackends map[BackendKey]bool, systemInfo SystemInfo, timestamp int64) []prompb.TimeSeries {
+	var staleMarkers []prompb.TimeSeries
+
+	for backendKey := range previousBackends {
+		if !currentBackends[backendKey] {
+			// Create a stale marker with NaN value for backends no longer present
+			staleMarker := prompb.TimeSeries{
+				Labels: createLabelsForBackend(backendKey, systemInfo),
+				Samples: []prompb.Sample{
+					{
+						Timestamp: timestamp,
+						Value:     math.Float64frombits(value.StaleNaN), // NaN
+					},
+				},
+			}
+			staleMarkers = append(staleMarkers, staleMarker)
+		}
+	}
+
+	return staleMarkers
+}

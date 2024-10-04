@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"math"
 	"net/http"
 	"os"
 	"path"
@@ -19,7 +18,6 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	collector_proto "github.com/pganalyze/collector/output/pganalyze_collector"
-	"github.com/prometheus/prometheus/model/value"
 	"github.com/prometheus/prometheus/prompb"
 )
 
@@ -387,28 +385,4 @@ func sendRemoteWrite(client prometheusClient, promPB []prompb.TimeSeries) error 
 		return fmt.Errorf("unexpected status code %d: %s", resp.StatusCode, body)
 	}
 	return nil
-}
-
-// createCompactSnapshotActivityStaleMarkers generates stale markers for backends that were present in the previous snapshot
-// but are missing in the current one
-func createCompactSnapshotActivityStaleMarkers(previousBackends, currentBackends map[BackendKey]bool, systemInfo SystemInfo, timestamp int64) []prompb.TimeSeries {
-	var staleMarkers []prompb.TimeSeries
-
-	for backendKey := range previousBackends {
-		if !currentBackends[backendKey] {
-			// Create a stale marker with NaN value for backends no longer present
-			staleMarker := prompb.TimeSeries{
-				Labels: createLabelsForBackend(backendKey, systemInfo),
-				Samples: []prompb.Sample{
-					{
-						Timestamp: timestamp,
-						Value:     math.Float64frombits(value.StaleNaN), // NaN
-					},
-				},
-			}
-			staleMarkers = append(staleMarkers, staleMarker)
-		}
-	}
-
-	return staleMarkers
 }
