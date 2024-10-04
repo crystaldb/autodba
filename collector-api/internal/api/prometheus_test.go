@@ -103,7 +103,7 @@ func TestCreateStaleMarkers(t *testing.T) {
 		{Pid: 9012, ApplicationName: "test-app-3"}: true,
 	}
 
-	staleMarkers := createStaleMarkers(prevBackends, currentBackends, now.UnixMilli())
+	staleMarkers := createCompactSnapshotActivityStaleMarkers(prevBackends, currentBackends, SystemInfo{}, now.UnixMilli())
 
 	assert.Equal(t, 1, len(staleMarkers), "Expected one stale marker")
 	assert.Equal(t, "5678", getLabelValue(staleMarkers[0].Labels, "pid"), "Unexpected PID in stale marker")
@@ -210,8 +210,8 @@ func TestMultipleSystemsHandling(t *testing.T) {
 			assert.Equal(t, tc.expectedMetrics[system1], len(metrics1), "Unexpected number of metrics for system 1")
 			assert.Equal(t, tc.expectedMetrics[system2], len(metrics2), "Unexpected number of metrics for system 2")
 
-			staleMarkers1 := createStaleMarkers(previousBackends[system1], currentBackends1, now.UnixMilli())
-			staleMarkers2 := createStaleMarkers(previousBackends[system2], currentBackends2, now.UnixMilli())
+			staleMarkers1 := createCompactSnapshotActivityStaleMarkers(previousBackends[system1], currentBackends1, system1, now.UnixMilli())
+			staleMarkers2 := createCompactSnapshotActivityStaleMarkers(previousBackends[system2], currentBackends2, system2, now.UnixMilli())
 
 			assert.Equal(t, tc.expectedStale[system1], len(staleMarkers1), "Unexpected number of stale markers for system 1")
 			assert.Equal(t, tc.expectedStale[system2], len(staleMarkers2), "Unexpected number of stale markers for system 2")

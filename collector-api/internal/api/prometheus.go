@@ -60,6 +60,18 @@ func (c *prometheusClient) RemoteWrite(data []prompb.TimeSeries) (*http.Response
 	return c.Do(req)
 }
 
+// Helper function to generate system-level labels
+func systemLabels(systemInfo SystemInfo) []prompb.Label {
+	return []prompb.Label{
+		{Name: "sys_id", Value: systemInfo.SystemID},
+		{Name: "sys_id_fallback", Value: systemInfo.SystemIDFallback},
+		{Name: "sys_scope", Value: systemInfo.SystemScope},
+		{Name: "sys_scope_fallback", Value: systemInfo.SystemScopeFallback},
+		{Name: "sys_type", Value: systemInfo.SystemType},
+		{Name: "sys_type_fallback", Value: systemInfo.SystemTypeFallback},
+	}
+}
+
 // fullSnapshotMetrics processes a FullSnapshot and generates Prometheus metrics, along with individual time-series tracking
 func fullSnapshotMetrics(snapshot *collector_proto.FullSnapshot, systemInfo SystemInfo) ([]prompb.TimeSeries, map[string]map[string]bool) {
 	var ts []prompb.TimeSeries
@@ -332,31 +344,25 @@ func createFullSnapshotStaleMarkers(previousMetrics, currentMetrics map[string]m
 
 // BackendKey uniquely identifies a backend session
 type BackendKey struct {
-	ApplicationName     string
-	BackendType         string
-	ClientAddr          string
-	ClientPort          int32
-	Datname             string
-	Pid                 int32
-	Query               string
-	QueryFingerPrint    string
-	QueryFull           string
-	Role                string
-	State               string
-	SystemID            string
-	SystemIDFallback    string
-	SystemScope         string
-	SystemScopeFallback string
-	SystemType          string
-	SystemTypeFallback  string
-	WaitEvent           string
-	WaitEventType       string
+	ApplicationName  string
+	BackendType      string
+	ClientAddr       string
+	ClientPort       int32
+	Datname          string
+	Pid              int32
+	Query            string
+	QueryFingerPrint string
+	QueryFull        string
+	Role             string
+	State            string
+	WaitEvent        string
+	WaitEventType    string
 }
 
 // createLabelsForBackend generates Prometheus labels for a given BackendKey
 // This function is used for both active backends and stale markers
-func createLabelsForBackend(backendKey BackendKey) []prompb.Label {
-	labels := []prompb.Label{
+func createLabelsForBackend(backendKey BackendKey, systemInfo SystemInfo) []prompb.Label {
+	labels := append(systemLabels(systemInfo), []prompb.Label{
 		{Name: "__name__", Value: "cc_pg_stat_activity"},
 		{Name: "application_name", Value: backendKey.ApplicationName},
 		{Name: "backend_type", Value: backendKey.BackendType},
@@ -364,15 +370,9 @@ func createLabelsForBackend(backendKey BackendKey) []prompb.Label {
 		{Name: "client_port", Value: fmt.Sprintf("%d", backendKey.ClientPort)},
 		{Name: "pid", Value: fmt.Sprintf("%d", backendKey.Pid)},
 		{Name: "state", Value: backendKey.State},
-		{Name: "sys_id", Value: backendKey.SystemID},
-		{Name: "sys_id_fallback", Value: backendKey.SystemIDFallback},
-		{Name: "sys_scope", Value: backendKey.SystemScope},
-		{Name: "sys_scope_fallback", Value: backendKey.SystemScopeFallback},
-		{Name: "sys_type", Value: backendKey.SystemType},
-		{Name: "sys_type_fallback", Value: backendKey.SystemTypeFallback},
 		{Name: "wait_event", Value: backendKey.WaitEvent},
 		{Name: "wait_event_type", Value: backendKey.WaitEventType},
-	}
+	}...)
 
 	if backendKey.Query != "" {
 		labels = append(labels, prompb.Label{Name: "query", Value: backendKey.Query})
@@ -408,21 +408,15 @@ func compactSnapshotMetrics(snapshot *collector_proto.CompactSnapshot, systemInf
 	for _, backend := range snapshot.GetActivitySnapshot().GetBackends() {
 		// Create a unique BackendKey for each backend
 		backendKey := BackendKey{
-			ApplicationName:     backend.GetApplicationName(),
-			BackendType:         backend.GetBackendType(),
-			ClientAddr:          backend.GetClientAddr(),
-			ClientPort:          backend.GetClientPort(),
-			Pid:                 backend.GetPid(),
-			QueryFull:           backend.GetQueryText(),
-			State:               backend.GetState(),
-			SystemID:            systemInfo.SystemID,
-			SystemIDFallback:    systemInfo.SystemIDFallback,
-			SystemScope:         systemInfo.SystemScope,
-			SystemScopeFallback: systemInfo.SystemScopeFallback,
-			SystemType:          systemInfo.SystemType,
-			SystemTypeFallback:  systemInfo.SystemTypeFallback,
-			WaitEvent:           backend.GetWaitEvent(),
-			WaitEventType:       backend.GetWaitEventType(),
+			ApplicationName: backend.GetApplicationName(),
+			BackendType:     backend.GetBackendType(),
+			ClientAddr:      backend.GetClientAddr(),
+			ClientPort:      backend.GetClientPort(),
+			Pid:             backend.GetPid(),
+			QueryFull:       backend.GetQueryText(),
+			State:           backend.GetState(),
+			WaitEvent:       backend.GetWaitEvent(),
+			WaitEventType:   backend.GetWaitEventType(),
 		}
 
 		if baseRef != nil {
@@ -439,7 +433,7 @@ func compactSnapshotMetrics(snapshot *collector_proto.CompactSnapshot, systemInf
 		}
 		// Create a time series for the backend
 		backendTS := prompb.TimeSeries{
-			Labels: createLabelsForBackend(backendKey),
+			Labels: createLabelsForBackend(backendKey, systemInfo),
 			Samples: []prompb.Sample{
 				{
 					Timestamp: snapshotTimestamp,

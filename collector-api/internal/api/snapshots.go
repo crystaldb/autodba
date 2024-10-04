@@ -353,7 +353,7 @@ func handleCompactSnapshot(cfg *config.Config, s3Location string, collectedAt in
 	metrics, currentBackends := compactSnapshotMetrics(&compactSnapshot, systemInfo)
 
 	// Generate stale markers for time-series (identified by a unique set of labels) no longer present
-	staleMarkers := createStaleMarkers(previousBackends[systemInfo], currentBackends, compactSnapshot.CollectedAt.AsTime().UnixMilli())
+	staleMarkers := createCompactSnapshotActivityStaleMarkers(previousBackends[systemInfo], currentBackends, systemInfo, compactSnapshot.CollectedAt.AsTime().UnixMilli())
 
 	// Combine active metrics and stale markers
 	allMetrics := append(metrics, staleMarkers...)
@@ -389,16 +389,16 @@ func sendRemoteWrite(client prometheusClient, promPB []prompb.TimeSeries) error 
 	return nil
 }
 
-// createStaleMarkers generates stale markers for backends that were present in the previous snapshot
+// createCompactSnapshotActivityStaleMarkers generates stale markers for backends that were present in the previous snapshot
 // but are missing in the current one
-func createStaleMarkers(previousBackends, currentBackends map[BackendKey]bool, timestamp int64) []prompb.TimeSeries {
+func createCompactSnapshotActivityStaleMarkers(previousBackends, currentBackends map[BackendKey]bool, systemInfo SystemInfo, timestamp int64) []prompb.TimeSeries {
 	var staleMarkers []prompb.TimeSeries
 
 	for backendKey := range previousBackends {
 		if !currentBackends[backendKey] {
 			// Create a stale marker with NaN value for backends no longer present
 			staleMarker := prompb.TimeSeries{
-				Labels: createLabelsForBackend(backendKey),
+				Labels: createLabelsForBackend(backendKey, systemInfo),
 				Samples: []prompb.Sample{
 					{
 						Timestamp: timestamp,
