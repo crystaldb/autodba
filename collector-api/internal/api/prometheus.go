@@ -3,13 +3,16 @@ package api
 import (
 	"bytes"
 	"fmt"
+	"math"
 	"net/http"
 	"net/url"
 	"sort"
+	"strconv"
 
 	gogoproto "github.com/gogo/protobuf/proto"
 	"github.com/golang/snappy"
 	collector_proto "github.com/pganalyze/collector/output/pganalyze_collector"
+	"github.com/prometheus/prometheus/model/value"
 	"github.com/prometheus/prometheus/prompb"
 )
 
@@ -55,6 +58,276 @@ func (c *prometheusClient) RemoteWrite(data []prompb.TimeSeries) (*http.Response
 	req.Header.Set("X-Prometheus-Remote-Write-Version", "0.1.0")
 
 	return c.Do(req)
+}
+
+// fullSnapshotMetrics processes a FullSnapshot and generates Prometheus metrics, along with individual time-series tracking
+func fullSnapshotMetrics(snapshot *collector_proto.FullSnapshot, systemInfo SystemInfo) ([]prompb.TimeSeries, map[string]map[string]bool) {
+	var ts []prompb.TimeSeries
+	snapshotTimestamp := snapshot.CollectedAt.AsTime().UnixMilli()
+
+	// Track seen time-series for each type of metric
+	seenMetrics := map[string]map[string]bool{
+		"cpu":      make(map[string]bool),
+		"memory":   make(map[string]bool),
+		"db":       make(map[string]bool),
+		"query":    make(map[string]bool),
+		"relation": make(map[string]bool),
+		"index":    make(map[string]bool),
+	}
+
+	// Process system-level statistics
+	ts = append(ts, processSystemStats(snapshot, systemInfo, snapshotTimestamp, seenMetrics)...)
+
+	// Process database statistics
+	ts = append(ts, processDatabaseStats(snapshot, snapshotTimestamp, seenMetrics)...)
+
+	// Process query statistics
+	ts = append(ts, processQueryStats(snapshot, snapshotTimestamp, seenMetrics)...)
+
+	// Process relation and index statistics
+	ts = append(ts, processRelationAndIndexStats(snapshot, snapshotTimestamp, seenMetrics)...)
+
+	return ts, seenMetrics
+}
+
+// processSystemStats generates system-level metrics from the FullSnapshot and tracks seen metrics
+func processSystemStats(snapshot *collector_proto.FullSnapshot, systemInfo SystemInfo, timestamp int64, seenMetrics map[string]map[string]bool) []prompb.TimeSeries {
+	var ts []prompb.TimeSeries
+
+	// CPU statistics
+	if snapshot.System.CpuStatistics != nil {
+		for _, cpuStat := range snapshot.System.CpuStatistics {
+			metricKey := fmt.Sprintf("cpu_%d", cpuStat.CpuIdx)
+			seenMetrics["cpu"][metricKey] = true
+
+			ts = append(ts, prompb.TimeSeries{
+				Labels: []prompb.Label{
+					{Name: "__name__", Value: "cc_system_cpu_usage"},
+					{Name: "cpu_id", Value: strconv.Itoa(int(cpuStat.CpuIdx))},
+					{Name: "system_id", Value: systemInfo.SystemID},
+				},
+				Samples: []prompb.Sample{
+					{
+						Timestamp: timestamp,
+						Value:     cpuStat.UserPercent,
+					},
+				},
+			})
+		}
+	}
+
+	// Memory statistics
+	if snapshot.System.MemoryStatistic != nil {
+		seenMetrics["memory"]["system_memory"] = true
+
+		ts = append(ts, prompb.TimeSeries{
+			Labels: []prompb.Label{
+				{Name: "__name__", Value: "cc_system_memory_usage"},
+				{Name: "system_id", Value: systemInfo.SystemID},
+			},
+			Samples: []prompb.Sample{
+				{
+					Timestamp: timestamp,
+					Value:     float64(snapshot.System.MemoryStatistic.TotalBytes),
+				},
+			},
+		})
+	}
+
+	return ts
+}
+
+// processDatabaseStats generates metrics for each database in the FullSnapshot and tracks seen metrics
+func processDatabaseStats(snapshot *collector_proto.FullSnapshot, timestamp int64, seenMetrics map[string]map[string]bool) []prompb.TimeSeries {
+	var ts []prompb.TimeSeries
+
+	for _, dbStat := range snapshot.DatabaseStatictics {
+		dbName := snapshot.DatabaseReferences[dbStat.DatabaseIdx].Name
+
+		seenMetrics["db"][dbName] = true
+
+		// Transaction commit statistics
+		ts = append(ts, prompb.TimeSeries{
+			Labels: []prompb.Label{
+				{Name: "__name__", Value: "cc_db_xact_commit"},
+				{Name: "database", Value: dbName},
+			},
+			Samples: []prompb.Sample{
+				{
+					Timestamp: timestamp,
+					Value:     float64(dbStat.XactCommit),
+				},
+			},
+		})
+
+		// Transaction rollback statistics
+		ts = append(ts, prompb.TimeSeries{
+			Labels: []prompb.Label{
+				{Name: "__name__", Value: "cc_db_xact_rollback"},
+				{Name: "database", Value: dbName},
+			},
+			Samples: []prompb.Sample{
+				{
+					Timestamp: timestamp,
+					Value:     float64(dbStat.XactRollback),
+				},
+			},
+		})
+
+		// Frozen XID aGE size
+		ts = append(ts, prompb.TimeSeries{
+			Labels: []prompb.Label{
+				{Name: "__name__", Value: "cc_db_frozen_xid_age"},
+				{Name: "database", Value: dbName},
+			},
+			Samples: []prompb.Sample{
+				{
+					Timestamp: timestamp,
+					Value:     float64(dbStat.FrozenxidAge),
+				},
+			},
+		})
+	}
+
+	return ts
+}
+
+// processQueryStats generates metrics for each query in the FullSnapshot and tracks seen metrics
+func processQueryStats(snapshot *collector_proto.FullSnapshot, timestamp int64, seenMetrics map[string]map[string]bool) []prompb.TimeSeries {
+	var ts []prompb.TimeSeries
+
+	for _, queryStat := range snapshot.QueryStatistics {
+		query := snapshot.QueryInformations[queryStat.QueryIdx].GetNormalizedQuery()
+
+		seenMetrics["query"][query] = true
+
+		ts = append(ts, prompb.TimeSeries{
+			Labels: []prompb.Label{
+				{Name: "__name__", Value: "cc_query_calls"},
+				{Name: "query", Value: query},
+			},
+			Samples: []prompb.Sample{
+				{
+					Timestamp: timestamp,
+					Value:     float64(queryStat.Calls),
+				},
+			},
+		})
+
+		ts = append(ts, prompb.TimeSeries{
+			Labels: []prompb.Label{
+				{Name: "__name__", Value: "cc_query_total_time_seconds"},
+				{Name: "query", Value: query},
+			},
+			Samples: []prompb.Sample{
+				{
+					Timestamp: timestamp,
+					Value:     queryStat.TotalTime,
+				},
+			},
+		})
+	}
+
+	return ts
+}
+
+// processRelationAndIndexStats generates relation and index statistics and tracks seen metrics
+func processRelationAndIndexStats(snapshot *collector_proto.FullSnapshot, timestamp int64, seenMetrics map[string]map[string]bool) []prompb.TimeSeries {
+	var ts []prompb.TimeSeries
+
+	for _, relStat := range snapshot.RelationStatistics {
+		relationName := snapshot.RelationReferences[relStat.RelationIdx].RelationName
+
+		seenMetrics["relation"][relationName] = true
+
+		ts = append(ts, prompb.TimeSeries{
+			Labels: []prompb.Label{
+				{Name: "__name__", Value: "cc_relation_size_bytes"},
+				{Name: "relation", Value: relationName},
+			},
+			Samples: []prompb.Sample{
+				{
+					Timestamp: timestamp,
+					Value:     float64(relStat.SizeBytes),
+				},
+			},
+		})
+
+		ts = append(ts, prompb.TimeSeries{
+			Labels: []prompb.Label{
+				{Name: "__name__", Value: "cc_relation_seq_scan"},
+				{Name: "relation", Value: relationName},
+			},
+			Samples: []prompb.Sample{
+				{
+					Timestamp: timestamp,
+					Value:     float64(relStat.SeqScan),
+				},
+			},
+		})
+	}
+
+	for _, idxStat := range snapshot.IndexStatistics {
+		indexName := snapshot.IndexReferences[idxStat.IndexIdx].IndexName
+
+		seenMetrics["index"][indexName] = true
+
+		ts = append(ts, prompb.TimeSeries{
+			Labels: []prompb.Label{
+				{Name: "__name__", Value: "cc_index_size_bytes"},
+				{Name: "index", Value: indexName},
+			},
+			Samples: []prompb.Sample{
+				{
+					Timestamp: timestamp,
+					Value:     float64(idxStat.SizeBytes),
+				},
+			},
+		})
+
+		ts = append(ts, prompb.TimeSeries{
+			Labels: []prompb.Label{
+				{Name: "__name__", Value: "cc_index_scan_count"},
+				{Name: "index", Value: indexName},
+			},
+			Samples: []prompb.Sample{
+				{
+					Timestamp: timestamp,
+					Value:     float64(idxStat.IdxScan),
+				},
+			},
+		})
+	}
+
+	return ts
+}
+
+// createFullSnapshotStaleMarkers generates stale markers for time-series that were present in the previous snapshot but are missing in the current one
+func createFullSnapshotStaleMarkers(previousMetrics, currentMetrics map[string]map[string]bool, timestamp int64) []prompb.TimeSeries {
+	var staleMarkers []prompb.TimeSeries
+
+	for metricType, previousSeries := range previousMetrics {
+		for seriesKey := range previousSeries {
+			if !currentMetrics[metricType][seriesKey] {
+				// Create a stale marker with NaN value for the missing time-series
+				staleMarker := prompb.TimeSeries{
+					Labels: []prompb.Label{
+						{Name: "__name__", Value: metricType},
+						{Name: "series", Value: seriesKey},
+					},
+					Samples: []prompb.Sample{
+						{
+							Timestamp: timestamp,
+							Value:     math.Float64frombits(value.StaleNaN), // NaN
+						},
+					},
+				}
+				staleMarkers = append(staleMarkers, staleMarker)
+			}
+		}
+	}
+
+	return staleMarkers
 }
 
 // BackendKey uniquely identifies a backend session

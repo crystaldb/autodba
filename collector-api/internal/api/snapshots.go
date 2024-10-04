@@ -111,12 +111,71 @@ func SnapshotHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, "Snapshot successfully processed")
 }
 
-// Dummy function for handling the snapshot submission
+// Global variable to track the previous metrics for each system
+var previousMetrics = make(map[SystemInfo]map[string]map[string]bool)
+
+func init() {
+	// Initialize the previousMetrics map
+	previousMetrics = make(map[SystemInfo]map[string]map[string]bool)
+}
+
+// handleFullSnapshot processes a full snapshot, generates metrics, and sends them to Prometheus
 func handleFullSnapshot(cfg *config.Config, s3Location string, collectedAt int64, systemInfo SystemInfo) error {
-	// Here, implement your actual logic for processing the snapshot
-	// e.g., saving to local storage, uploading to S3, etc.
 	if cfg.Debug {
-		log.Printf("Processing full snapshot submission with s3_location: %s and collected_at: %d", s3Location, collectedAt)
+		log.Printf("Processing full snapshot with s3_location: %s and collected_at: %d", s3Location, collectedAt)
+	}
+
+	// Open the file at the given S3 location
+	f, err := os.Open(path.Join(s3Location))
+	if err != nil {
+		return fmt.Errorf("open file: %w", err)
+	}
+	defer f.Close()
+
+	// Decompress the zlib compressed snapshot
+	decompressor, err := zlib.NewReader(f)
+	if err != nil {
+		return fmt.Errorf("create zlib reader: %w", err)
+	}
+	defer decompressor.Close()
+
+	// Read all bytes from the decompressed file
+	pbBytes, err := io.ReadAll(decompressor)
+	if err != nil {
+		return fmt.Errorf("read full snapshot proto: %w", err)
+	}
+
+	// Unmarshal the bytes into a FullSnapshot protobuf message
+	var fullSnapshot collector_proto.FullSnapshot
+	if err := proto.Unmarshal(pbBytes, &fullSnapshot); err != nil {
+		return fmt.Errorf("unmarshal full snapshot: %w", err)
+	}
+
+	// Initialize a Prometheus client to send the metrics
+	promClient := prometheusClient{
+		Client:   http.DefaultClient,
+		endpoint: prometheusURL,
+	}
+
+	// Process the snapshot and extract relevant metrics and current time-series tracking
+	metrics, seenMetrics := fullSnapshotMetrics(&fullSnapshot, systemInfo)
+
+	// Generate stale markers for each type of metric that was seen in the previous snapshot but not in this one
+	staleMarkers := createFullSnapshotStaleMarkers(previousMetrics[systemInfo], seenMetrics, fullSnapshot.CollectedAt.AsTime().UnixMilli())
+
+	// Combine all metrics and stale markers
+	allMetrics := append(metrics, staleMarkers...)
+
+	// Send all the metrics to Prometheus using the Remote Write API
+	if err := sendRemoteWrite(promClient, allMetrics); err != nil {
+		return fmt.Errorf("send remote write: %w", err)
+	}
+
+	// Update the previousMetrics map with the current time-series for future comparisons
+	previousMetrics[systemInfo] = seenMetrics
+
+	if cfg.Debug {
+		log.Println("Full snapshot processed successfully!")
 	}
 	return nil
 }
