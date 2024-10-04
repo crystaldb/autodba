@@ -88,6 +88,15 @@ func createTimeSeries(systemInfo SystemInfo, metricName string, additionalLabels
 	}
 }
 
+// Helper function to create multiple time series for different metrics with shared labels
+func createMultipleTimeSeries(systemInfo SystemInfo, metrics map[string]float64, sharedLabels []prompb.Label, timestamp int64) []prompb.TimeSeries {
+	var ts []prompb.TimeSeries
+	for metricName, value := range metrics {
+		ts = append(ts, createTimeSeries(systemInfo, metricName, sharedLabels, value, timestamp))
+	}
+	return ts
+}
+
 // fullSnapshotMetrics processes a FullSnapshot and generates Prometheus metrics, along with individual time-series tracking
 func fullSnapshotMetrics(snapshot *collector_proto.FullSnapshot, systemInfo SystemInfo) ([]prompb.TimeSeries, map[string]map[string]bool) {
 	var ts []prompb.TimeSeries
@@ -150,23 +159,16 @@ func processDatabaseStats(snapshot *collector_proto.FullSnapshot, systemInfo Sys
 
 	for _, dbStat := range snapshot.DatabaseStatictics {
 		dbName := snapshot.DatabaseReferences[dbStat.DatabaseIdx].Name
-
 		seenMetrics["db"][dbName] = true
 
-		// Transaction commit statistics
-		ts = append(ts, createTimeSeries(systemInfo, "cc_db_xact_commit", []prompb.Label{
+		// Create multiple time-series for transaction commit, rollback, and frozen XID age
+		ts = append(ts, createMultipleTimeSeries(systemInfo, map[string]float64{
+			"cc_db_xact_commit":    float64(dbStat.XactCommit),
+			"cc_db_xact_rollback":  float64(dbStat.XactRollback),
+			"cc_db_frozen_xid_age": float64(dbStat.FrozenxidAge),
+		}, []prompb.Label{
 			{Name: "database", Value: dbName},
-		}, float64(dbStat.XactCommit), timestamp))
-
-		// Transaction rollback statistics
-		ts = append(ts, createTimeSeries(systemInfo, "cc_db_xact_rollback", []prompb.Label{
-			{Name: "database", Value: dbName},
-		}, float64(dbStat.XactRollback), timestamp))
-
-		// Frozen XID age
-		ts = append(ts, createTimeSeries(systemInfo, "cc_db_frozen_xid_age", []prompb.Label{
-			{Name: "database", Value: dbName},
-		}, float64(dbStat.FrozenxidAge), timestamp))
+		}, timestamp)...)
 	}
 
 	return ts
@@ -178,16 +180,15 @@ func processQueryStats(snapshot *collector_proto.FullSnapshot, systemInfo System
 
 	for _, queryStat := range snapshot.QueryStatistics {
 		query := snapshot.QueryInformations[queryStat.QueryIdx].GetNormalizedQuery()
-
 		seenMetrics["query"][query] = true
 
-		ts = append(ts, createTimeSeries(systemInfo, "cc_query_calls", []prompb.Label{
+		// Create multiple time-series for query calls and total time
+		ts = append(ts, createMultipleTimeSeries(systemInfo, map[string]float64{
+			"cc_query_calls":              float64(queryStat.Calls),
+			"cc_query_total_time_seconds": queryStat.TotalTime,
+		}, []prompb.Label{
 			{Name: "query", Value: query},
-		}, float64(queryStat.Calls), timestamp))
-
-		ts = append(ts, createTimeSeries(systemInfo, "cc_query_total_time_seconds", []prompb.Label{
-			{Name: "query", Value: query},
-		}, queryStat.TotalTime, timestamp))
+		}, timestamp)...)
 	}
 
 	return ts
@@ -199,30 +200,28 @@ func processRelationAndIndexStats(snapshot *collector_proto.FullSnapshot, system
 
 	for _, relStat := range snapshot.RelationStatistics {
 		relationName := snapshot.RelationReferences[relStat.RelationIdx].RelationName
-
 		seenMetrics["relation"][relationName] = true
 
-		ts = append(ts, createTimeSeries(systemInfo, "cc_relation_size_bytes", []prompb.Label{
+		// Create multiple time-series for relation size and sequential scan count
+		ts = append(ts, createMultipleTimeSeries(systemInfo, map[string]float64{
+			"cc_relation_size_bytes": float64(relStat.SizeBytes),
+			"cc_relation_seq_scan":   float64(relStat.SeqScan),
+		}, []prompb.Label{
 			{Name: "relation", Value: relationName},
-		}, float64(relStat.SizeBytes), timestamp))
-
-		ts = append(ts, createTimeSeries(systemInfo, "cc_relation_seq_scan", []prompb.Label{
-			{Name: "relation", Value: relationName},
-		}, float64(relStat.SeqScan), timestamp))
+		}, timestamp)...)
 	}
 
 	for _, idxStat := range snapshot.IndexStatistics {
 		indexName := snapshot.IndexReferences[idxStat.IndexIdx].IndexName
-
 		seenMetrics["index"][indexName] = true
 
-		ts = append(ts, createTimeSeries(systemInfo, "cc_index_size_bytes", []prompb.Label{
+		// Create multiple time-series for index size and scan count
+		ts = append(ts, createMultipleTimeSeries(systemInfo, map[string]float64{
+			"cc_index_size_bytes": float64(idxStat.SizeBytes),
+			"cc_index_scan_count": float64(idxStat.IdxScan),
+		}, []prompb.Label{
 			{Name: "index", Value: indexName},
-		}, float64(idxStat.SizeBytes), timestamp))
-
-		ts = append(ts, createTimeSeries(systemInfo, "cc_index_scan_count", []prompb.Label{
-			{Name: "index", Value: indexName},
-		}, float64(idxStat.IdxScan), timestamp))
+		}, timestamp)...)
 	}
 
 	return ts
