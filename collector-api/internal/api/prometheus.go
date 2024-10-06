@@ -137,9 +137,17 @@ func processSystemStats(snapshot *collector_proto.FullSnapshot, systemInfo Syste
 			metricKey := fmt.Sprintf("cpu_%d", cpuStat.CpuIdx)
 			seenMetrics["cpu"][metricKey] = true
 
-			ts = append(ts, createTimeSeries(systemInfo, "cc_system_cpu_usage", []prompb.Label{
+			// Create multiple time-series for CPU usage (user, system, idle, etc.)
+			ts = append(ts, createMultipleTimeSeries(systemInfo, map[string]float64{
+				"cc_system_cpu_user_percent":   cpuStat.UserPercent,
+				"cc_system_cpu_system_percent": cpuStat.SystemPercent,
+				"cc_system_cpu_idle_percent":   cpuStat.IdlePercent,
+				"cc_system_cpu_nice_percent":   cpuStat.NicePercent,
+				"cc_system_cpu_iowait_percent": cpuStat.IowaitPercent,
+				"cc_system_cpu_irq_percent":    cpuStat.IrqPercent,
+			}, []prompb.Label{
 				{Name: "cpu_id", Value: strconv.Itoa(int(cpuStat.CpuIdx))},
-			}, cpuStat.UserPercent, timestamp))
+			}, timestamp)...)
 		}
 	}
 
@@ -147,7 +155,60 @@ func processSystemStats(snapshot *collector_proto.FullSnapshot, systemInfo Syste
 	if snapshot.System.MemoryStatistic != nil {
 		seenMetrics["memory"]["system_memory"] = true
 
-		ts = append(ts, createTimeSeries(systemInfo, "cc_system_memory_usage", nil, float64(snapshot.System.MemoryStatistic.TotalBytes), timestamp))
+		// Create multiple time-series for memory usage
+		ts = append(ts, createMultipleTimeSeries(systemInfo, map[string]float64{
+			"cc_system_memory_total_bytes":           float64(snapshot.System.MemoryStatistic.TotalBytes),
+			"cc_system_memory_free_bytes":            float64(snapshot.System.MemoryStatistic.FreeBytes),
+			"cc_system_memory_cached_bytes":          float64(snapshot.System.MemoryStatistic.CachedBytes),
+			"cc_system_memory_buffers_bytes":         float64(snapshot.System.MemoryStatistic.BuffersBytes),
+			"cc_system_memory_dirty_bytes":           float64(snapshot.System.MemoryStatistic.DirtyBytes),
+			"cc_system_memory_writeback_bytes":       float64(snapshot.System.MemoryStatistic.WritebackBytes),
+			"cc_system_memory_slab_bytes":            float64(snapshot.System.MemoryStatistic.SlabBytes),
+			"cc_system_memory_mapped_bytes":          float64(snapshot.System.MemoryStatistic.MappedBytes),
+			"cc_system_memory_page_tables_bytes":     float64(snapshot.System.MemoryStatistic.PageTablesBytes),
+			"cc_system_memory_active_bytes":          float64(snapshot.System.MemoryStatistic.ActiveBytes),
+			"cc_system_memory_inactive_bytes":        float64(snapshot.System.MemoryStatistic.InactiveBytes),
+			"cc_system_memory_swap_used_bytes":       float64(snapshot.System.MemoryStatistic.SwapUsedBytes),
+			"cc_system_memory_swap_total_bytes":      float64(snapshot.System.MemoryStatistic.SwapTotalBytes),
+			"cc_system_memory_huge_pages_size_bytes": float64(snapshot.System.MemoryStatistic.HugePagesSizeBytes),
+		}, nil, timestamp)...)
+	}
+
+	// Disk statistics
+	if snapshot.System.DiskStatistics != nil {
+		for _, diskStat := range snapshot.System.DiskStatistics {
+			metricKey := fmt.Sprintf("disk_%d", diskStat.DiskIdx)
+			seenMetrics["disk"][metricKey] = true
+
+			// Create multiple time-series for disk I/O statistics
+			ts = append(ts, createMultipleTimeSeries(systemInfo, map[string]float64{
+				"cc_system_disk_read_ops_per_second":    diskStat.ReadOperationsPerSecond,
+				"cc_system_disk_write_ops_per_second":   diskStat.WriteOperationsPerSecond,
+				"cc_system_disk_read_bytes_per_second":  diskStat.BytesReadPerSecond,
+				"cc_system_disk_write_bytes_per_second": diskStat.BytesWrittenPerSecond,
+				"cc_system_disk_avg_read_latency":       diskStat.AvgReadLatency,
+				"cc_system_disk_avg_write_latency":      diskStat.AvgWriteLatency,
+				"cc_system_disk_utilization_percent":    diskStat.UtilizationPercent,
+			}, []prompb.Label{
+				{Name: "disk_idx", Value: strconv.Itoa(int(diskStat.DiskIdx))},
+			}, timestamp)...)
+		}
+	}
+
+	// Network statistics
+	if snapshot.System.NetworkStatistics != nil {
+		for _, netStat := range snapshot.System.NetworkStatistics {
+			metricKey := fmt.Sprintf("network_%d", netStat.NetworkIdx)
+			seenMetrics["network"][metricKey] = true
+
+			// Create multiple time-series for network I/O statistics
+			ts = append(ts, createMultipleTimeSeries(systemInfo, map[string]float64{
+				"cc_system_network_receive_bytes_per_second":  float64(netStat.ReceiveThroughputBytesPerSecond),
+				"cc_system_network_transmit_bytes_per_second": float64(netStat.TransmitThroughputBytesPerSecond),
+			}, []prompb.Label{
+				{Name: "interface_name", Value: snapshot.System.NetworkReferences[netStat.NetworkIdx].InterfaceName},
+			}, timestamp)...)
+		}
 	}
 
 	return ts
