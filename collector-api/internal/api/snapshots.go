@@ -123,36 +123,15 @@ func handleFullSnapshot(cfg *config.Config, s3Location string, collectedAt int64
 		log.Printf("Processing full snapshot with s3_location: %s and collected_at: %d", s3Location, collectedAt)
 	}
 
-	// Open the file at the given S3 location
-	f, err := os.Open(path.Join(s3Location))
+	pbBytes, err := readAndDecompressSnapshot(s3Location)
 	if err != nil {
-		return fmt.Errorf("open file: %w", err)
-	}
-	defer f.Close()
-
-	// Decompress the zlib compressed snapshot
-	decompressor, err := zlib.NewReader(f)
-	if err != nil {
-		return fmt.Errorf("create zlib reader: %w", err)
-	}
-	defer decompressor.Close()
-
-	// Read all bytes from the decompressed file
-	pbBytes, err := io.ReadAll(decompressor)
-	if err != nil {
-		return fmt.Errorf("read full snapshot proto: %w", err)
+		return fmt.Errorf("read and decompress snapshot: %w", err)
 	}
 
 	// Unmarshal the bytes into a FullSnapshot protobuf message
 	var fullSnapshot collector_proto.FullSnapshot
 	if err := proto.Unmarshal(pbBytes, &fullSnapshot); err != nil {
 		return fmt.Errorf("unmarshal full snapshot: %w", err)
-	}
-
-	// Initialize a Prometheus client to send the metrics
-	promClient := prometheusClient{
-		Client:   http.DefaultClient,
-		endpoint: prometheusURL,
 	}
 
 	// Process the snapshot and extract relevant metrics and current time-series tracking
@@ -163,6 +142,12 @@ func handleFullSnapshot(cfg *config.Config, s3Location string, collectedAt int64
 
 	// Combine all metrics and stale markers
 	allMetrics := append(metrics, staleMarkers...)
+
+	// Initialize a Prometheus client to send the metrics
+	promClient := prometheusClient{
+		Client:   http.DefaultClient,
+		endpoint: prometheusURL,
+	}
 
 	// Send all the metrics to Prometheus using the Remote Write API
 	if err := sendRemoteWrite(promClient, allMetrics); err != nil {
@@ -313,6 +298,30 @@ func init() {
 	previousBackends = make(map[SystemInfo]map[BackendKey]bool)
 }
 
+func readAndDecompressSnapshot(s3Location string) ([]byte, error) {
+	// Open the file at the given S3 location
+	f, err := os.Open(path.Join(s3Location))
+	if err != nil {
+		return nil, fmt.Errorf("open file: %w", err)
+	}
+	defer f.Close()
+
+	// Decompress the zlib compressed snapshot
+	decompressor, err := zlib.NewReader(f)
+	if err != nil {
+		return nil, fmt.Errorf("create zlib reader: %w", err)
+	}
+	defer decompressor.Close()
+
+	// Read all bytes from the decompressed file
+	pbBytes, err := io.ReadAll(decompressor)
+	if err != nil {
+		return nil, fmt.Errorf("read compact/full snapshot proto: %w", err)
+	}
+
+	return pbBytes, nil
+}
+
 // handleCompactSnapshot processes a compact snapshot, generates metrics and stale markers,
 // and sends them to Prometheus
 func handleCompactSnapshot(cfg *config.Config, s3Location string, collectedAt int64, systemInfo SystemInfo) error {
@@ -320,21 +329,9 @@ func handleCompactSnapshot(cfg *config.Config, s3Location string, collectedAt in
 		log.Printf("Processing compact snapshot with s3_location: %s and collected_at: %d", s3Location, collectedAt)
 	}
 
-	f, err := os.Open(path.Join(s3Location))
+	pbBytes, err := readAndDecompressSnapshot(s3Location)
 	if err != nil {
-		return fmt.Errorf("open file: %w", err)
-	}
-	defer f.Close()
-
-	decompressor, err := zlib.NewReader(f)
-	if err != nil {
-		return fmt.Errorf("create zlib reader: %w", err)
-	}
-	defer decompressor.Close()
-
-	pbBytes, err := io.ReadAll(decompressor)
-	if err != nil {
-		return fmt.Errorf("read compact snapshot proto: %w", err)
+		return fmt.Errorf("read and decompress snapshot: %w", err)
 	}
 
 	var compactSnapshot collector_proto.CompactSnapshot
