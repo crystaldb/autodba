@@ -3,6 +3,7 @@ package api
 import (
 	"bytes"
 	"fmt"
+	"log"
 	"math"
 	"net/http"
 	"net/url"
@@ -131,6 +132,12 @@ func fullSnapshotMetrics(snapshot *collector_proto.FullSnapshot, systemInfo Syst
 func processSystemStats(snapshot *collector_proto.FullSnapshot, systemInfo SystemInfo, timestamp int64, seenMetrics map[string]map[string]bool) []prompb.TimeSeries {
 	var ts []prompb.TimeSeries
 
+	// Check if System field is nil
+	if snapshot.System == nil {
+		log.Println("Warning: snapshot.System is nil")
+		return ts
+	}
+
 	// CPU statistics
 	if snapshot.System.CpuStatistics != nil {
 		for _, cpuStat := range snapshot.System.CpuStatistics {
@@ -149,13 +156,15 @@ func processSystemStats(snapshot *collector_proto.FullSnapshot, systemInfo Syste
 				{Name: "cpu_id", Value: strconv.Itoa(int(cpuStat.CpuIdx))},
 			}, timestamp)...)
 		}
+	} else {
+		log.Println("Warning: snapshot.System.CpuStatistics is nil")
 	}
 
 	// Memory statistics
 	if snapshot.System.MemoryStatistic != nil {
 		seenMetrics["memory"]["system_memory"] = true
 
-		// Create multiple time-series for memory usage
+		// Create multiple time-series for all memory statistics
 		ts = append(ts, createMultipleTimeSeries(systemInfo, map[string]float64{
 			"cc_system_memory_total_bytes":           float64(snapshot.System.MemoryStatistic.TotalBytes),
 			"cc_system_memory_free_bytes":            float64(snapshot.System.MemoryStatistic.FreeBytes),
@@ -172,9 +181,56 @@ func processSystemStats(snapshot *collector_proto.FullSnapshot, systemInfo Syste
 			"cc_system_memory_swap_total_bytes":      float64(snapshot.System.MemoryStatistic.SwapTotalBytes),
 			"cc_system_memory_huge_pages_size_bytes": float64(snapshot.System.MemoryStatistic.HugePagesSizeBytes),
 		}, nil, timestamp)...)
+	} else {
+		log.Println("Warning: snapshot.System.MemoryStatistic is nil")
 	}
 
-	// Disk statistics
+	// Backend count statistics
+	if snapshot.BackendCountStatistics != nil {
+		for _, backendStat := range snapshot.BackendCountStatistics {
+			// Create labels for backend type and state
+			labels := []prompb.Label{
+				{Name: "backend_type", Value: backendTypeToString(backendStat.BackendType)},
+			}
+
+			if backendStat.HasRoleIdx {
+				if snapshot.RoleReferences != nil && len(snapshot.RoleReferences) > int(backendStat.RoleIdx) {
+					roleName := snapshot.RoleReferences[backendStat.RoleIdx].Name
+					labels = append(labels, prompb.Label{Name: "role", Value: roleName})
+				} else {
+					log.Println("Warning: snapshot.RoleReferences is nil or index out of range")
+				}
+			}
+
+			if backendStat.HasDatabaseIdx {
+				if snapshot.DatabaseReferences != nil && len(snapshot.DatabaseReferences) > int(backendStat.DatabaseIdx) {
+					databaseName := snapshot.DatabaseReferences[backendStat.DatabaseIdx].Name
+					labels = append(labels, prompb.Label{Name: "database", Value: databaseName})
+				} else {
+					log.Println("Warning: snapshot.DatabaseReferences is nil or index out of range")
+				}
+			}
+
+			if backendStat.State != collector_proto.BackendCountStatistic_UNKNOWN_STATE {
+				labels = append(labels, prompb.Label{Name: "state", Value: backendStateToString(backendStat.State)})
+			}
+
+			if backendStat.WaitingForLock {
+				labels = append(labels, prompb.Label{Name: "waiting_for_lock", Value: "true"})
+			}
+
+			// Add to seen metrics
+			metricKey := fmt.Sprintf("backend_type_%d_state_%d", backendStat.BackendType, backendStat.State)
+			seenMetrics["backend"][metricKey] = true
+
+			// Create a time-series for backend count
+			ts = append(ts, createTimeSeries(systemInfo, "cc_backend_count", labels, float64(backendStat.Count), timestamp))
+		}
+	} else {
+		log.Println("Warning: snapshot.BackendCountStatistics is nil")
+	}
+
+	// Disk statistics (same as before, processing all fields)
 	if snapshot.System.DiskStatistics != nil {
 		for _, diskStat := range snapshot.System.DiskStatistics {
 			metricKey := fmt.Sprintf("disk_%d", diskStat.DiskIdx)
@@ -195,7 +251,7 @@ func processSystemStats(snapshot *collector_proto.FullSnapshot, systemInfo Syste
 		}
 	}
 
-	// Network statistics
+	// Network statistics (same as before, processing all fields)
 	if snapshot.System.NetworkStatistics != nil {
 		for _, netStat := range snapshot.System.NetworkStatistics {
 			metricKey := fmt.Sprintf("network_%d", netStat.NetworkIdx)
@@ -212,6 +268,48 @@ func processSystemStats(snapshot *collector_proto.FullSnapshot, systemInfo Syste
 	}
 
 	return ts
+}
+
+// Helper function to convert BackendType enum to string
+func backendTypeToString(backendType collector_proto.BackendCountStatistic_BackendType) string {
+	switch backendType {
+	case collector_proto.BackendCountStatistic_CLIENT_BACKEND:
+		return "client_backend"
+	case collector_proto.BackendCountStatistic_AUTOVACUUM_LAUNCHER:
+		return "autovacuum_launcher"
+	case collector_proto.BackendCountStatistic_AUTOVACUUM_WORKER:
+		return "autovacuum_worker"
+	case collector_proto.BackendCountStatistic_BACKGROUND_WRITER:
+		return "background_writer"
+	case collector_proto.BackendCountStatistic_CHECKPOINTER:
+		return "checkpointer"
+	case collector_proto.BackendCountStatistic_WALWRITER:
+		return "walwriter"
+	// Add other cases as necessary
+	default:
+		return "unknown"
+	}
+}
+
+// Helper function to convert BackendState enum to string
+func backendStateToString(state collector_proto.BackendCountStatistic_BackendState) string {
+	switch state {
+	case collector_proto.BackendCountStatistic_ACTIVE:
+		return "active"
+	case collector_proto.BackendCountStatistic_IDLE:
+		return "idle"
+	case collector_proto.BackendCountStatistic_IDLE_IN_TRANSACTION:
+		return "idle_in_transaction"
+	case collector_proto.BackendCountStatistic_IDLE_IN_TRANSACTION_ABORTED:
+		return "idle_in_transaction_aborted"
+	case collector_proto.BackendCountStatistic_FASTPATH_FUNCTION_CALL:
+		return "fastpath_function_call"
+	case collector_proto.BackendCountStatistic_DISABLED:
+		return "disabled"
+	// Add other states as necessary
+	default:
+		return "unknown_state"
+	}
 }
 
 // processDatabaseStats generates metrics for each database in the FullSnapshot and tracks seen metrics
