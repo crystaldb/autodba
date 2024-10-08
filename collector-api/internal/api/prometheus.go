@@ -111,6 +111,9 @@ func fullSnapshotMetrics(snapshot *collector_proto.FullSnapshot, systemInfo Syst
 		"query":    make(map[string]bool),
 		"relation": make(map[string]bool),
 		"index":    make(map[string]bool),
+		"backend":  make(map[string]bool),
+		"disk":     make(map[string]bool),
+		"network":  make(map[string]bool),
 	}
 
 	// Process system-level statistics
