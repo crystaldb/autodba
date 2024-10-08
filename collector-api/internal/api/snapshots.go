@@ -117,6 +117,36 @@ func init() {
 	previousMetrics = make(map[SystemInfo]map[string]map[string]bool)
 }
 
+func handleSnapshot(cfg *config.Config, s3Location string, collectedAt int64, systemInfo SystemInfo, processFunc func(string, SystemInfo) ([]prompb.TimeSeries, error)) error {
+	if cfg.Debug {
+		log.Printf("Processing snapshot with s3_location: %s and collected_at: %d", s3Location, collectedAt)
+	}
+
+	allMetrics, err := processFunc(s3Location, systemInfo)
+	if err != nil {
+		return fmt.Errorf("process snapshot data: %w", err)
+	}
+
+	promClient := prometheusClient{
+		Client:   http.DefaultClient,
+		endpoint: prometheusURL,
+	}
+
+	if err := sendRemoteWrite(promClient, allMetrics); err != nil {
+		return fmt.Errorf("send remote write: %w", err)
+	}
+
+	if cfg.Debug {
+		log.Printf("Snapshot processed successfully!")
+	}
+	return nil
+}
+
+// handleFullSnapshot processes a full snapshot, generates metrics, and sends them to Prometheus
+func handleFullSnapshot(cfg *config.Config, s3Location string, collectedAt int64, systemInfo SystemInfo) error {
+	return handleSnapshot(cfg, s3Location, collectedAt, systemInfo, processFullSnapshotData)
+}
+
 func processFullSnapshotData(s3Location string, systemInfo SystemInfo) ([]prompb.TimeSeries, error) {
 	pbBytes, err := readAndDecompressSnapshot(s3Location)
 	if err != nil {
@@ -142,34 +172,6 @@ func processFullSnapshotData(s3Location string, systemInfo SystemInfo) ([]prompb
 	previousMetrics[systemInfo] = seenMetrics
 
 	return allMetrics, nil
-}
-
-// handleFullSnapshot processes a full snapshot, generates metrics, and sends them to Prometheus
-func handleFullSnapshot(cfg *config.Config, s3Location string, collectedAt int64, systemInfo SystemInfo) error {
-	if cfg.Debug {
-		log.Printf("Processing full snapshot with s3_location: %s and collected_at: %d", s3Location, collectedAt)
-	}
-
-	allMetrics, err := processFullSnapshotData(s3Location, systemInfo)
-	if err != nil {
-		return fmt.Errorf("process full snapshot data: %w", err)
-	}
-
-	// Initialize a Prometheus client to send the metrics
-	promClient := prometheusClient{
-		Client:   http.DefaultClient,
-		endpoint: prometheusURL,
-	}
-
-	// Send all the metrics to Prometheus using the Remote Write API
-	if err := sendRemoteWrite(promClient, allMetrics); err != nil {
-		return fmt.Errorf("send remote write: %w", err)
-	}
-
-	if cfg.Debug {
-		log.Println("Full snapshot processed successfully!")
-	}
-	return nil
 }
 
 func CompactSnapshotHandler(w http.ResponseWriter, r *http.Request) {
@@ -331,6 +333,12 @@ func readAndDecompressSnapshot(s3Location string) ([]byte, error) {
 	return pbBytes, nil
 }
 
+// handleCompactSnapshot processes a compact snapshot, generates metrics and stale markers,
+// and sends them to Prometheus
+func handleCompactSnapshot(cfg *config.Config, s3Location string, collectedAt int64, systemInfo SystemInfo) error {
+	return handleSnapshot(cfg, s3Location, collectedAt, systemInfo, processCompactSnapshotData)
+}
+
 func processCompactSnapshotData(s3Location string, systemInfo SystemInfo) ([]prompb.TimeSeries, error) {
 	pbBytes, err := readAndDecompressSnapshot(s3Location)
 	if err != nil {
@@ -355,34 +363,6 @@ func processCompactSnapshotData(s3Location string, systemInfo SystemInfo) ([]pro
 	previousBackends[systemInfo] = currentBackends
 
 	return allMetrics, nil
-}
-
-// handleCompactSnapshot processes a compact snapshot, generates metrics and stale markers,
-// and sends them to Prometheus
-func handleCompactSnapshot(cfg *config.Config, s3Location string, collectedAt int64, systemInfo SystemInfo) error {
-	if cfg.Debug {
-		log.Printf("Processing compact snapshot with s3_location: %s and collected_at: %d", s3Location, collectedAt)
-	}
-
-	allMetrics, err := processCompactSnapshotData(s3Location, systemInfo)
-	if err != nil {
-		return fmt.Errorf("process compact snapshot data: %w", err)
-	}
-
-	promClient := prometheusClient{
-		Client:   http.DefaultClient,
-		endpoint: prometheusURL,
-	}
-
-	// Send all metrics to Prometheus
-	if err := sendRemoteWrite(promClient, allMetrics); err != nil {
-		return fmt.Errorf("send remote write: %w", err)
-	}
-
-	if cfg.Debug {
-		log.Println("Compact snapshot processed successfully!")
-	}
-	return nil
 }
 
 func sendRemoteWrite(client prometheusClient, promPB []prompb.TimeSeries) error {
