@@ -163,7 +163,7 @@ func processFullSnapshotData(s3Location string, systemInfo SystemInfo) ([]prompb
 	metrics, seenMetrics := fullSnapshotMetrics(&fullSnapshot, systemInfo)
 
 	// Generate stale markers for each type of metric that was seen in the previous snapshot but not in this one
-	staleMarkers := createFullSnapshotStaleMarkers(previousMetrics[systemInfo], seenMetrics, fullSnapshot.CollectedAt.AsTime().UnixMilli())
+	staleMarkers := createFullSnapshotStaleMarkers(previousMetrics[systemInfo], seenMetrics, fullSnapshot.CollectedAt.AsTime().UnixMilli(), systemInfo)
 
 	// Combine all metrics and stale markers
 	allMetrics := append(metrics, staleMarkers...)

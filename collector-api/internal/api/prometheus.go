@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"sort"
 	"strconv"
+	"strings"
 
 	gogoproto "github.com/gogo/protobuf/proto"
 	"github.com/golang/snappy"
@@ -75,8 +76,19 @@ func systemLabels(systemInfo SystemInfo) []prompb.Label {
 
 // Helper function to create a time series
 func createTimeSeries(systemInfo SystemInfo, metricName string, additionalLabels []prompb.Label, value float64, timestamp int64) prompb.TimeSeries {
-	labels := append(systemLabels(systemInfo), additionalLabels...)
-	labels = append(labels, prompb.Label{Name: "__name__", Value: metricName})
+	labels := []prompb.Label{
+		{Name: "__name__", Value: metricName},
+	}
+
+	labels = append(labels, additionalLabels...)
+
+	// Add system info labels
+	labels = append(labels, systemLabels(systemInfo)...)
+
+	// Sort labels by name
+	sort.Slice(labels, func(i, j int) bool {
+		return labels[i].Name < labels[j].Name
+	})
 
 	return prompb.TimeSeries{
 		Labels: labels,
@@ -144,7 +156,7 @@ func processSystemStats(snapshot *collector_proto.FullSnapshot, systemInfo Syste
 	// CPU statistics
 	if snapshot.System.CpuStatistics != nil {
 		for _, cpuStat := range snapshot.System.CpuStatistics {
-			metricKey := fmt.Sprintf("cpu_%d", cpuStat.CpuIdx)
+			metricKey := fmt.Sprintf("cpu_id=%d", cpuStat.CpuIdx)
 			seenMetrics["cpu"][metricKey] = true
 
 			// Create multiple time-series for CPU usage (user, system, idle, etc.)
@@ -214,16 +226,14 @@ func processSystemStats(snapshot *collector_proto.FullSnapshot, systemInfo Syste
 				}
 			}
 
-			if backendStat.State != collector_proto.BackendCountStatistic_UNKNOWN_STATE {
-				labels = append(labels, prompb.Label{Name: "state", Value: backendStateToString(backendStat.State)})
-			}
+			labels = append(labels, prompb.Label{Name: "state", Value: backendStateToString(backendStat.State)})
 
 			if backendStat.WaitingForLock {
 				labels = append(labels, prompb.Label{Name: "waiting_for_lock", Value: "true"})
 			}
 
 			// Add to seen metrics
-			metricKey := fmt.Sprintf("backend_type_%d_state_%d", backendStat.BackendType, backendStat.State)
+			metricKey := fmt.Sprintf("backend_type=%d,state=%d", backendStat.BackendType, backendStat.State)
 			seenMetrics["backend"][metricKey] = true
 
 			// Create a time-series for backend count
@@ -236,7 +246,7 @@ func processSystemStats(snapshot *collector_proto.FullSnapshot, systemInfo Syste
 	// Disk statistics (same as before, processing all fields)
 	if snapshot.System.DiskStatistics != nil {
 		for _, diskStat := range snapshot.System.DiskStatistics {
-			metricKey := fmt.Sprintf("disk_%d", diskStat.DiskIdx)
+			metricKey := fmt.Sprintf("disk_idx=%d", diskStat.DiskIdx)
 			seenMetrics["disk"][metricKey] = true
 
 			// Create multiple time-series for disk I/O statistics
@@ -257,7 +267,7 @@ func processSystemStats(snapshot *collector_proto.FullSnapshot, systemInfo Syste
 	// Network statistics (same as before, processing all fields)
 	if snapshot.System.NetworkStatistics != nil {
 		for _, netStat := range snapshot.System.NetworkStatistics {
-			metricKey := fmt.Sprintf("network_%d", netStat.NetworkIdx)
+			metricKey := fmt.Sprintf("interface_name=%d", netStat.NetworkIdx)
 			seenMetrics["network"][metricKey] = true
 
 			// Create multiple time-series for network I/O statistics
@@ -321,7 +331,8 @@ func processDatabaseStats(snapshot *collector_proto.FullSnapshot, systemInfo Sys
 
 	for _, dbStat := range snapshot.DatabaseStatictics {
 		dbName := snapshot.DatabaseReferences[dbStat.DatabaseIdx].Name
-		seenMetrics["db"][dbName] = true
+		metricKey := fmt.Sprintf("database=%s", dbName)
+		seenMetrics["db"][metricKey] = true
 
 		// Create multiple time-series for transaction commit, rollback, and frozen XID age
 		ts = append(ts, createMultipleTimeSeries(systemInfo, map[string]float64{
@@ -342,7 +353,8 @@ func processQueryStats(snapshot *collector_proto.FullSnapshot, systemInfo System
 
 	for _, queryStat := range snapshot.QueryStatistics {
 		query := snapshot.QueryInformations[queryStat.QueryIdx].GetNormalizedQuery()
-		seenMetrics["query"][query] = true
+		metricKey := fmt.Sprintf("query=%s", query)
+		seenMetrics["query"][metricKey] = true
 
 		// Create multiple time-series for query calls and total time
 		ts = append(ts, createMultipleTimeSeries(systemInfo, map[string]float64{
@@ -362,7 +374,8 @@ func processRelationAndIndexStats(snapshot *collector_proto.FullSnapshot, system
 
 	for _, relStat := range snapshot.RelationStatistics {
 		relationName := snapshot.RelationReferences[relStat.RelationIdx].RelationName
-		seenMetrics["relation"][relationName] = true
+		metricKey := fmt.Sprintf("relation=%s", relationName)
+		seenMetrics["relation"][metricKey] = true
 
 		// Create multiple time-series for relation size and sequential scan count
 		ts = append(ts, createMultipleTimeSeries(systemInfo, map[string]float64{
@@ -375,7 +388,8 @@ func processRelationAndIndexStats(snapshot *collector_proto.FullSnapshot, system
 
 	for _, idxStat := range snapshot.IndexStatistics {
 		indexName := snapshot.IndexReferences[idxStat.IndexIdx].IndexName
-		seenMetrics["index"][indexName] = true
+		metricKey := fmt.Sprintf("index=%s", indexName)
+		seenMetrics["index"][metricKey] = true
 
 		// Create multiple time-series for index size and scan count
 		ts = append(ts, createMultipleTimeSeries(systemInfo, map[string]float64{
@@ -390,31 +404,48 @@ func processRelationAndIndexStats(snapshot *collector_proto.FullSnapshot, system
 }
 
 // createFullSnapshotStaleMarkers generates stale markers for time-series that were present in the previous snapshot but are missing in the current one
-func createFullSnapshotStaleMarkers(previousMetrics, currentMetrics map[string]map[string]bool, timestamp int64) []prompb.TimeSeries {
+func createFullSnapshotStaleMarkers(prevMetrics, currentMetrics map[string]map[string]bool, timestamp int64, systemInfo SystemInfo) []prompb.TimeSeries {
 	var staleMarkers []prompb.TimeSeries
 
-	for metricType, previousSeries := range previousMetrics {
-		for seriesKey := range previousSeries {
-			if !currentMetrics[metricType][seriesKey] {
-				// Create a stale marker with NaN value for the missing time-series
-				staleMarker := prompb.TimeSeries{
-					Labels: []prompb.Label{
-						{Name: "__name__", Value: metricType},
-						{Name: "series", Value: seriesKey},
-					},
+	for metricName, prevLabels := range prevMetrics {
+		for labelSet := range prevLabels {
+			if _, exists := currentMetrics[metricName][labelSet]; !exists {
+				// This metric + label combination existed in the previous snapshot but not in the current one
+				labels := createLabelsForFullSnapshot(metricName, labelSet, systemInfo)
+
+				staleMarkers = append(staleMarkers, prompb.TimeSeries{
+					Labels: labels,
 					Samples: []prompb.Sample{
 						{
 							Timestamp: timestamp,
 							Value:     math.Float64frombits(value.StaleNaN), // NaN
 						},
 					},
-				}
-				staleMarkers = append(staleMarkers, staleMarker)
+				})
 			}
 		}
 	}
 
 	return staleMarkers
+}
+
+func createLabelsForFullSnapshot(metricName, labelSet string, systemInfo SystemInfo) []prompb.Label {
+	labels := []prompb.Label{
+		{Name: "__name__", Value: metricName},
+	}
+
+	// Add the labels from the labelSet
+	for _, label := range strings.Split(labelSet, ",") {
+		parts := strings.SplitN(label, "=", 2)
+		if len(parts) == 2 {
+			labels = append(labels, prompb.Label{Name: parts[0], Value: parts[1]})
+		}
+	}
+
+	// Add system info labels
+	labels = append(labels, systemLabels(systemInfo)...)
+
+	return labels
 }
 
 // BackendKey uniquely identifies a backend session

@@ -13,22 +13,27 @@ func TestProcessFullSnapshotData(t *testing.T) {
 	testCases := []struct {
 		name     string
 		filename string
+		systemID string
 	}{
 		{
 			name:     "RDS Full Snapshot",
 			filename: "test_data/full-snapshot-rds-1.binpb",
+			systemID: "rds-instance-100",
 		},
 		{
 			name:     "Aurora Full Snapshot",
 			filename: "test_data/full-snapshot-aurora-1.binpb",
+			systemID: "aurora-instance-100",
 		},
 		{
 			name:     "RDS Full Snapshot",
 			filename: "test_data/full-snapshot-rds-2.binpb",
+			systemID: "rds-instance-100",
 		},
 		{
 			name:     "Aurora Full Snapshot",
 			filename: "test_data/full-snapshot-aurora-2.binpb",
+			systemID: "aurora-instance-100",
 		},
 	}
 
@@ -36,7 +41,7 @@ func TestProcessFullSnapshotData(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Create a mock SystemInfo
 			systemInfo := SystemInfo{
-				SystemID:    "test-system",
+				SystemID:    tc.systemID,
 				SystemScope: "test-scope",
 				SystemType:  "amazon_rds",
 			}
