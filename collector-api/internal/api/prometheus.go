@@ -26,6 +26,8 @@ var (
 	}
 )
 
+const Unknown = "_unknown_"
+
 type prometheusClient struct {
 	*http.Client
 	endpoint url.URL
@@ -208,18 +210,20 @@ func processSystemStats(snapshot *collector_proto.FullSnapshot, systemInfo Syste
 				{Name: "backend_type", Value: backendTypeToString(backendStat.BackendType)},
 			}
 
+			roleName := Unknown
 			if backendStat.HasRoleIdx {
 				if snapshot.RoleReferences != nil && len(snapshot.RoleReferences) > int(backendStat.RoleIdx) {
-					roleName := snapshot.RoleReferences[backendStat.RoleIdx].Name
+					roleName = snapshot.RoleReferences[backendStat.RoleIdx].Name
 					labels = append(labels, prompb.Label{Name: "role", Value: roleName})
 				} else {
 					log.Println("Warning: snapshot.RoleReferences is nil or index out of range")
 				}
 			}
 
+			databaseName := Unknown
 			if backendStat.HasDatabaseIdx {
 				if snapshot.DatabaseReferences != nil && len(snapshot.DatabaseReferences) > int(backendStat.DatabaseIdx) {
-					databaseName := snapshot.DatabaseReferences[backendStat.DatabaseIdx].Name
+					databaseName = snapshot.DatabaseReferences[backendStat.DatabaseIdx].Name
 					labels = append(labels, prompb.Label{Name: "database", Value: databaseName})
 				} else {
 					log.Println("Warning: snapshot.DatabaseReferences is nil or index out of range")
@@ -233,7 +237,7 @@ func processSystemStats(snapshot *collector_proto.FullSnapshot, systemInfo Syste
 			}
 
 			// Add to seen metrics
-			metricKey := fmt.Sprintf("backend_type=%d,state=%d", backendStat.BackendType, backendStat.State)
+			metricKey := fmt.Sprintf("backend_type=%d,state=%d,role=%s,database=%s", backendStat.BackendType, backendStat.State, roleName, databaseName)
 			seenMetrics["backend"][metricKey] = true
 
 			// Create a time-series for backend count
@@ -300,7 +304,7 @@ func backendTypeToString(backendType collector_proto.BackendCountStatistic_Backe
 		return "walwriter"
 	// Add other cases as necessary
 	default:
-		return "unknown"
+		return Unknown
 	}
 }
 
@@ -321,7 +325,7 @@ func backendStateToString(state collector_proto.BackendCountStatistic_BackendSta
 		return "disabled"
 	// Add other states as necessary
 	default:
-		return "unknown_state"
+		return Unknown
 	}
 }
 
