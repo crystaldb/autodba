@@ -16,11 +16,19 @@ func TestProcessFullSnapshotData(t *testing.T) {
 	}{
 		{
 			name:     "RDS Full Snapshot",
-			filename: "test_data/full-snapshot-rds.binpb",
+			filename: "test_data/full-snapshot-rds-1.binpb",
 		},
 		{
 			name:     "Aurora Full Snapshot",
-			filename: "test_data/full-snapshot-aurora.binpb",
+			filename: "test_data/full-snapshot-aurora-1.binpb",
+		},
+		{
+			name:     "RDS Full Snapshot",
+			filename: "test_data/full-snapshot-rds-2.binpb",
+		},
+		{
+			name:     "Aurora Full Snapshot",
+			filename: "test_data/full-snapshot-aurora-2.binpb",
 		},
 	}
 
