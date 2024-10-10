@@ -123,6 +123,7 @@ fi
     --config.file="$PARENT_DIR/config/prometheus/prometheus.yml" \
     --enable-feature="remote-write-receiver" \
     --storage.tsdb.path="$PARENT_DIR/prometheus_data" \
+    --query.lookback-delta="15m" \
     --web.console.templates="$PARENT_DIR/config/prometheus/consoles" \
     --web.console.libraries="$PARENT_DIR/config/prometheus/console_libraries" \
     --web.enable-admin-api &
