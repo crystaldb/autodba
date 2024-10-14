@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"log"
 	"os"
@@ -13,34 +14,54 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/archive"
 	"github.com/docker/go-connections/nat"
+	"github.com/spf13/viper"
 )
 
+type Config struct {
+	ProjectDir          string `mapstructure:"project_dir"`
+	Dockerfile          string `mapstructure:"dockerfile"`
+	ImageName           string `mapstructure:"image_name"`
+	ContainerName       string `mapstructure:"container_name"`
+	PrometheusPort      string `mapstructure:"prometheus_port"`
+	BffPort             string `mapstructure:"bff_port"`
+	DbConnString        string `mapstructure:"db_conn_string"`
+	AwsRdsInstance      string `mapstructure:"aws_rds_instance"`
+	DefaultMetricPeriod string `mapstructure:"default_metric_period"`
+	WarmUpTime          string `mapstructure:"warm_up_time"`
+	ConfigFile          string `mapstructure:"config_file"` // NOTE this path must be absolute
+	BackupDir           string `mapstructure:"backup_dir"`
+	BackupFile          string `mapstructure:"backup_file"`
+}
+
+type DbInfo struct {
+	Description    string `json:"description"`
+	DbConnString   string `json:"db_conn_string"`
+	AwsRdsInstance string `json:"aws_rds_instance"`
+}
+
 var (
-	cli        *client.Client
+	cli         *client.Client
 	containerID string
 )
 
-const (
-	PROJECT_DIR          = "../"
-	DOCKERFILE          = "../Dockerfile"
-	IMAGE_NAME          = "autodba:latest"
-	CONTAINER_NAME      = "autodba_test"
-	PROMETHEUS_PORT     = "9090"
-	BFF_PORT            = "4000"
-	DB_CONN_STRING      = "postgres://postgres:lTEP7OzeXQr77Ldu@mohammad-dashti-rds-1.cvirkksghnig.us-west-2.rds.amazonaws.com:5432/postgres?sslmode=require"
-	AWS_RDS_INSTANCE    = "mohammad-dashti-rds-1"
-	DEFAULT_METRIC_PERIOD = "5"
-	WARM_UP_TIME        = "60"
-	CONFIG_FILE         = "/home/steams/Development/autodba/autodba-collector.conf"
-	BACKUP_DIR          = "/home/autodba/ext-backups"
-	BACKUP_FILE         = ""
-    // -e AWS_ACCESS_KEY_ID="" \
-    // -e AWS_SECRET_ACCESS_KEY="" \
-    // -e AWS_REGION="" \
-    // -e DISABLE_DATA_COLLECTION="false" \
-)
+func readConfig() (*Config, error) {
+	viper.SetConfigName("container_config")
+	viper.SetConfigType("json")
+	viper.AddConfigPath(".")
 
-func SetupTestContainer() error {
+	if err := viper.ReadInConfig(); err != nil {
+		return nil, fmt.Errorf("error reading config file: %w", err)
+	}
+
+	var config Config
+	if err := viper.Unmarshal(&config); err != nil {
+		return nil, fmt.Errorf("error unmarshaling config: %w", err)
+	}
+
+	return &config, nil
+}
+
+func SetupTestContainer(config *Config, dbInfo DbInfo) error {
 	ctx := context.Background()
 
 	log.Println("Creating Docker client...")
@@ -51,12 +72,12 @@ func SetupTestContainer() error {
 	}
 
 	log.Println("Building Docker image...")
-	if err := buildDockerImage(ctx); err != nil {
+	if err := buildDockerImage(ctx, config); err != nil {
 		return err
 	}
 
 	log.Println("Stopping and removing existing container...")
-	if err := stopAndRemoveContainer(ctx); err != nil {
+	if err := stopAndRemoveContainer(ctx, config.ContainerName); err != nil {
 		return err
 	}
 
@@ -64,21 +85,21 @@ func SetupTestContainer() error {
 	mounts := []mount.Mount{
 		{
 			Type:   mount.TypeBind,
-			Source: CONFIG_FILE, // Path to the file on your host
-			Target: "/usr/local/autodba/share/collector/collector.conf", // Path inside the container
+			Source: config.ConfigFile,
+			Target: "/usr/local/autodba/share/collector/collector.conf",
 		},
-}
+	}
 
 	envVars := []string{
-		"DB_CONN_STRING=" + DB_CONN_STRING,
-		"AWS_RDS_INSTANCE=" + AWS_RDS_INSTANCE,
-		"DEFAULT_METRIC_COLLECTION_PERIOD_SECONDS=" + DEFAULT_METRIC_PERIOD,
-		"WARM_UP_TIME_SECONDS=" + WARM_UP_TIME,
+		"DEFAULT_METRIC_COLLECTION_PERIOD_SECONDS=" + config.DefaultMetricPeriod,
+		"WARM_UP_TIME_SECONDS=" + config.WarmUpTime,
+		"DB_CONN_STRING=" + dbInfo.DbConnString,
+		"AWS_RDS_INSTANCE=" + dbInfo.AwsRdsInstance,
 	}
 
 	log.Println("Creating and starting the container...")
 	resp, err := cli.ContainerCreate(ctx, &container.Config{
-		Image: IMAGE_NAME,
+		Image: config.ImageName,
 		ExposedPorts: map[nat.Port]struct{}{
 			"9090/tcp": {},
 			"4000/tcp": {},
@@ -86,11 +107,11 @@ func SetupTestContainer() error {
 		Env: envVars,
 	}, &container.HostConfig{
 		PortBindings: map[nat.Port][]nat.PortBinding{
-			"9090/tcp": {{HostPort: PROMETHEUS_PORT}},
-			"4000/tcp": {{HostPort: BFF_PORT}},
+			"9090/tcp": {{HostPort: config.PrometheusPort}},
+			"4000/tcp": {{HostPort: config.BffPort}},
 		},
 		Mounts: mounts,
-	}, nil, nil, CONTAINER_NAME)
+	}, nil, nil, config.ContainerName)
 	if err != nil {
 		return err
 	}
@@ -103,38 +124,36 @@ func SetupTestContainer() error {
 	}
 
 	log.Println("Waiting for the container to be ready...")
-	time.Sleep(10 * time.Second)
 
-	// Check the container status
-	containerJSON, err := cli.ContainerInspect(ctx, containerID)
-	if err != nil {
-		return err
-	}
-	if containerJSON.State.Status != "running" {
-		log.Printf("Container is not running. Status: %s\n", containerJSON.State.Status)
-		return nil
-	}
+	const maxWaitTime = 5 * time.Minute
 
-	log.Println("Container setup completed.")
-	return nil
+	timeout := time.After(maxWaitTime)
+	ticker := time.NewTicker(10 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-timeout:
+			return fmt.Errorf("timeout waiting for container to be running")
+		case <-ticker.C:
+			containerJSON, err := cli.ContainerInspect(ctx, containerID)
+			if err != nil {
+				return err
+			}
+			log.Printf("Current container status: %s\n", containerJSON.State.Status)
+			if containerJSON.State.Status == "running" {
+				log.Println("Container is running.")
+				log.Println("Container setup completed.")
+				return nil
+			}
+			log.Printf("Current container status: %s. Waiting...\n", containerJSON.State.Status)
+		}
+	}
 }
 
-func stopAndRemoveContainer(ctx context.Context) error {
-	log.Println("Stopping the existing container...")
-	if err := cli.ContainerStop(ctx, CONTAINER_NAME, container.StopOptions{}); err != nil && !client.IsErrNotFound(err) {
-		return err
-	}
-	log.Println("Removing the existing container...")
-	if err := cli.ContainerRemove(ctx, CONTAINER_NAME, container.RemoveOptions{}); err != nil && !client.IsErrNotFound(err) {
-		return err
-	}
-	log.Println("Existing container stopped and removed successfully.")
-	return nil
-}
-
-func buildDockerImage(ctx context.Context) error {
+func buildDockerImage(ctx context.Context, config *Config) error {
 	log.Println("Preparing build context from Dockerfile...")
-	tarball, err := archive.TarWithOptions(PROJECT_DIR, &archive.TarOptions{})
+	tarball, err := archive.TarWithOptions(config.ProjectDir, &archive.TarOptions{})
 	if err != nil {
 		return err
 	}
@@ -142,7 +161,7 @@ func buildDockerImage(ctx context.Context) error {
 
 	log.Println("Building the Docker image...")
 	resp, err := cli.ImageBuild(ctx, tarball, types.ImageBuildOptions{
-		Tags: []string{IMAGE_NAME},
+		Tags: []string{config.ImageName},
 	})
 	if err != nil {
 		return err
@@ -155,6 +174,19 @@ func buildDockerImage(ctx context.Context) error {
 	}
 
 	log.Println("Docker image built successfully.")
+	return nil
+}
+
+func stopAndRemoveContainer(ctx context.Context, containerName string) error {
+	log.Println("Stopping the existing container...")
+	if err := cli.ContainerStop(ctx, containerName, container.StopOptions{}); err != nil && !client.IsErrNotFound(err) {
+		return err
+	}
+	log.Println("Removing the existing container...")
+	if err := cli.ContainerRemove(ctx, containerName, container.RemoveOptions{}); err != nil && !client.IsErrNotFound(err) {
+		return err
+	}
+	log.Println("Existing container stopped and removed successfully.")
 	return nil
 }
 
@@ -176,8 +208,19 @@ func TearDownTestContainer() error {
 }
 
 func main() {
+	config, err := readConfig()
+	if err != nil {
+		log.Fatalf("Failed to read config: %v\n", err)
+	}
+
+	var testCase = DbInfo{
+		Description:    "Version 13",
+		DbConnString:   "postgres://postgres:rme49DKjpE4wwx16Bemu@radcliffe-1.c7mrowi2kiu4.us-east-1.rds.amazonaws.com:5432/postgres?sslmode=require",
+		AwsRdsInstance: "radcliffe-1",
+	}
+
 	log.Println("Setting up test container...")
-	if err := SetupTestContainer(); err != nil {
+	if err := SetupTestContainer(config, testCase); err != nil {
 		log.Fatalf("Failed to set up container: %v\n", err)
 	}
 
@@ -188,4 +231,3 @@ func main() {
 	// 	}
 	// }()
 }
-
