@@ -24,6 +24,7 @@ BACKUP_DIR="$SOURCE_DIR/../autodba_backups_dir"
 DISABLE_DATA_COLLECTION=false  # Flag to disable data collection
 CONTINUE=false  # Flag to continue from existing agent data
 CONFIG_FILE="" # Path to the configuration file
+MOUNT_PROMETHEUS_DATA=false # Default to not mounting the prometheus data directory
 
 command_exists() {
     command -v "$1" >/dev/null 2>&1
@@ -110,6 +111,10 @@ while [[ "$#" -gt 0 ]]; do
             ;;
         --continue)
             CONTINUE=true
+            shift
+            ;;
+        --mount-prometheus-data)
+            MOUNT_PROMETHEUS_DATA=true
             shift
             ;;
         *)
@@ -238,6 +243,12 @@ if [ -n "$BACKUP_FILE" ]; then
     BACKUP_FILE_ENV="-e BACKUP_FILE=/home/autodba/ext-backups/backup.tar.gz"
 fi
 
+# Prepare the Prometheus data volume mount
+PROMETHEUS_DATA_MOUNT=""
+if [ "$MOUNT_PROMETHEUS_DATA" = true ]; then
+    PROMETHEUS_DATA_MOUNT="-v $SOURCE_DIR/../prometheus_data:/usr/local/autodba/prometheus_data"
+fi
+
 # Run the container
 echo "=============================================================="
 echo ""
@@ -260,9 +271,10 @@ docker run --name "$CONTAINER_NAME" \
     -e AWS_REGION="${AWS_REGION:-""}" \
     -e DISABLE_DATA_COLLECTION="$DISABLE_DATA_COLLECTION" \
     -e CONFIG_FILE="/usr/local/autodba/config/autodba/collector.conf" \
+    --mount type=bind,source="$CONFIG_FILE",target="/usr/local/autodba/config/autodba/collector.conf",readonly \
     $BACKUP_FILE_ENV \
     $BACKUP_DIR_BINDING \
-    --mount type=bind,source="$CONFIG_FILE",target="/usr/local/autodba/config/autodba/collector.conf",readonly \
+    $PROMETHEUS_DATA_MOUNT \
     "$IMAGE_NAME"
     # -v "$VOLUME_NAME":/var/lib/postgresql/data \
     # --env-file "$ENV_FILE" \
