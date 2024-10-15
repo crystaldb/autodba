@@ -119,17 +119,18 @@ func fullSnapshotMetrics(snapshot *collector_proto.FullSnapshot, systemInfo Syst
 
 	// Track seen time-series for each type of metric
 	seenMetrics := map[string]map[string]bool{
-		"cpu":       make(map[string]bool),
-		"memory":    make(map[string]bool),
-		"db":        make(map[string]bool),
-		"query":     make(map[string]bool),
-		"relation":  make(map[string]bool),
-		"index":     make(map[string]bool),
-		"backend":   make(map[string]bool),
-		"disk":      make(map[string]bool),
-		"network":   make(map[string]bool),
-		"setting":   make(map[string]bool),
-		"disk_info": make(map[string]bool),
+		"cpu":            make(map[string]bool),
+		"memory":         make(map[string]bool),
+		"db":             make(map[string]bool),
+		"query":          make(map[string]bool),
+		"relation":       make(map[string]bool),
+		"index":          make(map[string]bool),
+		"backend":        make(map[string]bool),
+		"disk":           make(map[string]bool),
+		"network":        make(map[string]bool),
+		"setting":        make(map[string]bool),
+		"disk_info":      make(map[string]bool),
+		"disk_partition": make(map[string]bool),
 	}
 
 	// Process system-level statistics
@@ -292,6 +293,9 @@ func processSystemStats(snapshot *collector_proto.FullSnapshot, systemInfo Syste
 	// Process disk information
 	ts = append(ts, processDiskInformation(snapshot, systemInfo, timestamp, seenMetrics)...)
 
+	// Process disk partition statistics
+	ts = append(ts, processDiskPartitionStats(snapshot, systemInfo, timestamp, seenMetrics)...)
+
 	return ts
 }
 
@@ -314,6 +318,50 @@ func processDiskInformation(snapshot *collector_proto.FullSnapshot, systemInfo S
 		ts = append(ts, createMultipleTimeSeries(systemInfo, map[string]float64{
 			"cc_system_disk_provisioned_iops": float64(diskInfo.ProvisionedIops),
 			// "cc_system_disk_encrypted":        boolToFloat64(diskInfo.Encrypted),
+		}, labels, timestamp)...)
+	}
+
+	return ts
+}
+
+func processDiskPartitionStats(snapshot *collector_proto.FullSnapshot, systemInfo SystemInfo, timestamp int64, seenMetrics map[string]map[string]bool) []prompb.TimeSeries {
+	var ts []prompb.TimeSeries
+
+	// Create maps for quick lookup of partition references and information
+	partitionRefs := make(map[int32]string)
+	for idx, ref := range snapshot.System.DiskPartitionReferences {
+		partitionRefs[int32(idx)] = ref.Mountpoint
+	}
+
+	partitionInfos := make(map[int32]*collector_proto.DiskPartitionInformation)
+	for _, info := range snapshot.System.DiskPartitionInformations {
+		partitionInfos[info.DiskPartitionIdx] = info
+	}
+
+	for _, partStat := range snapshot.System.DiskPartitionStatistics {
+		mountpoint := partitionRefs[partStat.DiskPartitionIdx]
+		info := partitionInfos[partStat.DiskPartitionIdx]
+
+		metricKey := fmt.Sprintf("disk_partition_idx=%d", partStat.DiskPartitionIdx)
+		seenMetrics["disk_partition"][metricKey] = true
+
+		labels := []prompb.Label{
+			{Name: "disk_partition_idx", Value: strconv.Itoa(int(partStat.DiskPartitionIdx))},
+			{Name: "mountpoint", Value: mountpoint},
+		}
+
+		if info != nil {
+			labels = append(labels, []prompb.Label{
+				{Name: "disk_idx", Value: strconv.Itoa(int(info.DiskIdx))},
+				{Name: "filesystem_type", Value: info.FilesystemType},
+				{Name: "filesystem_opts", Value: info.FilesystemOpts},
+				{Name: "partition_name", Value: info.PartitionName},
+			}...)
+		}
+
+		ts = append(ts, createMultipleTimeSeries(systemInfo, map[string]float64{
+			"cc_system_disk_partition_free_bytes":  float64(partStat.TotalBytes) - float64(partStat.UsedBytes),
+			"cc_system_disk_partition_total_bytes": float64(partStat.TotalBytes),
 		}, labels, timestamp)...)
 	}
 

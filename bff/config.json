@@ -4,7 +4,9 @@
   "routes_config": {
     "/v1/health": {
       "params": [
-        "dbidentifier",
+        "sys_id",
+        "sys_scope",
+        "sys_type",
         "datname",
         "start",
         "end",
@@ -17,13 +19,15 @@
       },
       "metrics": {
         "connections_percent": "sum(cc_backend_count{database=~\"$datname\",sys_id=~\"$sys_id\",sys_scope=~\"$sys_scope\",sys_type=~\"$sys_type\"})/sum(cc_pgsetting_current_value{name=\"max_connections\",sys_id=~\"$sys_id\",sys_scope=~\"$sys_scope\",sys_type=~\"$sys_type\"})",
-        "cpu": "sum(rds_cpu_usage_percent_average{dbidentifier=~\"$dbidentifier\"})",
-        "disk_usage": "1-(sum(rds_free_storage_bytes{dbidentifier=\"$dbidentifier\"})/sum(rds_allocated_storage_bytes{dbidentifier=\"$dbidentifier\"}))"
+        "cpu": "sum(cc_system_cpu_user_percent{sys_id=~\"$sys_id\",sys_scope=~\"$sys_scope\",sys_type=~\"$sys_type\"})",
+        "disk_usage": "1-(sum(cc_system_disk_partition_free_bytes{sys_id=~\"$sys_id\",sys_scope=~\"$sys_scope\",sys_type=~\"$sys_type\"})/sum(cc_system_disk_partition_total_bytes{sys_id=~\"$sys_id\",sys_scope=~\"$sys_scope\",sys_type=~\"$sys_type\"}))"
       }
     },
     "/v1/metric": {
       "params": [
-        "dbidentifier",
+        "sys_id",
+        "sys_scope",
+        "sys_type",
         "datname",
         "start",
         "end",
@@ -59,7 +63,7 @@
         "ebs_current_provisioned_iops": "sum(cc_system_disk_provisioned_iops{sys_id=~\"$sys_id\",sys_scope=~\"$sys_scope\",sys_type=~\"$sys_type\"})",
         "io_read_throughput": "sum(cc_system_disk_read_bytes_per_second{sys_id=~\"$sys_id\",sys_scope=~\"$sys_scope\",sys_type=~\"$sys_type\"})",
         "io_write_throughput": "sum(cc_system_disk_write_bytes_per_second{sys_id=~\"$sys_id\",sys_scope=~\"$sys_scope\",sys_type=~\"$sys_type\"})",
-        "free_storage_space": "sum(rds_free_storage_bytes{dbidentifier=~\"$dbidentifier\"})"
+        "free_storage_space": "sum(cc_system_disk_partition_free_bytes{sys_id=~\"$sys_id\",sys_scope=~\"$sys_scope\",sys_type=~\"$sys_type\"})"
       }
     }
   }
