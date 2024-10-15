@@ -59,13 +59,13 @@ func TestEndpointsGeneration(t *testing.T) {
 
 	// TEST configured route exists
 	record := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/health?start=now&dbidentifier=amazon_rds/default_db/us-west-2/cvirkksghnig", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/health?start=now&dbidentifier=amazon_rds/default_db/us-west-2/abcdefghijkl", nil)
 	handler.ServeHTTP(record, req)
 	assert.Equal(t, http.StatusOK, record.Code)
 
 	// TEST route not found
 	record = httptest.NewRecorder()
-	req = httptest.NewRequest(http.MethodGet, "/api/v2/health?start=now&dbidentifier=amazon_rds/default_db/us-west-2/cvirkksghnig", nil)
+	req = httptest.NewRequest(http.MethodGet, "/api/v2/health?start=now&dbidentifier=amazon_rds/default_db/us-west-2/abcdefghijkl", nil)
 	handler.ServeHTTP(record, req)
 	assert.Equal(t, http.StatusNotFound, record.Code)
 }
@@ -108,13 +108,13 @@ func TestParamsPopulation(t *testing.T) {
 
 	// TEST params population
 	record := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/health?datname=test_db&start=0000&end=1111&dbidentifier=amazon_rds/default_db/us-west-2/cvirkksghnig", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/health?datname=test_db&start=0000&end=1111&dbidentifier=amazon_rds/default_db/us-west-2/abcdefghijkl", nil)
 	handler.ServeHTTP(record, req)
 	assert.Equal(t, http.StatusOK, record.Code)
 
 	// Arbitrary param order
 	record = httptest.NewRecorder()
-	req = httptest.NewRequest(http.MethodGet, "/api/v1/health?end=1111&start=0000&datname=test_db&dbidentifier=amazon_rds/default_db/us-west-2/cvirkksghnig", nil)
+	req = httptest.NewRequest(http.MethodGet, "/api/v1/health?end=1111&start=0000&datname=test_db&dbidentifier=amazon_rds/default_db/us-west-2/abcdefghijkl", nil)
 	handler.ServeHTTP(record, req)
 	assert.Equal(t, http.StatusOK, record.Code)
 
@@ -147,7 +147,7 @@ func TestMissingParams(t *testing.T) {
 
 	record := httptest.NewRecorder()
 
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/health?start=0000&dbidentifier=amazon_rds/default_db/us-west-2/cvirkksghnig", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/health?start=0000&dbidentifier=amazon_rds/default_db/us-west-2/abcdefghijkl", nil)
 	handler.ServeHTTP(record, req)
 	assert.Equal(t, http.StatusBadRequest, record.Code)
 
@@ -181,7 +181,7 @@ func TestMetricsHandlerJSONFormat(t *testing.T) {
 	handler := metrics_handler(routesConfig, mockMetricsService)
 
 	record := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/metrics?start=now&dbidentifier=amazon_rds/default_db/us-west-2/cvirkksghnig", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/metrics?start=now&dbidentifier=amazon_rds/default_db/us-west-2/abcdefghijkl", nil)
 	handler.ServeHTTP(record, req)
 	assert.Equal(t, http.StatusOK, record.Code)
 
@@ -266,7 +266,7 @@ func TestActivityValidationLogic(t *testing.T) {
 		{
 			name: "Valid parameters",
 			queryParams: map[string]string{
-				"dbidentifier":  "amazon_rds/mohammad-dashti-rds-1/us-west-2/cvirkksghnig",
+				"dbidentifier":  "amazon_rds/testdb/us-west-2/abcdefghijkl",
 				"database_list": "postgres",
 				"start":         "now-1h",
 				"end":           "now",
@@ -291,7 +291,7 @@ func TestActivityValidationLogic(t *testing.T) {
 		{
 			name: "Missing database_list",
 			queryParams: map[string]string{
-				"dbidentifier": "amazon_rds/mohammad-dashti-rds-1/us-west-2/cvirkksghnig",
+				"dbidentifier": "amazon_rds/testdb/us-west-2/abcdefghijkl",
 				"start":        "now-1h",
 				"end":          "now",
 				"step":         "1m",
@@ -303,7 +303,7 @@ func TestActivityValidationLogic(t *testing.T) {
 		{
 			name: "Missing start",
 			queryParams: map[string]string{
-				"dbidentifier":  "amazon_rds/mohammad-dashti-rds-1/us-west-2/cvirkksghnig",
+				"dbidentifier":  "amazon_rds/testdb/us-west-2/abcdefghijkl",
 				"database_list": "postgres",
 				"end":           "now",
 				"step":          "1m",
@@ -315,7 +315,7 @@ func TestActivityValidationLogic(t *testing.T) {
 		{
 			name: "Missing end",
 			queryParams: map[string]string{
-				"dbidentifier":  "amazon_rds/mohammad-dashti-rds-1/us-west-2/cvirkksghnig",
+				"dbidentifier":  "amazon_rds/testdb/us-west-2/abcdefghijkl",
 				"database_list": "postgres",
 				"start":         "now",
 				"step":          "1m",
@@ -327,7 +327,7 @@ func TestActivityValidationLogic(t *testing.T) {
 		{
 			name: "Missing legend",
 			queryParams: map[string]string{
-				"dbidentifier":  "amazon_rds/mohammad-dashti-rds-1/us-west-2/cvirkksghnig",
+				"dbidentifier":  "amazon_rds/testdb/us-west-2/abcdefghijkl",
 				"database_list": "postgres",
 				"start":         "now-1h",
 				"end":           "now",
@@ -339,7 +339,7 @@ func TestActivityValidationLogic(t *testing.T) {
 		{
 			name: "Missing Dim",
 			queryParams: map[string]string{
-				"dbidentifier":  "amazon_rds/mohammad-dashti-rds-1/us-west-2/cvirkksghnig",
+				"dbidentifier":  "amazon_rds/testdb/us-west-2/abcdefghijkl",
 				"database_list": "postgres",
 				"start":         "now-1h",
 				"end":           "now",
@@ -351,7 +351,7 @@ func TestActivityValidationLogic(t *testing.T) {
 		{
 			name: "Bad Dim",
 			queryParams: map[string]string{
-				"dbidentifier":  "amazon_rds/mohammad-dashti-rds-1/us-west-2/cvirkksghnig",
+				"dbidentifier":  "amazon_rds/testdb/us-west-2/abcdefghijkl",
 				"database_list": "postgres",
 				"start":         "now-1h",
 				"end":           "now",
@@ -366,7 +366,7 @@ func TestActivityValidationLogic(t *testing.T) {
 			queryParams: map[string]string{
 				"start":         "now",
 				"end":           "now-1h", // end before start
-				"dbidentifier":  "amazon_rds/mohammad-dashti-rds-1/us-west-2/cvirkksghnig",
+				"dbidentifier":  "amazon_rds/testdb/us-west-2/abcdefghijkl",
 				"database_list": "postgres",
 				"step":          "1m",
 				"legend":        "wait_event_name",
@@ -401,7 +401,7 @@ func TestOptions(t *testing.T) {
 	}
 
 	params := map[string]string{
-		"dbidentifier":  "amazon_rds/mohammad-dashti-rds-1/us-west-2/cvirkksghnig",
+		"dbidentifier":  "amazon_rds/testdb/us-west-2/abcdefghijkl",
 		"database_list": "postgres",
 		"start":         "10",
 		"end":           "20",
@@ -434,13 +434,13 @@ func TestDefaultDBIdentifier(t *testing.T) {
 	mockService.On("Execute", mock.Anything, mock.Anything).
 		Run(func(args mock.Arguments) {
 			metrics := args.Get(0).(map[string]string)
-			assert.Equal(t, "sum(rds_cpu_usage_percent_average{dbidentifier=~\"amazon_rds/default_db/us-west-2/cvirkksghnig\"})", metrics["cpu"])
+			assert.Equal(t, "sum(rds_cpu_usage_percent_average{dbidentifier=~\"amazon_rds/default_db/us-west-2/abcdefghijkl\"})", metrics["cpu"])
 		}).
 		Return(map[int64]map[string]float64{}, nil)
 
 	// Create a request without the dbidentifier parameter
 	record := httptest.NewRecorder()
-	req := httptest.NewRequest("GET", "/api/v1/test?start=now&dbidentifier=amazon_rds/default_db/us-west-2/cvirkksghnig", nil)
+	req := httptest.NewRequest("GET", "/api/v1/test?start=now&dbidentifier=amazon_rds/default_db/us-west-2/abcdefghijkl", nil)
 	handler := metrics_handler(routeConfigs, mockService)
 	handler.ServeHTTP(record, req)
 
@@ -703,36 +703,36 @@ func TestValidateDbIdentifier(t *testing.T) {
 		valid        bool
 	}{
 		// Valid case
-		{"amazon_rds/mohammad-dashti-rds-1/us-west-2/cvirkksghnig", true},
+		{"amazon_rds/testdb/us-west-2/abcdefghijkl", true},
 
 		// Valid, no awsaccountid
-		{"amazon_rds/mohammad-dashti-rds-1/us-west-2", true},
+		{"amazon_rds/testdb/us-west-2", true},
 
 		// Multiple ids
-		{"(amazon_rds/mohammad-dashti-rds-1/us-west-2/cvirkksghnig|amazon_rds/mohammad-dashti-rds-1/us-west-2/cvirkksghnig)", true},
+		{"(amazon_rds/testdb/us-west-2/abcdefghijkl|amazon_rds/testdb/us-west-2/abcdefghijkl)", true},
 
 		// One invalid id
-		{"(amazon_rds/mohammad-dashti-rds-1/us-west-2/cvirkksghnig|amazon_rds/mohammad-dashti-rds-1/us-west-2/cvirkksghnig|invalid)", false},
+		{"(amazon_rds/testdb/us-west-2/abcdefghijkl|amazon_rds/testdb/us-west-2/abcdefghijkl|invalid)", false},
 
 		// Invalid list format
-		{"amazon_rds/mohammad-dashti-rds-1/us-west-2/cvirkksghnig,amazon_rds/mohammad-dashti-rds-1/us-west-2/cvirkksghnig", false},
+		{"amazon_rds/testdb/us-west-2/abcdefghijkl,amazon_rds/testdb/us-west-2/abcdefghijkl", false},
 
 		// Invalid SystemID (too long)
-		{"amazon_rds/aVeryLongSystemIDThatExceedsTheMaximumAllowedLengthForSystemIDThatIs63Chars/us-east-1/cvirkksghnig", false},
+		{"amazon_rds/aVeryLongSystemIDThatExceedsTheMaximumAllowedLengthForSystemIDThatIs63Chars/us-east-1/abcdefghijkl", false},
 
 		// Invalid AWS_REGION (too long)
-		{"amazon_rds/mohammad-dashti-rds-1/us-east-1-verylongregionname-whichisnotvalidbecauseitisverylong/cvirkksghnig", false},
+		{"amazon_rds/testdb/us-east-1-verylongregionname-whichisnotvalidbecauseitisverylong/abcdefghijkl", false},
 
 		// Invalid CLUSTER_PREFIX (too long)
-		{"amazon_rds/mohammad-dashti-rds-1/us-west-1/verylongclusterprefix123456789012/cvirkksghnig", false},
+		{"amazon_rds/testdb/us-west-1/verylongclusterprefix123456789012/abcdefghijkl", false},
 		// Invalid AWS_ACCOUNT_ID (too short)
-		{"amazon_rds/mohammad-dashti-rds-1/us-west-1/cvirkksghnig123/cvirkksghnig", false},
+		{"amazon_rds/testdb/us-west-1/abcdefghijkl123/abcdefghijkl", false},
 		// Invalid AWS_ACCOUNT_ID (too long)
-		{"amazon_rds/mohammad-dashti-rds-1/us-west-1/cvirkksghnig12345/cvirkksghnig", false},
+		{"amazon_rds/testdb/us-west-1/abcdefghijkl12345/abcdefghijkl", false},
 
 		// Invalid SystemType (not valid)
-		{"amazon_rds/mohammad-dashti-rds-1/us-west-1/cvirkksghnig/invalid_system_type", false},
-		{"amazon_rds/mohammad-dashti-rds-1/us-west-1/cluster-ro-cvirkksghnig/extra", false}, // Extra part
+		{"amazon_rds/testdb/us-west-1/abcdefghijkl/invalid_system_type", false},
+		{"amazon_rds/testdb/us-west-1/cluster-ro-abcd/extra", false}, // Extra part
 	}
 
 	for _, tt := range tests {
