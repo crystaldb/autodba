@@ -8,6 +8,8 @@ import (
 	"os"
 	"time"
 
+	"encoding/json"
+	"flag"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
@@ -15,36 +17,42 @@ import (
 	"github.com/docker/docker/pkg/archive"
 	"github.com/docker/go-connections/nat"
 	"github.com/spf13/viper"
+	"path/filepath"
 )
 
-type Config struct {
-	ProjectDir          string `mapstructure:"project_dir"`
-	Dockerfile          string `mapstructure:"dockerfile"`
-	ImageName           string `mapstructure:"image_name"`
-	ContainerName       string `mapstructure:"container_name"`
-	PrometheusPort      string `mapstructure:"prometheus_port"`
-	BffPort             string `mapstructure:"bff_port"`
-	DbConnString        string `mapstructure:"db_conn_string"`
-	AwsRdsInstance      string `mapstructure:"aws_rds_instance"`
-	DefaultMetricPeriod string `mapstructure:"default_metric_period"`
-	WarmUpTime          string `mapstructure:"warm_up_time"`
-	ConfigFile          string `mapstructure:"config_file"` // NOTE this path must be absolute
-	BackupDir           string `mapstructure:"backup_dir"`
-	BackupFile          string `mapstructure:"backup_file"`
+type ContainerConfig struct {
+	ProjectDir          string `json:"project_dir"`
+	Dockerfile          string `json:"dockerfile"`
+	ImageName           string `json:"image_name"`
+	ContainerName       string `json:"container_name"`
+	PrometheusPort      string `json:"prometheus_port"`
+	BffPort             string `json:"bff_port"`
+	DefaultMetricPeriod string `json:"default_metric_period"`
+	WarmUpTime          string `json:"warm_up_time"`
 }
 
 type DbInfo struct {
 	Description    string `json:"description"`
 	DbConnString   string `json:"db_conn_string"`
+	Host           string `json:"host"`
+	Name           string `json:"name"`
+	Username       string `json:"username"`
+	Password       string `json:"password"`
+	Port           string `json:"port"`
 	AwsRdsInstance string `json:"aws_rds_instance"`
+	AwsRegion      string `json:"aws_region"`
+	AwsAccessKey   string `json:"aws_access_key"`
+	AwsSecret      string `json:"aws_secret"`
 }
+
+type DbInfoMap map[string]DbInfo
 
 var (
 	cli         *client.Client
 	containerID string
 )
 
-func readConfig() (*Config, error) {
+func readConfig() (*ContainerConfig, error) {
 	viper.SetConfigName("container_config")
 	viper.SetConfigType("json")
 	viper.AddConfigPath(".")
@@ -53,7 +61,7 @@ func readConfig() (*Config, error) {
 		return nil, fmt.Errorf("error reading config file: %w", err)
 	}
 
-	var config Config
+	var config ContainerConfig
 	if err := viper.Unmarshal(&config); err != nil {
 		return nil, fmt.Errorf("error unmarshaling config: %w", err)
 	}
@@ -61,11 +69,48 @@ func readConfig() (*Config, error) {
 	return &config, nil
 }
 
-func SetupTestContainer(config *Config, dbInfo DbInfo) error {
+func generateCollectorConfig(containerConfig *ContainerConfig, dbInfo DbInfo) (string, error) {
+	collectorConfig := fmt.Sprintf(`[server1]
+db_host = %s
+db_name = %s
+db_username = %s
+db_password = %s
+db_port = %s
+aws_db_instance_id = %s
+aws_region = %s
+aws_access_key_id = %s
+aws_secret_access_key = %s
+`, dbInfo.Host, dbInfo.Name, dbInfo.Username, dbInfo.Password, dbInfo.Port, dbInfo.AwsRdsInstance, dbInfo.AwsRegion, dbInfo.AwsAccessKey, dbInfo.AwsSecret)
+
+	log.Println("GeneratedCollector config:\n ", collectorConfig)
+
+	configFilePath := filepath.Join(containerConfig.ProjectDir, "autodba-collector.conf")
+
+	absolutePath, err := filepath.Abs(configFilePath)
+	if err != nil {
+		return "", fmt.Errorf("error getting absolute path: %w", err)
+	}
+
+	err = os.WriteFile(absolutePath, []byte(collectorConfig), 0644)
+	if err != nil {
+		return "", fmt.Errorf("error writing collector config file: %w", err)
+	}
+
+	return absolutePath, nil
+}
+
+func SetupTestContainer(config *ContainerConfig, dbInfo DbInfo) error {
 	ctx := context.Background()
+	var err error
+
+	log.Println("Generating collector config...")
+	collectorConfigPath, err := generateCollectorConfig(config, dbInfo)
+	if err != nil {
+		return err
+	}
+	log.Println("Collector config path : ", collectorConfigPath)
 
 	log.Println("Creating Docker client...")
-	var err error
 	cli, err = client.NewClientWithOpts(client.WithVersion("1.41"))
 	if err != nil {
 		return err
@@ -82,19 +127,25 @@ func SetupTestContainer(config *Config, dbInfo DbInfo) error {
 	}
 
 	log.Println("Preparing mounts and environment variables...")
+
 	mounts := []mount.Mount{
 		{
 			Type:   mount.TypeBind,
-			Source: config.ConfigFile,
+			Source: collectorConfigPath,
 			Target: "/usr/local/autodba/share/collector/collector.conf",
 		},
 	}
 
 	envVars := []string{
-		"DEFAULT_METRIC_COLLECTION_PERIOD_SECONDS=" + config.DefaultMetricPeriod,
-		"WARM_UP_TIME_SECONDS=" + config.WarmUpTime,
 		"DB_CONN_STRING=" + dbInfo.DbConnString,
 		"AWS_RDS_INSTANCE=" + dbInfo.AwsRdsInstance,
+		"DEFAULT_METRIC_COLLECTION_PERIOD_SECONDS=" + config.DefaultMetricPeriod,
+		"WARM_UP_TIME_SECONDS=" + config.WarmUpTime,
+	}
+
+	log.Println("Environment variables:")
+	for _, envVar := range envVars {
+		log.Println(envVar)
 	}
 
 	log.Println("Creating and starting the container...")
@@ -151,7 +202,7 @@ func SetupTestContainer(config *Config, dbInfo DbInfo) error {
 	}
 }
 
-func buildDockerImage(ctx context.Context, config *Config) error {
+func buildDockerImage(ctx context.Context, config *ContainerConfig) error {
 	log.Println("Preparing build context from Dockerfile...")
 	tarball, err := archive.TarWithOptions(config.ProjectDir, &archive.TarOptions{})
 	if err != nil {
@@ -207,20 +258,43 @@ func TearDownTestContainer() error {
 	return nil
 }
 
-func main() {
-	config, err := readConfig()
-	if err != nil {
-		log.Fatalf("Failed to read config: %v\n", err)
+func parseCLIArgs() (ContainerConfig, DbInfoMap, error) {
+	dbConfigStr := flag.String("dbconfig", "", "JSON string of database configuration map")
+	containerConfigStr := flag.String("containerConfig", "", "JSON string of container configuration")
+	flag.Parse()
+
+	var config ContainerConfig
+	if err := json.Unmarshal([]byte(*containerConfigStr), &config); err != nil {
+		return config, DbInfoMap{}, err
 	}
 
-	var testCase = DbInfo{
-		Description:    "Version 13",
-		DbConnString:   "postgres://postgres:rme49DKjpE4wwx16Bemu@radcliffe-1.c7mrowi2kiu4.us-east-1.rds.amazonaws.com:5432/postgres?sslmode=require",
-		AwsRdsInstance: "radcliffe-1",
+	var dbInfoMap DbInfoMap
+	if err := json.Unmarshal([]byte(*dbConfigStr), &dbInfoMap); err != nil {
+		return config, DbInfoMap{}, err
 	}
+
+	return config, dbInfoMap, nil
+}
+
+// you can run main to spin up a container without running the test suite
+func main() {
+	config, dbInfoMap, err := parseCLIArgs()
+	if err != nil {
+		log.Fatalf("Error parsing CLI args: %v\n", err)
+	}
+
+	dbInfo, ok := dbInfoMap["16"] // Change "16" to any other version if needed
+	if !ok {
+		log.Fatalf("No DbInfo found for version '16'")
+	}
+
+	log.Printf("Container config: %+v\n", config)
+	log.Printf("DbInfo :  %+v\n", dbInfo)
+	log.Println("RDS Instance: ", dbInfo.AwsRdsInstance)
+	log.Println("DB Connection String: ", dbInfo.DbConnString)
 
 	log.Println("Setting up test container...")
-	if err := SetupTestContainer(config, testCase); err != nil {
+	if err := SetupTestContainer(&config, dbInfo); err != nil {
 		log.Fatalf("Failed to set up container: %v\n", err)
 	}
 

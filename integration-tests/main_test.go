@@ -1,60 +1,72 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
+	"flag"
 	"fmt"
+	_ "github.com/jackc/pgx/v4/stdlib" // Importing pgx driver
 	"github.com/stretchr/testify/assert"
 	"io"
 	"log"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 )
 
 var dbIdentifier string
-var config Config
-
-var testCases = []DbInfo{
-	{
-		Description:    "Test case 1",
-		DbConnString:   "postgres://postgres:password@mohammad-dashti-rds-1.cvirkksghnig.us-west-2.rds.amazonaws.com:5432/postgres?sslmode=require",
-		AwsRdsInstance: "mohammad-dashti-rds-1",
-	},
-	{
-		Description:    "Postgres Version 13",
-		DbConnString:   "postgres://postgres:rme49DKjpE4wwx16Bemu@radcliffe-1.c7mrowi2kiu4.us-east-1.rds.amazonaws.com:5432/postgres?sslmode=require",
-		AwsRdsInstance: "radcliffe-1",
-	},
-}
+var port string
+var dbConfigStr = flag.String("dbconfig", "", "JSON string of database configuration map")
+var containerConfigStr = flag.String("containerConfig", "", "JSON string of container configuration")
 
 func TestAPISuite(t *testing.T) {
-	config, err := readConfig()
-	if err != nil {
-		t.Fatalf("Failed to read config: %v\n", err)
+	var config ContainerConfig
+	if err := json.Unmarshal([]byte(*containerConfigStr), &config); err != nil {
+		log.Fatalf("Failed to unmarshal container configuration: %v\n", err)
 	}
 
-	for _, testCase := range testCases {
-		dbIdentifier = testCase.AwsRdsInstance
+	var dbInfoMap DbInfoMap
+	if err := json.Unmarshal([]byte(*dbConfigStr), &dbInfoMap); err != nil {
+		log.Fatalf("Failed to unmarshal database configuration: %v\n", err)
+	}
 
-		if err := SetupTestContainer(config, testCase); err != nil {
-			t.Fatalf("Failed to set up container for %s: %v\n", testCase.Description, err)
+	fmt.Printf("config: %+v\n", config)
+	fmt.Printf("dbMap: %+v\n", dbInfoMap)
+
+	for version, info := range dbInfoMap {
+		dbIdentifier = info.AwsRdsInstance
+		port = config.BffPort
+
+		dbVersion, err := getDatabaseVersion(info.DbConnString)
+		if err != nil {
+			t.Fatalf("Failed to get database version for %s: %v\n", info.Description, err)
+		}
+		log.Println("Db version : ", dbVersion)
+
+		if !strings.Contains(dbVersion, version) {
+			t.Fatalf("Database version %s does not match expected version %s for %s\n", dbVersion, version, info.Description)
+		}
+
+		if err := SetupTestContainer(&config, info); err != nil {
+			t.Fatalf("Failed to set up container for %s: %v\n", info.Description, err)
 		}
 		defer func() {
 			if err := TearDownTestContainer(); err != nil {
-				log.Printf("Failed to tear down container for %s: %v\n", testCase.Description, err)
+				log.Printf("Failed to tear down container for %s: %v\n", info.Description, err)
 			}
 		}()
 
-		t.Run(testCase.Description, TestAPIRequest)
+		t.Run(info.Description, TestAPIRequest)
 
 		if err := TearDownTestContainer(); err != nil {
-			log.Printf("Failed to tear down container for %s: %v\n", testCase.Description, err)
+			log.Printf("Failed to tear down container for %s: %v\n", info.Description, err)
 		}
 	}
 }
 
 func TestAPIRequest(t *testing.T) {
-	url := fmt.Sprintf("http://localhost:%s/api/v1/activity?why=cube&database_list=(postgres|rdsadmin)&start=now-900000ms&end=now&step=5000ms&limitdim=15&limitlegend=15&legend=wait_event_name&dim=time&filterdim=&filterdimselected=&dbidentifier=%s", config.BffPort, dbIdentifier)
+	url := fmt.Sprintf("http://localhost:%s/api/v1/activity?why=cube&database_list=(postgres|rdsadmin)&start=now-900000ms&end=now&step=5000ms&limitdim=15&limitlegend=15&legend=wait_event_name&dim=time&filterdim=&filterdimselected=&dbidentifier=%s", port, dbIdentifier)
 
 	var responseData struct {
 		Data []struct {
@@ -99,4 +111,20 @@ func TestAPIRequest(t *testing.T) {
 
 	assert.Greater(t, len(responseData.Data), 0, "Expected at least one data point")
 	assert.Greater(t, len(responseData.Data[0].Values), 0, "Expected at least one value for the first metric")
+}
+
+func getDatabaseVersion(connectionString string) (string, error) {
+	db, err := sql.Open("pgx", connectionString)
+	if err != nil {
+		return "", err
+	}
+	defer db.Close()
+
+	var version string
+	err = db.QueryRow("SELECT version();").Scan(&version)
+	if err != nil {
+		return "", err
+	}
+
+	return version, nil
 }
