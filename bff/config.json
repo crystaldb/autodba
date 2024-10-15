@@ -4,6 +4,7 @@
   "routes_config": {
     "/v1/health": {
       "params": [
+        "dbidentifier",
         "sys_id",
         "sys_scope",
         "sys_type",
@@ -25,6 +26,7 @@
     },
     "/v1/metric": {
       "params": [
+        "dbidentifier",
         "sys_id",
         "sys_scope",
         "sys_type",
