@@ -78,9 +78,8 @@ func TestCompactSnapshotMetrics(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			metrics, seenBackends := compactSnapshotMetrics(tc.snapshot, sysInfo)
+			metrics := compactSnapshotMetrics(tc.snapshot, sysInfo)
 			assert.Equal(t, tc.expected, len(metrics), "Unexpected number of time series")
-			assert.Equal(t, tc.expected, len(seenBackends), "Unexpected number of seen backends")
 
 			// Check if all metrics have the correct system info labels
 			for _, metric := range metrics {
@@ -93,21 +92,39 @@ func TestCompactSnapshotMetrics(t *testing.T) {
 func TestCreateStaleMarkers(t *testing.T) {
 	now := time.Now()
 
-	prevBackends := map[BackendKey]bool{
-		{Pid: 1234, ApplicationName: "test-app-1"}: true,
-		{Pid: 5678, ApplicationName: "test-app-2"}: true,
+	prevMetrics := []prompb.TimeSeries{
+		createTestTimeSeries("cc_backend_count", map[string]string{"pid": "1234", "application_name": "test-app-1"}, 1, now),
+		createTestTimeSeries("cc_backend_count", map[string]string{"pid": "5678", "application_name": "test-app-2"}, 1, now),
 	}
 
-	currentBackends := map[BackendKey]bool{
-		{Pid: 1234, ApplicationName: "test-app-1"}: true,
-		{Pid: 9012, ApplicationName: "test-app-3"}: true,
+	currentMetrics := []prompb.TimeSeries{
+		createTestTimeSeries("cc_backend_count", map[string]string{"pid": "1234", "application_name": "test-app-1"}, 1, now),
+		createTestTimeSeries("cc_backend_count", map[string]string{"pid": "9012", "application_name": "test-app-3"}, 1, now),
 	}
 
-	staleMarkers := createStaleMarkers(prevBackends, currentBackends, now.UnixMilli())
+	staleMarkers := createStaleMarkers(prevMetrics, currentMetrics, now.UnixMilli())
 
 	assert.Equal(t, 1, len(staleMarkers), "Expected one stale marker")
 	assert.Equal(t, "5678", getLabelValue(staleMarkers[0].Labels, "pid"), "Unexpected PID in stale marker")
 	assert.Equal(t, "test-app-2", getLabelValue(staleMarkers[0].Labels, "application_name"), "Unexpected application name in stale marker")
+}
+
+func createTestTimeSeries(metricName string, labels map[string]string, value float64, timestamp time.Time) prompb.TimeSeries {
+	var promLabels []prompb.Label
+	for k, v := range labels {
+		promLabels = append(promLabels, prompb.Label{Name: k, Value: v})
+	}
+	promLabels = append(promLabels, prompb.Label{Name: "__name__", Value: metricName})
+
+	return prompb.TimeSeries{
+		Labels: promLabels,
+		Samples: []prompb.Sample{
+			{
+				Value:     value,
+				Timestamp: timestamp.UnixMilli(),
+			},
+		},
+	}
 }
 
 func TestMultipleSystemsHandling(t *testing.T) {
@@ -115,7 +132,7 @@ func TestMultipleSystemsHandling(t *testing.T) {
 	system1 := createTestSystemInfo("system-1")
 	system2 := createTestSystemInfo("system-2")
 
-	previousBackends = make(map[SystemInfo]map[BackendKey]bool)
+	previousMetrics = make(map[SystemInfo]map[string][]prompb.TimeSeries)
 
 	testCases := []struct {
 		name            string
@@ -204,14 +221,14 @@ func TestMultipleSystemsHandling(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			metrics1, currentBackends1 := compactSnapshotMetrics(tc.snapshot1, system1)
-			metrics2, currentBackends2 := compactSnapshotMetrics(tc.snapshot2, system2)
+			metrics1 := compactSnapshotMetrics(tc.snapshot1, system1)
+			metrics2 := compactSnapshotMetrics(tc.snapshot2, system2)
 
 			assert.Equal(t, tc.expectedMetrics[system1], len(metrics1), "Unexpected number of metrics for system 1")
 			assert.Equal(t, tc.expectedMetrics[system2], len(metrics2), "Unexpected number of metrics for system 2")
 
-			staleMarkers1 := createStaleMarkers(previousBackends[system1], currentBackends1, now.UnixMilli())
-			staleMarkers2 := createStaleMarkers(previousBackends[system2], currentBackends2, now.UnixMilli())
+			staleMarkers1 := createStaleMarkers(previousMetrics[system1][CompactSnapshotType], metrics1, now.UnixMilli())
+			staleMarkers2 := createStaleMarkers(previousMetrics[system2][CompactSnapshotType], metrics2, now.UnixMilli())
 
 			assert.Equal(t, tc.expectedStale[system1], len(staleMarkers1), "Unexpected number of stale markers for system 1")
 			assert.Equal(t, tc.expectedStale[system2], len(staleMarkers2), "Unexpected number of stale markers for system 2")
@@ -223,8 +240,14 @@ func TestMultipleSystemsHandling(t *testing.T) {
 				assertSystemInfoLabels(t, marker.Labels, system2)
 			}
 
-			previousBackends[system1] = currentBackends1
-			previousBackends[system2] = currentBackends2
+			if previousMetrics[system1] == nil {
+				previousMetrics[system1] = make(map[string][]prompb.TimeSeries)
+			}
+			if previousMetrics[system2] == nil {
+				previousMetrics[system2] = make(map[string][]prompb.TimeSeries)
+			}
+			previousMetrics[system1][CompactSnapshotType] = metrics1
+			previousMetrics[system2][CompactSnapshotType] = metrics2
 		})
 	}
 }
