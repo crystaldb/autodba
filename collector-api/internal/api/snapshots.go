@@ -110,26 +110,31 @@ func SnapshotHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // Global variable to track the previous metrics for each system
-var previousMetrics = make(map[SystemInfo]map[string]map[string]bool)
+var previousMetrics = make(map[SystemInfo]map[string][]prompb.TimeSeries)
+
+const (
+	FullSnapshotType    = "full"
+	CompactSnapshotType = "compact"
+)
 
 func init() {
 	// Initialize the previousMetrics map
-	previousMetrics = make(map[SystemInfo]map[string]map[string]bool)
+	previousMetrics = make(map[SystemInfo]map[string][]prompb.TimeSeries)
 }
 
-func handleSnapshot(cfg *config.Config, s3Location string, collectedAt int64, systemInfo SystemInfo, processFunc func(string, SystemInfo) ([]prompb.TimeSeries, error)) error {
+func handleSnapshot(cfg *config.Config, s3Location string, collectedAt int64, systemInfo SystemInfo, processFunc func(*prometheusClient, string, SystemInfo) ([]prompb.TimeSeries, error)) error {
 	if cfg.Debug {
 		log.Printf("Processing snapshot with s3_location: %s and collected_at: %d", s3Location, collectedAt)
-	}
-
-	allMetrics, err := processFunc(s3Location, systemInfo)
-	if err != nil {
-		return fmt.Errorf("process snapshot data: %w", err)
 	}
 
 	promClient := prometheusClient{
 		Client:   http.DefaultClient,
 		endpoint: prometheusURL,
+	}
+
+	allMetrics, err := processFunc(&promClient, s3Location, systemInfo)
+	if err != nil {
+		return fmt.Errorf("process snapshot data: %w", err)
 	}
 
 	if err := sendRemoteWrite(promClient, allMetrics); err != nil {
@@ -147,31 +152,39 @@ func handleFullSnapshot(cfg *config.Config, s3Location string, collectedAt int64
 	return handleSnapshot(cfg, s3Location, collectedAt, systemInfo, processFullSnapshotData)
 }
 
-func processFullSnapshotData(s3Location string, systemInfo SystemInfo) ([]prompb.TimeSeries, error) {
+func processFullSnapshotData(promClient *prometheusClient, s3Location string, systemInfo SystemInfo) ([]prompb.TimeSeries, error) {
 	pbBytes, err := readAndDecompressSnapshot(s3Location)
 	if err != nil {
 		return nil, fmt.Errorf("read and decompress snapshot: %w", err)
 	}
 
-	// Unmarshal the bytes into a FullSnapshot protobuf message
 	var fullSnapshot collector_proto.FullSnapshot
 	if err := proto.Unmarshal(pbBytes, &fullSnapshot); err != nil {
 		return nil, fmt.Errorf("unmarshal full snapshot: %w", err)
 	}
 
-	// Process the snapshot and extract relevant metrics and current time-series tracking
-	metrics, seenMetrics := fullSnapshotMetrics(&fullSnapshot, systemInfo)
+	currentMetrics := fullSnapshotMetrics(&fullSnapshot, systemInfo)
 
-	// Generate stale markers for each type of metric that was seen in the previous snapshot but not in this one
-	staleMarkers := createFullSnapshotStaleMarkers(previousMetrics[systemInfo], seenMetrics, fullSnapshot.CollectedAt.AsTime().UnixMilli(), systemInfo)
+	if previousMetrics[systemInfo] == nil {
+		err := initializePreviousMetrics(promClient, systemInfo)
+		if err != nil {
+			log.Printf("Error in initializing previous metrics: %v", err)
+		}
+	}
 
-	// Combine all metrics and stale markers
-	allMetrics := append(metrics, staleMarkers...)
+	staleMarkers := createStaleMarkers(previousMetrics[systemInfo][FullSnapshotType], currentMetrics, fullSnapshot.CollectedAt.AsTime().UnixMilli())
 
-	// Update the previousMetrics map with the current time-series for future comparisons
-	previousMetrics[systemInfo] = seenMetrics
+	allMetrics := append(currentMetrics, staleMarkers...)
+
+	previousMetrics[systemInfo][FullSnapshotType] = currentMetrics
 
 	return allMetrics, nil
+}
+
+func initializePreviousMetrics(_ *prometheusClient, systemInfo SystemInfo) error {
+	previousMetrics[systemInfo] = make(map[string][]prompb.TimeSeries)
+	// TODO: implement reading previous metrics from prometheus
+	return nil
 }
 
 func CompactSnapshotHandler(w http.ResponseWriter, r *http.Request) {
@@ -261,15 +274,6 @@ func CompactSnapshotHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, "Compact snapshot successfully processed")
 }
 
-type SystemInfo struct {
-	SystemID            string
-	SystemIDFallback    string
-	SystemScope         string
-	SystemScopeFallback string
-	SystemType          string
-	SystemTypeFallback  string
-}
-
 // extractSystemInfo extracts system information from request headers
 func extractSystemInfo(r *http.Request) SystemInfo {
 	systemInfo := make(map[string]string)
@@ -303,12 +307,6 @@ func extractSystemInfo(r *http.Request) SystemInfo {
 	return sysInfo
 }
 
-var previousBackends map[SystemInfo]map[BackendKey]bool
-
-func init() {
-	previousBackends = make(map[SystemInfo]map[BackendKey]bool)
-}
-
 func readAndDecompressSnapshot(s3Location string) ([]byte, error) {
 	// Open the file at the given S3 location
 	f, err := os.Open(path.Join(s3Location))
@@ -339,7 +337,7 @@ func handleCompactSnapshot(cfg *config.Config, s3Location string, collectedAt in
 	return handleSnapshot(cfg, s3Location, collectedAt, systemInfo, processCompactSnapshotData)
 }
 
-func processCompactSnapshotData(s3Location string, systemInfo SystemInfo) ([]prompb.TimeSeries, error) {
+func processCompactSnapshotData(promClient *prometheusClient, s3Location string, systemInfo SystemInfo) ([]prompb.TimeSeries, error) {
 	pbBytes, err := readAndDecompressSnapshot(s3Location)
 	if err != nil {
 		return nil, fmt.Errorf("read and decompress snapshot: %w", err)
@@ -350,17 +348,20 @@ func processCompactSnapshotData(s3Location string, systemInfo SystemInfo) ([]pro
 		return nil, fmt.Errorf("unmarshal compact snapshot: %w", err)
 	}
 
-	// Process the snapshot and get metrics and current backends
-	metrics, currentBackends := compactSnapshotMetrics(&compactSnapshot, systemInfo)
+	currentMetrics := compactSnapshotMetrics(&compactSnapshot, systemInfo)
 
-	// Generate stale markers for time-series (identified by a unique set of labels) no longer present
-	staleMarkers := createCompactSnapshotActivityStaleMarkers(previousBackends[systemInfo], currentBackends, systemInfo, compactSnapshot.CollectedAt.AsTime().UnixMilli())
+	if previousMetrics[systemInfo] == nil {
+		err := initializePreviousMetrics(promClient, systemInfo)
+		if err != nil {
+			log.Printf("Error in initializing previous metrics: %v", err)
+		}
+	}
 
-	// Combine active metrics and stale markers
-	allMetrics := append(metrics, staleMarkers...)
+	staleMarkers := createStaleMarkers(previousMetrics[systemInfo][CompactSnapshotType], currentMetrics, compactSnapshot.CollectedAt.AsTime().UnixMilli())
 
-	// Update previousBackends for the next snapshot comparison
-	previousBackends[systemInfo] = currentBackends
+	allMetrics := append(currentMetrics, staleMarkers...)
+
+	previousMetrics[systemInfo][CompactSnapshotType] = currentMetrics
 
 	return allMetrics, nil
 }

@@ -47,7 +47,7 @@ func TestProcessFullSnapshotData(t *testing.T) {
 			}
 
 			// Call processFullSnapshotData
-			allMetrics, err := processFullSnapshotData(tc.filename, systemInfo)
+			allMetrics, err := processFullSnapshotData(nil, tc.filename, systemInfo)
 			assert.NoError(t, err)
 
 			// for _, metric := range allMetrics {

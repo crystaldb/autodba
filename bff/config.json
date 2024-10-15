@@ -21,7 +21,7 @@
       "metrics": {
         "connections_percent": "sum(cc_backend_count{database=~\"$datname\",sys_id=~\"$sys_id\",sys_scope=~\"$sys_scope\",sys_type=~\"$sys_type\"})/sum(cc_pgsetting_current_value{name=\"max_connections\",sys_id=~\"$sys_id\",sys_scope=~\"$sys_scope\",sys_type=~\"$sys_type\"})",
         "cpu": "sum(cc_system_cpu_user_percent{sys_id=~\"$sys_id\",sys_scope=~\"$sys_scope\",sys_type=~\"$sys_type\"})",
-        "disk_usage": "1-(sum(cc_system_disk_partition_free_bytes{sys_id=~\"$sys_id\",sys_scope=~\"$sys_scope\",sys_type=~\"$sys_type\"})/sum(cc_system_disk_partition_total_bytes{sys_id=~\"$sys_id\",sys_scope=~\"$sys_scope\",sys_type=~\"$sys_type\"}))"
+        "disk_usage": "1-(sum(cc_system_diskpartition_free_bytes{sys_id=~\"$sys_id\",sys_scope=~\"$sys_scope\",sys_type=~\"$sys_type\"})/sum(cc_system_diskpartition_total_bytes{sys_id=~\"$sys_id\",sys_scope=~\"$sys_scope\",sys_type=~\"$sys_type\"}))"
       }
     },
     "/v1/metric": {
@@ -62,10 +62,10 @@
         "memory_usage_shared_memory": "sum(cc_pgsetting_current_value{name=\"shared_memory_size\",sys_id=~\"$sys_id\",sys_scope=~\"$sys_scope\",sys_type=~\"$sys_type\"})*1000000",
         "ebs_read_iops": "sum(cc_system_disk_read_ops_per_second{sys_id=~\"$sys_id\",sys_scope=~\"$sys_scope\",sys_type=~\"$sys_type\"})",
         "ebs_write_iops": "sum(cc_system_disk_write_ops_per_second{sys_id=~\"$sys_id\",sys_scope=~\"$sys_scope\",sys_type=~\"$sys_type\"})",
-        "ebs_current_provisioned_iops": "sum(cc_system_disk_provisioned_iops{sys_id=~\"$sys_id\",sys_scope=~\"$sys_scope\",sys_type=~\"$sys_type\"})",
+        "ebs_current_provisioned_iops": "sum(cc_system_diskinfo_provisioned_iops{sys_id=~\"$sys_id\",sys_scope=~\"$sys_scope\",sys_type=~\"$sys_type\"})",
         "io_read_throughput": "sum(cc_system_disk_read_bytes_per_second{sys_id=~\"$sys_id\",sys_scope=~\"$sys_scope\",sys_type=~\"$sys_type\"})",
         "io_write_throughput": "sum(cc_system_disk_write_bytes_per_second{sys_id=~\"$sys_id\",sys_scope=~\"$sys_scope\",sys_type=~\"$sys_type\"})",
-        "free_storage_space": "sum(cc_system_disk_partition_free_bytes{sys_id=~\"$sys_id\",sys_scope=~\"$sys_scope\",sys_type=~\"$sys_type\"})"
+        "free_storage_space": "sum(cc_system_diskpartition_free_bytes{sys_id=~\"$sys_id\",sys_scope=~\"$sys_scope\",sys_type=~\"$sys_type\"})"
       }
     }
   }
