@@ -41,12 +41,6 @@ export function PageMetric() {
                     ],
                   ],
                   ["Transaction commits", "", ["transactions_commit"]],
-                  [
-                    "Max time idle in transaction",
-                    "",
-                    ["max_time_idle_in_transaction"],
-                  ],
-                  ["Deadlocks", "", ["deadlocks"]],
                   ["Vacuum", "", ["vacuum_max_used_transaction_ids"]],
                   ["CPU utilization", "", ["cpu_utilization"]],
                   [

@@ -128,6 +128,7 @@ func fullSnapshotMetrics(snapshot *collector_proto.FullSnapshot, systemInfo Syst
 		"backend":  make(map[string]bool),
 		"disk":     make(map[string]bool),
 		"network":  make(map[string]bool),
+		"setting":  make(map[string]bool),
 	}
 
 	// Process system-level statistics
@@ -141,6 +142,9 @@ func fullSnapshotMetrics(snapshot *collector_proto.FullSnapshot, systemInfo Syst
 
 	// Process relation and index statistics
 	ts = append(ts, processRelationAndIndexStats(snapshot, systemInfo, snapshotTimestamp, seenMetrics)...)
+
+	// Process settings statistics
+	ts = append(ts, processSettingsStats(snapshot, systemInfo, snapshotTimestamp, seenMetrics)...)
 
 	return ts, seenMetrics
 }
@@ -224,7 +228,7 @@ func processSystemStats(snapshot *collector_proto.FullSnapshot, systemInfo Syste
 			if backendStat.HasDatabaseIdx {
 				if snapshot.DatabaseReferences != nil && len(snapshot.DatabaseReferences) > int(backendStat.DatabaseIdx) {
 					databaseName = snapshot.DatabaseReferences[backendStat.DatabaseIdx].Name
-					labels = append(labels, prompb.Label{Name: "database", Value: databaseName})
+					labels = append(labels, prompb.Label{Name: "datname", Value: databaseName})
 				} else {
 					log.Println("Warning: snapshot.DatabaseReferences is nil or index out of range")
 				}
@@ -237,7 +241,7 @@ func processSystemStats(snapshot *collector_proto.FullSnapshot, systemInfo Syste
 			}
 
 			// Add to seen metrics
-			metricKey := fmt.Sprintf("backend_type=%d,state=%d,role=%s,database=%s", backendStat.BackendType, backendStat.State, roleName, databaseName)
+			metricKey := fmt.Sprintf("backend_type=%d,state=%d,role=%s,datname=%s", backendStat.BackendType, backendStat.State, roleName, databaseName)
 			seenMetrics["backend"][metricKey] = true
 
 			// Create a time-series for backend count
@@ -335,7 +339,7 @@ func processDatabaseStats(snapshot *collector_proto.FullSnapshot, systemInfo Sys
 
 	for _, dbStat := range snapshot.DatabaseStatictics {
 		dbName := snapshot.DatabaseReferences[dbStat.DatabaseIdx].Name
-		metricKey := fmt.Sprintf("database=%s", dbName)
+		metricKey := fmt.Sprintf("datname=%s", dbName)
 		seenMetrics["db"][metricKey] = true
 
 		// Create multiple time-series for transaction commit, rollback, and frozen XID age
@@ -344,7 +348,7 @@ func processDatabaseStats(snapshot *collector_proto.FullSnapshot, systemInfo Sys
 			"cc_db_xact_rollback":  float64(dbStat.XactRollback),
 			"cc_db_frozen_xid_age": float64(dbStat.FrozenxidAge),
 		}, []prompb.Label{
-			{Name: "database", Value: dbName},
+			{Name: "datname", Value: dbName},
 		}, timestamp)...)
 	}
 
@@ -372,20 +376,70 @@ func processQueryStats(snapshot *collector_proto.FullSnapshot, systemInfo System
 	return ts
 }
 
+func convertTimestampToMilliseconds(timestamp *collector_proto.NullTimestamp) float64 {
+	if timestamp == nil {
+		return 0
+	}
+	innerTs := timestamp.GetValue()
+	if innerTs == nil {
+		return 0
+	}
+	return float64(innerTs.Seconds*1000 + int64(innerTs.Nanos)/1000000)
+}
+
 // processRelationAndIndexStats generates relation and index statistics and tracks seen metrics
 func processRelationAndIndexStats(snapshot *collector_proto.FullSnapshot, systemInfo SystemInfo, timestamp int64, seenMetrics map[string]map[string]bool) []prompb.TimeSeries {
 	var ts []prompb.TimeSeries
 
 	for _, relStat := range snapshot.RelationStatistics {
 		relationName := snapshot.RelationReferences[relStat.RelationIdx].RelationName
-		metricKey := fmt.Sprintf("relation=%s", relationName)
+		schemaName := snapshot.RelationReferences[relStat.RelationIdx].SchemaName
+		databaseName := snapshot.DatabaseReferences[snapshot.RelationReferences[relStat.RelationIdx].DatabaseIdx].GetName()
+		metricKey := fmt.Sprintf("datname=%s,schema=%s,relation=%s", databaseName, schemaName, relationName)
 		seenMetrics["relation"][metricKey] = true
 
 		// Create multiple time-series for relation size and sequential scan count
 		ts = append(ts, createMultipleTimeSeries(systemInfo, map[string]float64{
-			"cc_relation_size_bytes": float64(relStat.SizeBytes),
-			"cc_relation_seq_scan":   float64(relStat.SeqScan),
+			"cc_relation_size_bytes":          float64(relStat.SizeBytes),
+			"cc_relation_idx_scan":            float64(relStat.IdxScan),
+			"cc_relation_seq_scan":            float64(relStat.SeqScan),
+			"cc_relation_seq_tup_read":        float64(relStat.SeqTupRead),
+			"cc_relation_idx_tup_fetch":       float64(relStat.IdxTupFetch),
+			"cc_relation_n_tup_ins":           float64(relStat.NTupIns),
+			"cc_relation_n_tup_upd":           float64(relStat.NTupUpd),
+			"cc_relation_n_tup_del":           float64(relStat.NTupDel),
+			"cc_relation_n_tup_hot_upd":       float64(relStat.NTupHotUpd),
+			"cc_relation_n_live_tup":          float64(relStat.NLiveTup),
+			"cc_relation_n_dead_tup":          float64(relStat.NDeadTup),
+			"cc_relation_n_mod_since_analyze": float64(relStat.NModSinceAnalyze),
+			"cc_relation_n_ins_since_vacuum":  float64(relStat.NInsSinceVacuum),
+			"cc_relation_heap_blks_read":      float64(relStat.HeapBlksRead),
+			"cc_relation_heap_blks_hit":       float64(relStat.HeapBlksHit),
+			"cc_relation_idx_blks_read":       float64(relStat.IdxBlksRead),
+			"cc_relation_idx_blks_hit":        float64(relStat.IdxBlksHit),
+			"cc_relation_toast_blks_read":     float64(relStat.ToastBlksRead),
+			"cc_relation_toast_blks_hit":      float64(relStat.ToastBlksHit),
+			"cc_relation_tidx_blks_read":      float64(relStat.TidxBlksRead),
+			"cc_relation_tidx_blks_hit":       float64(relStat.TidxBlksHit),
+			"cc_relation_toast_size_bytes":    float64(relStat.ToastSizeBytes),
+			"cc_relation_analyzed_at":         convertTimestampToMilliseconds(relStat.AnalyzedAt),
+			"cc_relation_frozenxid_age":       float64(relStat.FrozenxidAge),
+			"cc_relation_minmxid_age":         float64(relStat.MinmxidAge),
+
+			// Statistics that are infrequently updated (e.g. by VACUUM, ANALYZE, and a few DDL commands)
+			"cc_relation_relpages":         float64(relStat.Relpages),
+			"cc_relation_reltuples":        float64(relStat.Reltuples),
+			"cc_relation_relfrozenxid":     float64(relStat.Relfrozenxid),
+			"cc_relation_relminmxid":       float64(relStat.Relminmxid),
+			"cc_relation_last_vacuum":      convertTimestampToMilliseconds(relStat.LastVacuum),
+			"cc_relation_last_autovacuum":  convertTimestampToMilliseconds(relStat.LastAutovacuum),
+			"cc_relation_last_analyze":     convertTimestampToMilliseconds(relStat.LastAnalyze),
+			"cc_relation_last_autoanalyze": convertTimestampToMilliseconds(relStat.LastAutoanalyze),
+			"cc_relation_toast_reltuples":  float64(relStat.ToastReltuples),
+			"cc_relation_toast_relpages":   float64(relStat.ToastRelpages),
 		}, []prompb.Label{
+			{Name: "datname", Value: databaseName},
+			{Name: "schema", Value: schemaName},
 			{Name: "relation", Value: relationName},
 		}, timestamp)...)
 	}
@@ -405,6 +459,61 @@ func processRelationAndIndexStats(snapshot *collector_proto.FullSnapshot, system
 	}
 
 	return ts
+}
+
+// processSettingsStats generates metrics for each setting in the FullSnapshot and tracks seen metrics
+func processSettingsStats(snapshot *collector_proto.FullSnapshot, systemInfo SystemInfo, timestamp int64, seenMetrics map[string]map[string]bool) []prompb.TimeSeries {
+	var ts []prompb.TimeSeries
+
+	for _, setting := range snapshot.Settings {
+		metricKey := fmt.Sprintf("name=%s", setting.Name)
+		seenMetrics["setting"][metricKey] = true
+
+		labels := []prompb.Label{
+			{Name: "name", Value: setting.Name},
+			// {Name: "source", Value: setting.Source.GetValue()},
+		}
+
+		// if setting.SourceFile != nil && setting.SourceFile.Valid {
+		// 	labels = append(labels, prompb.Label{Name: "source_file", Value: setting.SourceFile.Value})
+		// }
+
+		// if setting.SourceLine != nil && setting.SourceLine.Valid {
+		// 	labels = append(labels, prompb.Label{Name: "source_line", Value: setting.SourceLine.Value})
+		// }
+
+		if setting.Unit != nil && setting.Unit.Valid {
+			labels = append(labels, prompb.Label{Name: "unit", Value: setting.Unit.Value})
+		}
+
+		// Add current_value metric
+		ts = append(ts, createTimeSeries(systemInfo, "cc_setting_current_value", labels, parseSettingValue(setting.CurrentValue), timestamp))
+
+		// Add boot_value metric if it exists and is different from current_value
+		if setting.BootValue != nil && setting.BootValue.Valid && setting.BootValue.Value != setting.CurrentValue {
+			ts = append(ts, createTimeSeries(systemInfo, "cc_setting_boot_value", labels, parseSettingValue(setting.BootValue.Value), timestamp))
+		}
+
+		// Add reset_value metric if it exists and is different from current_value
+		if setting.ResetValue != nil && setting.ResetValue.Valid && setting.ResetValue.Value != setting.CurrentValue {
+			ts = append(ts, createTimeSeries(systemInfo, "cc_setting_reset_value", labels, parseSettingValue(setting.ResetValue.Value), timestamp))
+		}
+	}
+
+	return ts
+}
+
+// Helper function to parse setting value to float64
+func parseSettingValue(value string) float64 {
+	floatValue, err := strconv.ParseFloat(value, 64)
+	if err != nil {
+		// Handle non-numeric values (e.g., "on", "off") by using 1 for "on" and 0 for others
+		if strings.ToLower(value) == "on" {
+			return 1
+		}
+		return 0
+	}
+	return floatValue
 }
 
 // createFullSnapshotStaleMarkers generates stale markers for time-series that were present in the previous snapshot but are missing in the current one

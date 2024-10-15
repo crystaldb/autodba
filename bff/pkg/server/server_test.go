@@ -8,11 +8,12 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"strconv"
+	"time"
+
 	"github.com/go-playground/validator/v10"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"strconv"
-	"time"
 )
 
 type MockMetricsService struct {
@@ -58,13 +59,13 @@ func TestEndpointsGeneration(t *testing.T) {
 
 	// TEST configured route exists
 	record := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/health?start=now&dbidentifier=default_db", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/health?start=now&dbidentifier=amazon_rds/default_db/us-west-2/cvirkksghnig", nil)
 	handler.ServeHTTP(record, req)
 	assert.Equal(t, http.StatusOK, record.Code)
 
 	// TEST route not found
 	record = httptest.NewRecorder()
-	req = httptest.NewRequest(http.MethodGet, "/api/v2/health?start=now&dbidentifier=default_db", nil)
+	req = httptest.NewRequest(http.MethodGet, "/api/v2/health?start=now&dbidentifier=amazon_rds/default_db/us-west-2/cvirkksghnig", nil)
 	handler.ServeHTTP(record, req)
 	assert.Equal(t, http.StatusNotFound, record.Code)
 }
@@ -107,13 +108,13 @@ func TestParamsPopulation(t *testing.T) {
 
 	// TEST params population
 	record := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/health?datname=test_db&start=0000&end=1111&dbidentifier=a/default_db/c", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/health?datname=test_db&start=0000&end=1111&dbidentifier=amazon_rds/default_db/us-west-2/cvirkksghnig", nil)
 	handler.ServeHTTP(record, req)
 	assert.Equal(t, http.StatusOK, record.Code)
 
 	// Arbitrary param order
 	record = httptest.NewRecorder()
-	req = httptest.NewRequest(http.MethodGet, "/api/v1/health?end=1111&start=0000&datname=test_db&dbidentifier=a/default_db/c", nil)
+	req = httptest.NewRequest(http.MethodGet, "/api/v1/health?end=1111&start=0000&datname=test_db&dbidentifier=amazon_rds/default_db/us-west-2/cvirkksghnig", nil)
 	handler.ServeHTTP(record, req)
 	assert.Equal(t, http.StatusOK, record.Code)
 
@@ -146,7 +147,7 @@ func TestMissingParams(t *testing.T) {
 
 	record := httptest.NewRecorder()
 
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/health?start=0000&dbidentifier=default_db", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/health?start=0000&dbidentifier=amazon_rds/default_db/us-west-2/cvirkksghnig", nil)
 	handler.ServeHTTP(record, req)
 	assert.Equal(t, http.StatusBadRequest, record.Code)
 
@@ -180,7 +181,7 @@ func TestMetricsHandlerJSONFormat(t *testing.T) {
 	handler := metrics_handler(routesConfig, mockMetricsService)
 
 	record := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/metrics?start=now&dbidentifier=default_db", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/metrics?start=now&dbidentifier=amazon_rds/default_db/us-west-2/cvirkksghnig", nil)
 	handler.ServeHTTP(record, req)
 	assert.Equal(t, http.StatusOK, record.Code)
 
@@ -433,13 +434,13 @@ func TestDefaultDBIdentifier(t *testing.T) {
 	mockService.On("Execute", mock.Anything, mock.Anything).
 		Run(func(args mock.Arguments) {
 			metrics := args.Get(0).(map[string]string)
-			assert.Equal(t, "sum(rds_cpu_usage_percent_average{dbidentifier=~\"default_db\"})", metrics["cpu"])
+			assert.Equal(t, "sum(rds_cpu_usage_percent_average{dbidentifier=~\"amazon_rds/default_db/us-west-2/cvirkksghnig\"})", metrics["cpu"])
 		}).
 		Return(map[int64]map[string]float64{}, nil)
 
 	// Create a request without the dbidentifier parameter
 	record := httptest.NewRecorder()
-	req := httptest.NewRequest("GET", "/api/v1/test?start=now&dbidentifier=a/default_db/c", nil)
+	req := httptest.NewRequest("GET", "/api/v1/test?start=now&dbidentifier=amazon_rds/default_db/us-west-2/cvirkksghnig", nil)
 	handler := metrics_handler(routeConfigs, mockService)
 	handler.ServeHTTP(record, req)
 
