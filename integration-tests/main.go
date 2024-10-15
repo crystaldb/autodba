@@ -283,7 +283,7 @@ func main() {
 		log.Fatalf("Error parsing CLI args: %v\n", err)
 	}
 
-	dbInfo, ok := dbInfoMap["16"] // Change "16" to any other version if needed
+	dbInfo, ok := dbInfoMap["16.3"] // Change "16.3" to any other version if needed
 	if !ok {
 		log.Fatalf("No DbInfo found for version '16'")
 	}

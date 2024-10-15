@@ -41,6 +41,7 @@ func TestAPISuite(t *testing.T) {
 		dbVersion, err := getDatabaseVersion(info.DbConnString)
 		if err != nil {
 			t.Fatalf("Failed to get database version for %s: %v\n", info.Description, err)
+			return
 		}
 		log.Println("Db version : ", dbVersion)
 
