@@ -161,7 +161,33 @@ func processSystemStats(snapshot *collector_proto.FullSnapshot, systemInfo Syste
 		return ts
 	}
 
-	// CPU statistics
+	// Process CPU statistics
+	ts = append(ts, processCPUStats(snapshot, systemInfo, timestamp, seenMetrics)...)
+
+	// Process Memory statistics
+	ts = append(ts, processMemoryStats(snapshot, systemInfo, timestamp, seenMetrics)...)
+
+	// Process Backend count statistics
+	ts = append(ts, processBackendStats(snapshot, systemInfo, timestamp, seenMetrics)...)
+
+	// Process Disk statistics
+	ts = append(ts, processDiskStats(snapshot, systemInfo, timestamp, seenMetrics)...)
+
+	// Process Network statistics
+	ts = append(ts, processNetworkStats(snapshot, systemInfo, timestamp, seenMetrics)...)
+
+	// Process disk information
+	ts = append(ts, processDiskInformation(snapshot, systemInfo, timestamp, seenMetrics)...)
+
+	// Process disk partition statistics
+	ts = append(ts, processDiskPartitionStats(snapshot, systemInfo, timestamp, seenMetrics)...)
+
+	return ts
+}
+
+// Helper function for CPU statistics
+func processCPUStats(snapshot *collector_proto.FullSnapshot, systemInfo SystemInfo, timestamp int64, seenMetrics map[string]map[string]bool) []prompb.TimeSeries {
+	var ts []prompb.TimeSeries
 	if snapshot.System.CpuStatistics != nil {
 		for _, cpuStat := range snapshot.System.CpuStatistics {
 			metricKey := fmt.Sprintf("cpu_id=%d", cpuStat.CpuIdx)
@@ -182,8 +208,12 @@ func processSystemStats(snapshot *collector_proto.FullSnapshot, systemInfo Syste
 	} else {
 		log.Println("Warning: snapshot.System.CpuStatistics is nil")
 	}
+	return ts
+}
 
-	// Memory statistics
+// Helper function for Memory statistics
+func processMemoryStats(snapshot *collector_proto.FullSnapshot, systemInfo SystemInfo, timestamp int64, seenMetrics map[string]map[string]bool) []prompb.TimeSeries {
+	var ts []prompb.TimeSeries
 	if snapshot.System.MemoryStatistic != nil {
 		seenMetrics["memory"]["system_memory"] = true
 
@@ -207,8 +237,12 @@ func processSystemStats(snapshot *collector_proto.FullSnapshot, systemInfo Syste
 	} else {
 		log.Println("Warning: snapshot.System.MemoryStatistic is nil")
 	}
+	return ts
+}
 
-	// Backend count statistics
+// Helper function for Backend count statistics
+func processBackendStats(snapshot *collector_proto.FullSnapshot, systemInfo SystemInfo, timestamp int64, seenMetrics map[string]map[string]bool) []prompb.TimeSeries {
+	var ts []prompb.TimeSeries
 	if snapshot.BackendCountStatistics != nil {
 		for _, backendStat := range snapshot.BackendCountStatistics {
 			// Create labels for backend type and state
@@ -216,25 +250,8 @@ func processSystemStats(snapshot *collector_proto.FullSnapshot, systemInfo Syste
 				{Name: "backend_type", Value: backendTypeToString(backendStat.BackendType)},
 			}
 
-			roleName := Unknown
-			if backendStat.HasRoleIdx {
-				if snapshot.RoleReferences != nil && len(snapshot.RoleReferences) > int(backendStat.RoleIdx) {
-					roleName = snapshot.RoleReferences[backendStat.RoleIdx].Name
-					labels = append(labels, prompb.Label{Name: "role", Value: roleName})
-				} else {
-					log.Println("Warning: snapshot.RoleReferences is nil or index out of range")
-				}
-			}
-
-			databaseName := Unknown
-			if backendStat.HasDatabaseIdx {
-				if snapshot.DatabaseReferences != nil && len(snapshot.DatabaseReferences) > int(backendStat.DatabaseIdx) {
-					databaseName = snapshot.DatabaseReferences[backendStat.DatabaseIdx].Name
-					labels = append(labels, prompb.Label{Name: "datname", Value: databaseName})
-				} else {
-					log.Println("Warning: snapshot.DatabaseReferences is nil or index out of range")
-				}
-			}
+			roleName := processRoleName(snapshot, backendStat, &labels)
+			databaseName := processDatabaseName(snapshot, backendStat, &labels)
 
 			labels = append(labels, prompb.Label{Name: "state", Value: backendStateToString(backendStat.State)})
 
@@ -252,14 +269,17 @@ func processSystemStats(snapshot *collector_proto.FullSnapshot, systemInfo Syste
 	} else {
 		log.Println("Warning: snapshot.BackendCountStatistics is nil")
 	}
+	return ts
+}
 
-	// Disk statistics (same as before, processing all fields)
+// Helper function for Disk statistics
+func processDiskStats(snapshot *collector_proto.FullSnapshot, systemInfo SystemInfo, timestamp int64, seenMetrics map[string]map[string]bool) []prompb.TimeSeries {
+	var ts []prompb.TimeSeries
 	if snapshot.System.DiskStatistics != nil {
 		for _, diskStat := range snapshot.System.DiskStatistics {
 			metricKey := fmt.Sprintf("disk_idx=%d", diskStat.DiskIdx)
 			seenMetrics["disk"][metricKey] = true
 
-			// Create multiple time-series for disk I/O statistics
 			ts = append(ts, createMultipleTimeSeries(systemInfo, map[string]float64{
 				"cc_system_disk_read_ops_per_second":    diskStat.ReadOperationsPerSecond,
 				"cc_system_disk_write_ops_per_second":   diskStat.WriteOperationsPerSecond,
@@ -273,8 +293,12 @@ func processSystemStats(snapshot *collector_proto.FullSnapshot, systemInfo Syste
 			}, timestamp)...)
 		}
 	}
+	return ts
+}
 
-	// Network statistics (same as before, processing all fields)
+// Helper function for Network statistics
+func processNetworkStats(snapshot *collector_proto.FullSnapshot, systemInfo SystemInfo, timestamp int64, seenMetrics map[string]map[string]bool) []prompb.TimeSeries {
+	var ts []prompb.TimeSeries
 	if snapshot.System.NetworkStatistics != nil {
 		for _, netStat := range snapshot.System.NetworkStatistics {
 			metricKey := fmt.Sprintf("interface_name=%d", netStat.NetworkIdx)
@@ -289,16 +313,38 @@ func processSystemStats(snapshot *collector_proto.FullSnapshot, systemInfo Syste
 			}, timestamp)...)
 		}
 	}
-
-	// Process disk information
-	ts = append(ts, processDiskInformation(snapshot, systemInfo, timestamp, seenMetrics)...)
-
-	// Process disk partition statistics
-	ts = append(ts, processDiskPartitionStats(snapshot, systemInfo, timestamp, seenMetrics)...)
-
 	return ts
 }
 
+// Helper function to process role name
+func processRoleName(snapshot *collector_proto.FullSnapshot, backendStat *collector_proto.BackendCountStatistic, labels *[]prompb.Label) string {
+	roleName := Unknown
+	if backendStat.HasRoleIdx {
+		if snapshot.RoleReferences != nil && len(snapshot.RoleReferences) > int(backendStat.RoleIdx) {
+			roleName = snapshot.RoleReferences[backendStat.RoleIdx].Name
+			*labels = append(*labels, prompb.Label{Name: "role", Value: roleName})
+		} else {
+			log.Println("Warning: snapshot.RoleReferences is nil or index out of range")
+		}
+	}
+	return roleName
+}
+
+// Helper function to process database name
+func processDatabaseName(snapshot *collector_proto.FullSnapshot, backendStat *collector_proto.BackendCountStatistic, labels *[]prompb.Label) string {
+	databaseName := Unknown
+	if backendStat.HasDatabaseIdx {
+		if snapshot.DatabaseReferences != nil && len(snapshot.DatabaseReferences) > int(backendStat.DatabaseIdx) {
+			databaseName = snapshot.DatabaseReferences[backendStat.DatabaseIdx].Name
+			*labels = append(*labels, prompb.Label{Name: "datname", Value: databaseName})
+		} else {
+			log.Println("Warning: snapshot.DatabaseReferences is nil or index out of range")
+		}
+	}
+	return databaseName
+}
+
+// Helper function for Disk Information
 func processDiskInformation(snapshot *collector_proto.FullSnapshot, systemInfo SystemInfo, timestamp int64, seenMetrics map[string]map[string]bool) []prompb.TimeSeries {
 	var ts []prompb.TimeSeries
 
@@ -324,6 +370,7 @@ func processDiskInformation(snapshot *collector_proto.FullSnapshot, systemInfo S
 	return ts
 }
 
+// Helper function for Disk Partition statistics
 func processDiskPartitionStats(snapshot *collector_proto.FullSnapshot, systemInfo SystemInfo, timestamp int64, seenMetrics map[string]map[string]bool) []prompb.TimeSeries {
 	var ts []prompb.TimeSeries
 
