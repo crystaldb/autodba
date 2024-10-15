@@ -16,7 +16,7 @@
         "step": "$step"
       },
       "metrics": {
-        "connections_percent": "sum(cc_backend_count{database=~\"$datname\"})/sum(pg_settings_max_connections)",
+        "connections_percent": "sum(cc_backend_count{database=~\"$datname\",sys_id=~\"$sys_id\",sys_scope=~\"$sys_scope\",sys_type=~\"$sys_type\"})/sum(cc_pgsetting_current_value{name=\"max_connections\",sys_id=~\"$sys_id\",sys_scope=~\"$sys_scope\",sys_type=~\"$sys_type\"})",
         "cpu": "sum(rds_cpu_usage_percent_average{dbidentifier=~\"$dbidentifier\"})",
         "disk_usage": "1-(sum(rds_free_storage_bytes{dbidentifier=\"$dbidentifier\"})/sum(rds_allocated_storage_bytes{dbidentifier=\"$dbidentifier\"}))"
       }
@@ -52,13 +52,13 @@
         "cpu_utilization": "sum(cc_system_cpu_user_percent{sys_id=~\"$sys_id\",sys_scope=~\"$sys_scope\",sys_type=~\"$sys_type\"})",
         "free_memory": "sum(cc_system_memory_free_bytes{sys_id=~\"$sys_id\",sys_scope=~\"$sys_scope\",sys_type=~\"$sys_type\"}) + sum(cc_system_memory_cached_bytes{sys_id=~\"$sys_id\",sys_scope=~\"$sys_scope\",sys_type=~\"$sys_type\"}) + sum(cc_system_memory_buffers_bytes{sys_id=~\"$sys_id\",sys_scope=~\"$sys_scope\",sys_type=~\"$sys_type\"})",
         "memory_usage_unused_instance_memory": "sum(cc_system_memory_total_bytes{sys_id=~\"$sys_id\",sys_scope=~\"$sys_scope\",sys_type=~\"$sys_type\"}) - (sum(cc_system_memory_free_bytes{sys_id=~\"$sys_id\",sys_scope=~\"$sys_scope\",sys_type=~\"$sys_type\"}) + sum(cc_system_memory_cached_bytes{sys_id=~\"$sys_id\",sys_scope=~\"$sys_scope\",sys_type=~\"$sys_type\"}) + sum(cc_system_memory_buffers_bytes{sys_id=~\"$sys_id\",sys_scope=~\"$sys_scope\",sys_type=~\"$sys_type\"}))",
-        "memory_usage_other_freeable_memory": "(sum(cc_system_memory_free_bytes{sys_id=~\"$sys_id\",sys_scope=~\"$sys_scope\",sys_type=~\"$sys_type\"}) + sum(cc_system_memory_cached_bytes{sys_id=~\"$sys_id\",sys_scope=~\"$sys_scope\",sys_type=~\"$sys_type\"}) + sum(cc_system_memory_buffers_bytes{sys_id=~\"$sys_id\",sys_scope=~\"$sys_scope\",sys_type=~\"$sys_type\"})) - sum(pg_settings_shared_memory_size_bytes{sys_id=~\"$sys_id\",sys_scope=~\"$sys_scope\",sys_type=~\"$sys_type\"})",
-        "memory_usage_shared_memory": "sum(pg_settings_shared_memory_size_bytes{dbidentifier=~\"$dbidentifier\"})",
-        "ebs_read_iops": "sum(rds_read_iops_average{dbidentifier=~\"$dbidentifier\"})",
-        "ebs_write_iops": "sum(rds_write_iops_average{dbidentifier=~\"$dbidentifier\"})",
-        "ebs_current_provisioned_iops": "sum(rds_instance_max_iops_average)",
-        "io_read_throughput": "sum(rds_read_throughput_bytes{dbidentifier=~\"$dbidentifier\"})",
-        "io_write_throughput": "sum(rds_write_throughput_bytes{dbidentifier=~\"$dbidentifier\"})",
+        "memory_usage_other_freeable_memory": "(sum(cc_system_memory_free_bytes{sys_id=~\"$sys_id\",sys_scope=~\"$sys_scope\",sys_type=~\"$sys_type\"}) + sum(cc_system_memory_cached_bytes{sys_id=~\"$sys_id\",sys_scope=~\"$sys_scope\",sys_type=~\"$sys_type\"}) + sum(cc_system_memory_buffers_bytes{sys_id=~\"$sys_id\",sys_scope=~\"$sys_scope\",sys_type=~\"$sys_type\"})) - (sum(cc_pgsetting_current_value{name=\"shared_memory_size\",sys_id=~\"$sys_id\",sys_scope=~\"$sys_scope\",sys_type=~\"$sys_type\"})*1000000)",
+        "memory_usage_shared_memory": "sum(cc_pgsetting_current_value{name=\"shared_memory_size\",sys_id=~\"$sys_id\",sys_scope=~\"$sys_scope\",sys_type=~\"$sys_type\"})*1000000",
+        "ebs_read_iops": "sum(cc_system_disk_read_ops_per_second{sys_id=~\"$sys_id\",sys_scope=~\"$sys_scope\",sys_type=~\"$sys_type\"})",
+        "ebs_write_iops": "sum(cc_system_disk_write_ops_per_second{sys_id=~\"$sys_id\",sys_scope=~\"$sys_scope\",sys_type=~\"$sys_type\"})",
+        "ebs_current_provisioned_iops": "sum(cc_system_disk_provisioned_iops{sys_id=~\"$sys_id\",sys_scope=~\"$sys_scope\",sys_type=~\"$sys_type\"})",
+        "io_read_throughput": "sum(cc_system_disk_read_bytes_per_second{sys_id=~\"$sys_id\",sys_scope=~\"$sys_scope\",sys_type=~\"$sys_type\"})",
+        "io_write_throughput": "sum(cc_system_disk_write_bytes_per_second{sys_id=~\"$sys_id\",sys_scope=~\"$sys_scope\",sys_type=~\"$sys_type\"})",
         "free_storage_space": "sum(rds_free_storage_bytes{dbidentifier=~\"$dbidentifier\"})"
       }
     }

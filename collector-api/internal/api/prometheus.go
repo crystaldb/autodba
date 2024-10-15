@@ -119,16 +119,17 @@ func fullSnapshotMetrics(snapshot *collector_proto.FullSnapshot, systemInfo Syst
 
 	// Track seen time-series for each type of metric
 	seenMetrics := map[string]map[string]bool{
-		"cpu":      make(map[string]bool),
-		"memory":   make(map[string]bool),
-		"db":       make(map[string]bool),
-		"query":    make(map[string]bool),
-		"relation": make(map[string]bool),
-		"index":    make(map[string]bool),
-		"backend":  make(map[string]bool),
-		"disk":     make(map[string]bool),
-		"network":  make(map[string]bool),
-		"setting":  make(map[string]bool),
+		"cpu":       make(map[string]bool),
+		"memory":    make(map[string]bool),
+		"db":        make(map[string]bool),
+		"query":     make(map[string]bool),
+		"relation":  make(map[string]bool),
+		"index":     make(map[string]bool),
+		"backend":   make(map[string]bool),
+		"disk":      make(map[string]bool),
+		"network":   make(map[string]bool),
+		"setting":   make(map[string]bool),
+		"disk_info": make(map[string]bool),
 	}
 
 	// Process system-level statistics
@@ -286,6 +287,34 @@ func processSystemStats(snapshot *collector_proto.FullSnapshot, systemInfo Syste
 				{Name: "interface_name", Value: snapshot.System.NetworkReferences[netStat.NetworkIdx].InterfaceName},
 			}, timestamp)...)
 		}
+	}
+
+	// Process disk information
+	ts = append(ts, processDiskInformation(snapshot, systemInfo, timestamp, seenMetrics)...)
+
+	return ts
+}
+
+func processDiskInformation(snapshot *collector_proto.FullSnapshot, systemInfo SystemInfo, timestamp int64, seenMetrics map[string]map[string]bool) []prompb.TimeSeries {
+	var ts []prompb.TimeSeries
+
+	for _, diskInfo := range snapshot.System.DiskInformations {
+		metricKey := fmt.Sprintf("disk_idx=%d", diskInfo.DiskIdx)
+		seenMetrics["disk_info"][metricKey] = true
+
+		labels := []prompb.Label{
+			{Name: "disk_idx", Value: strconv.Itoa(int(diskInfo.DiskIdx))},
+			{Name: "disk_type", Value: diskInfo.DiskType},
+		}
+
+		if diskInfo.Scheduler != "" {
+			labels = append(labels, prompb.Label{Name: "scheduler", Value: diskInfo.Scheduler})
+		}
+
+		ts = append(ts, createMultipleTimeSeries(systemInfo, map[string]float64{
+			"cc_system_disk_provisioned_iops": float64(diskInfo.ProvisionedIops),
+			// "cc_system_disk_encrypted":        boolToFloat64(diskInfo.Encrypted),
+		}, labels, timestamp)...)
 	}
 
 	return ts
@@ -487,16 +516,16 @@ func processSettingsStats(snapshot *collector_proto.FullSnapshot, systemInfo Sys
 		}
 
 		// Add current_value metric
-		ts = append(ts, createTimeSeries(systemInfo, "cc_setting_current_value", labels, parseSettingValue(setting.CurrentValue), timestamp))
+		ts = append(ts, createTimeSeries(systemInfo, "cc_pgsetting_current_value", labels, parseSettingValue(setting.CurrentValue), timestamp))
 
 		// Add boot_value metric if it exists and is different from current_value
 		if setting.BootValue != nil && setting.BootValue.Valid && setting.BootValue.Value != setting.CurrentValue {
-			ts = append(ts, createTimeSeries(systemInfo, "cc_setting_boot_value", labels, parseSettingValue(setting.BootValue.Value), timestamp))
+			ts = append(ts, createTimeSeries(systemInfo, "cc_pgsetting_boot_value", labels, parseSettingValue(setting.BootValue.Value), timestamp))
 		}
 
 		// Add reset_value metric if it exists and is different from current_value
 		if setting.ResetValue != nil && setting.ResetValue.Valid && setting.ResetValue.Value != setting.CurrentValue {
-			ts = append(ts, createTimeSeries(systemInfo, "cc_setting_reset_value", labels, parseSettingValue(setting.ResetValue.Value), timestamp))
+			ts = append(ts, createTimeSeries(systemInfo, "cc_pgsetting_reset_value", labels, parseSettingValue(setting.ResetValue.Value), timestamp))
 		}
 	}
 
