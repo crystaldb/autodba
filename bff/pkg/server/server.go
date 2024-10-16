@@ -111,8 +111,8 @@ func (s server_imp) Run() error {
 	r.Use(CORS)
 
 	r.Get("/api/v1/activity", activity_handler(s.metrics_service, s.inputValidator))
-	r.Get("/api/v1/instance", info_handler(s.metrics_service))
-	r.Get("/api/v1/instance/database", databases_handler(s.metrics_service))
+	r.Get("/api/v1/instance", info_handler(s.metrics_service, s.inputValidator))
+	r.Get("/api/v1/instance/database", databases_handler(s.metrics_service, s.inputValidator))
 
 	r.Route(api_prefix, func(r chi.Router) {
 		r.Mount("/", metrics_handler(s.routes_config, s.metrics_service))
@@ -500,12 +500,21 @@ func activity_handler(metrics_service metrics.Service, validate *validator.Valid
 	})
 }
 
-func databases_handler(metrics_service metrics.Service) http.HandlerFunc {
+func databases_handler(metrics_service metrics.Service, validate *validator.Validate) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		dbIdentifier := r.URL.Query().Get("dbidentifier")
+		err := validate.Var(dbIdentifier, "required,dbIdentifier")
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		systemType, systemID, systemScope, err := splitDbIdentifier(dbIdentifier)
+		if err != nil {
+			http.Error(w, "Error in splitting dbIdentifier: "+err.Error(), http.StatusBadRequest)
+			return
+		}
 
-		// dbIdentifier := chi.URLParam(r, "dbIdentifier")
-
-		query := "crystal_all_databases"
+		query := fmt.Sprintf(`cc_all_databases{sys_id=~"%s",sys_scope=~"%s",sys_type=~"%s"}`, systemID, systemScope, systemType)
 		options := make(map[string]string)
 
 		results, err := metrics_service.ExecuteRaw(query, options)
@@ -537,7 +546,7 @@ func databases_handler(metrics_service metrics.Service) http.HandlerFunc {
 	})
 }
 
-func info_handler(metrics_service metrics.Service) http.HandlerFunc {
+func info_handler(metrics_service metrics.Service, _ *validator.Validate) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		query := `count(cc_pg_stat_activity) by (sys_id, sys_scope, sys_scope_fallback,sys_type)`
 		now := time.Now().UnixMilli()

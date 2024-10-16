@@ -127,6 +127,9 @@ func fullSnapshotMetrics(snapshot *collector_proto.FullSnapshot, systemInfo Syst
 	// Process system-level statistics
 	ts = append(ts, processSystemStats(snapshot, systemInfo, snapshotTimestamp)...)
 
+	// Process database references
+	ts = append(ts, processDatabaseReferences(snapshot, systemInfo, snapshotTimestamp)...)
+
 	// Process database statistics
 	ts = append(ts, processDatabaseStats(snapshot, systemInfo, snapshotTimestamp)...)
 
@@ -439,6 +442,20 @@ func processDatabaseStats(snapshot *collector_proto.FullSnapshot, systemInfo Sys
 		}, []prompb.Label{
 			{Name: "datname", Value: dbName},
 		}, timestamp)...)
+	}
+
+	return ts
+}
+
+func processDatabaseReferences(snapshot *collector_proto.FullSnapshot, systemInfo SystemInfo, timestamp int64) []prompb.TimeSeries {
+	var ts []prompb.TimeSeries
+
+	for _, dbRef := range snapshot.DatabaseReferences {
+		labels := []prompb.Label{
+			{Name: "datname", Value: dbRef.Name},
+		}
+
+		ts = append(ts, createTimeSeries(systemInfo, "cc_all_databases", labels, 1, timestamp))
 	}
 
 	return ts
