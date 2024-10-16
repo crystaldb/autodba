@@ -84,11 +84,7 @@ for arch in amd64 arm64; do
     cp monitor/prometheus/prometheus.yml "${PROMETHEUS_CONFIG_DIR}/prometheus.yml"
 
     # Build collector
-    if [ "$arch" == "amd64" ]; then
-        PROTOC_ARCH_SUFFIX="x86_64"
-    else
-        PROTOC_ARCH_SUFFIX="aarch_64"
-    fi
+    PROTOC_ARCH_SUFFIX="x86_64" # We only build for x86_64, as we're going to run it on x86_64 and use its output at build time
     echo "Building collector..."
     mkdir -p "${COLLECTOR_DIR}"
     git clone --recurse-submodules https://github.com/crystaldb/collector.git "${COLLECTOR_DIR}"
