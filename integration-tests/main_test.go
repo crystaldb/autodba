@@ -100,11 +100,16 @@ func TestAPIRequest(t *testing.T) {
 		if err := json.Unmarshal(body, &responseData); err != nil {
 			t.Fatalf("Failed to unmarshal response body: %v", err)
 		}
+		if len(responseData.Data) == 0 {
+			t.Log("Received empty data, retrying...")
+			time.Sleep(interval)
+			continue
+		}
 
 		break
 	}
 
-	assert.Greater(t, len(responseData.Data), 0, "Expected at least one data point")
+	assert.Greater(t, len(responseData.Data[0].Values), 0, "Expected at least one value for the first metric")
 }
 
 func getDatabaseVersion(connectionString string) (string, error) {
