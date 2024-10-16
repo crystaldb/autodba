@@ -52,6 +52,17 @@ var (
 	containerID string
 )
 
+var defaultConfig = ContainerConfig{
+	ProjectDir:          "../",
+	Dockerfile:          "../Dockerfile",
+	ImageName:           "autodba:latest",
+	ContainerName:       "autodba_test",
+	PrometheusPort:      "9090",
+	BffPort:             "4000",
+	DefaultMetricPeriod: "5",
+	WarmUpTime:          "60",
+}
+
 func readConfig() (*ContainerConfig, error) {
 	viper.SetConfigName("container_config")
 	viper.SetConfigType("json")
@@ -180,7 +191,7 @@ func SetupTestContainer(config *ContainerConfig, dbInfo DbInfo) error {
 
 	log.Println("Waiting for the container to be ready...")
 
-	const maxWaitTime = 5 * time.Minute
+	const maxWaitTime = 1 * time.Minute
 
 	timeout := time.After(maxWaitTime)
 	ticker := time.NewTicker(10 * time.Second)
@@ -262,28 +273,13 @@ func TearDownTestContainer() error {
 	return nil
 }
 
-func parseCLIArgs() (ContainerConfig, DbInfoMap, error) {
-	dbConfigStr := flag.String("dbconfig", "", "JSON string of database configuration map")
-	containerConfigStr := flag.String("containerConfig", "", "JSON string of container configuration")
-	flag.Parse()
+// you can run main to spin up a container without running the test suite
+func main() {
 
-	var config ContainerConfig
-	if err := json.Unmarshal([]byte(*containerConfigStr), &config); err != nil {
-		return config, DbInfoMap{}, err
-	}
+	var dbConfigStr = flag.String("dbconfig", "", "JSON string of database configuration map")
 
 	var dbInfoMap DbInfoMap
 	if err := json.Unmarshal([]byte(*dbConfigStr), &dbInfoMap); err != nil {
-		return config, DbInfoMap{}, err
-	}
-
-	return config, dbInfoMap, nil
-}
-
-// you can run main to spin up a container without running the test suite
-func main() {
-	config, dbInfoMap, err := parseCLIArgs()
-	if err != nil {
 		log.Fatalf("Error parsing CLI args: %v\n", err)
 	}
 
@@ -292,13 +288,12 @@ func main() {
 		log.Fatalf("No DbInfo found for version '16'")
 	}
 
-	log.Printf("Container config: %+v\n", config)
 	log.Printf("DbInfo :  %+v\n", dbInfo)
 	log.Println("RDS Instance: ", dbInfo.AwsRdsInstance)
 	log.Println("DB Connection String: ", dbInfo.DbConnString)
 
 	log.Println("Setting up test container...")
-	if err := SetupTestContainer(&config, dbInfo); err != nil {
+	if err := SetupTestContainer(&defaultConfig, dbInfo); err != nil {
 		log.Fatalf("Failed to set up container: %v\n", err)
 	}
 

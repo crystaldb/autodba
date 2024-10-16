@@ -18,25 +18,19 @@ import (
 var dbIdentifier string
 var port string
 var dbConfigStr = flag.String("dbconfig", "", "JSON string of database configuration map")
-var containerConfigStr = flag.String("containerConfig", "", "JSON string of container configuration")
 
 func TestAPISuite(t *testing.T) {
-	var config ContainerConfig
-	if err := json.Unmarshal([]byte(*containerConfigStr), &config); err != nil {
-		log.Fatalf("Failed to unmarshal container configuration: %v\n", err)
-	}
-
 	var dbInfoMap DbInfoMap
 	if err := json.Unmarshal([]byte(*dbConfigStr), &dbInfoMap); err != nil {
 		log.Fatalf("Failed to unmarshal database configuration: %v\n", err)
 	}
 
-	fmt.Printf("config: %+v\n", config)
+	fmt.Printf("config: %+v\n", defaultConfig)
 	fmt.Printf("dbMap: %+v\n", dbInfoMap)
 
 	for version, info := range dbInfoMap {
 		dbIdentifier = info.AwsRdsInstance
-		port = config.BffPort
+		port = defaultConfig.BffPort
 
 		dbVersion, err := getDatabaseVersion(info.DbConnString)
 		if err != nil {
@@ -45,11 +39,13 @@ func TestAPISuite(t *testing.T) {
 		}
 		log.Println("Db version : ", dbVersion)
 
-		if !strings.Contains(dbVersion, version) {
+		versionPrefix := fmt.Sprintf("PostgreSQL %s", version)
+
+		if !strings.HasPrefix(dbVersion, versionPrefix) {
 			t.Fatalf("Database version %s does not match expected version %s for %s\n", dbVersion, version, info.Description)
 		}
 
-		if err := SetupTestContainer(&config, info); err != nil {
+		if err := SetupTestContainer(&defaultConfig, info); err != nil {
 			t.Fatalf("Failed to set up container for %s: %v\n", info.Description, err)
 		}
 
