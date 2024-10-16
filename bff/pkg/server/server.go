@@ -514,24 +514,24 @@ func databases_handler(metrics_service metrics.Service, validate *validator.Vali
 			return
 		}
 
-		query := fmt.Sprintf(`cc_all_databases{sys_id=~"%s",sys_scope=~"%s",sys_type=~"%s"}`, systemID, systemScope, systemType)
-		options := make(map[string]string)
-
-		results, err := metrics_service.ExecuteRaw(query, options)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
+		queries := []string{
+			fmt.Sprintf(`cc_all_databases{sys_id=~"%s",sys_scope=~"%s",sys_type=~"%s"}`, systemID, systemScope, systemType),
+			fmt.Sprintf(`sum(cc_pg_stat_activity{sys_id=~"%s",sys_scope=~"%s",sys_type=~"%s"}) by (datname)`, systemID, systemScope, systemType),
 		}
 
+		options := make(map[string]string)
 		var dbNames []string
 
-		for _, result := range results {
-			metric, ok := result["metric"].(map[string]interface{})
-			if !ok {
-				continue
+		for _, query := range queries {
+			results, err := metrics_service.ExecuteRaw(query, options)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
 			}
-			if datname, ok := metric["datname"].(string); ok {
-				dbNames = append(dbNames, datname)
+
+			dbNames = extractDatabaseNames(results)
+			if len(dbNames) > 0 {
+				break
 			}
 		}
 
@@ -542,8 +542,23 @@ func databases_handler(metrics_service metrics.Service, validate *validator.Vali
 		}
 		w.WriteHeader(http.StatusOK)
 		w.Write(js)
-
 	})
+}
+
+func extractDatabaseNames(results []map[string]interface{}) []string {
+	var dbNames []string
+	for _, result := range results {
+		metric, ok := result["metric"].(map[string]interface{})
+		if !ok {
+			continue
+		}
+		if datname, ok := metric["datname"].(string); ok {
+			if datname != "" {
+				dbNames = append(dbNames, datname)
+			}
+		}
+	}
+	return dbNames
 }
 
 func info_handler(metrics_service metrics.Service, _ *validator.Validate) http.HandlerFunc {
