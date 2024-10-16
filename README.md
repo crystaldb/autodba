@@ -57,13 +57,13 @@ Choose the version appropriate to your architecture and operating system.
 For example:
 
 ```bash
-wget https://github.com/crystaldb/autodba/releases/latest/download/autodba-0.3.0-amd64.tar.gz
+wget https://github.com/crystaldb/autodba/releases/latest/download/autodba-0.4.0-rc0-amd64.tar.gz
 ```
 
 2. Extract the downloaded tar.gz file:
 ```bash
-tar -xzvf autodba-0.3.0-amd64.tar.gz
-cd autodba-0.3.0
+tar -xzvf autodba-0.4.0-rc0-amd64.tar.gz
+cd autodba-0.4.0-rc0
 ```
 
 3. Create a configuration file `autodba.conf` and populate it with values appropriate to your environment.
