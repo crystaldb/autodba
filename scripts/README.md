@@ -11,7 +11,7 @@ This directory contains a set of scripts for managing the AutoDBA project. Below
 ```
 ./build.sh [TARGET=all]
 ```
-This will build the AutoDBA binaries for multiple architectures, prepare the web UI, include Prometheus exporters, and generate release packages in the `build_output` directory.
+This will build the AutoDBA binaries for multiple architectures, prepare the web UI, include Prometheus, and generate release packages in the `build_output` directory.
 
 The optional argument to this script can specify the target. The possible choices are:
  - `all` (default)
@@ -46,7 +46,7 @@ If a config file is not provided, the script will attempt to read from stdin. If
 
 If the input is provided via stdin, it will be validated as valid JSON before use. If invalid JSON is provided, the script will throw an error and exit.
 
-3. **uninstall.sh**: This script uninstalls AutoDBA from the system, removing its binaries, Prometheus exporters, and configuration files.
+3. **uninstall.sh**: This script uninstalls AutoDBA from the system, removing its binaries, Prometheus, and configuration files.
 
 ### Usage:
 ```

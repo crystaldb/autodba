@@ -52,12 +52,6 @@ npm install
 npm run build
 cd ..
 
-# Prepare Prometheus exporters
-echo "Including Prometheus exporters..."
-
-EXPORTER_VERSION="0.15.0"
-SQL_EXPORTER_VERSION="0.14.3"
-RDS_EXPORTER_REPO="https://github.com/crystaldb/prometheus-rds-exporter.git"
 TMP_DIR="/tmp"
 
 for arch in amd64 arm64; do
@@ -65,7 +59,6 @@ for arch in amd64 arm64; do
     PARENT_DIR="${TAR_GZ_DIR}/autodba-${VERSION}-${arch}/autodba-${VERSION}"
     INSTALL_DIR="$PARENT_DIR/bin"
     WEBAPP_DIR="$PARENT_DIR/share/webapp"
-    EXPORTER_DIR="$PARENT_DIR/share/prometheus_exporters"
     PROMETHEUS_CONFIG_DIR="$PARENT_DIR/config/prometheus"
     AUTODBA_CONFIG_DIR="$PARENT_DIR/config/autodba"
     PROMETHEUS_INSTALL_DIR="$PARENT_DIR/prometheus"
@@ -85,36 +78,9 @@ for arch in amd64 arm64; do
     # Cleanup
     rm -rf $TMP_DIR/prometheus-*
 
-    # Create separate directories for each exporter
-    mkdir -p "${EXPORTER_DIR}/postgres_exporter"
-    mkdir -p "${EXPORTER_DIR}/sql_exporter"
-    mkdir -p "${EXPORTER_DIR}/rds_exporter"
-
-    # Postgres Exporter
-    wget -qO- https://github.com/prometheus-community/postgres_exporter/releases/download/v${EXPORTER_VERSION}/postgres_exporter-${EXPORTER_VERSION}.linux-${arch}.tar.gz | tar -xzf - -C "${EXPORTER_DIR}/postgres_exporter" --strip-components=1
-
-    # SQL Exporter
-    wget -qO- https://github.com/burningalchemist/sql_exporter/releases/download/${SQL_EXPORTER_VERSION}/sql_exporter-${SQL_EXPORTER_VERSION}.linux-${arch}.tar.gz | tar -xzf - -C "${EXPORTER_DIR}/sql_exporter" --strip-components=1
-    rm "${EXPORTER_DIR}/sql_exporter/mssql_standard.collector.yml"
-
-    # RDS Exporter (Build from source)
-    # Prepare clean
-    rm -rf "/tmp/prometheus_rds_exporter"
-    git clone "${RDS_EXPORTER_REPO}" "/tmp/prometheus_rds_exporter"
-    cd /tmp/prometheus_rds_exporter
-    GOARCH=${arch} GOOS=linux go build -o "${EXPORTER_DIR}/rds_exporter/prometheus-rds-exporter"
-    # Cleanup
-    rm -rf "/tmp/prometheus_rds_exporter"
-    cd -
-
     # Copy configuration files and monitor setup
     echo "Copying configuration and monitor setup files..."
-    mkdir -p "${EXPORTER_DIR}/sql_exporter"
-    mkdir -p "${EXPORTER_DIR}/rds_exporter"
     mkdir -p "${PROMETHEUS_CONFIG_DIR}"
-
-    cp -r monitor/prometheus/sql_exporter/* "${EXPORTER_DIR}/sql_exporter/"
-    cp -r monitor/prometheus/rds_exporter/* "${EXPORTER_DIR}/rds_exporter/"
     cp monitor/prometheus/prometheus.yml "${PROMETHEUS_CONFIG_DIR}/prometheus.yml"
 
     # Build collector

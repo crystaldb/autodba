@@ -111,8 +111,8 @@ func (s server_imp) Run() error {
 	r.Use(CORS)
 
 	r.Get("/api/v1/activity", activity_handler(s.metrics_service, s.inputValidator))
-	r.Get("/api/v1/instance", info_handler(s.metrics_service))
-	r.Get("/api/v1/instance/database", databases_handler(s.metrics_service))
+	r.Get("/api/v1/instance", info_handler(s.metrics_service, s.inputValidator))
+	r.Get("/api/v1/instance/database", databases_handler(s.metrics_service, s.inputValidator))
 
 	r.Route(api_prefix, func(r chi.Router) {
 		r.Mount("/", metrics_handler(s.routes_config, s.metrics_service))
@@ -500,29 +500,38 @@ func activity_handler(metrics_service metrics.Service, validate *validator.Valid
 	})
 }
 
-func databases_handler(metrics_service metrics.Service) http.HandlerFunc {
+func databases_handler(metrics_service metrics.Service, validate *validator.Validate) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
-		// dbIdentifier := chi.URLParam(r, "dbIdentifier")
-
-		query := "crystal_all_databases"
-		options := make(map[string]string)
-
-		results, err := metrics_service.ExecuteRaw(query, options)
+		dbIdentifier := r.URL.Query().Get("dbidentifier")
+		err := validate.Var(dbIdentifier, "required,dbIdentifier")
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		systemType, systemID, systemScope, err := splitDbIdentifier(dbIdentifier)
+		if err != nil {
+			http.Error(w, "Error in splitting dbIdentifier: "+err.Error(), http.StatusBadRequest)
 			return
 		}
 
+		queries := []string{
+			fmt.Sprintf(`cc_all_databases{sys_id=~"%s",sys_scope=~"%s",sys_type=~"%s"}`, systemID, systemScope, systemType),
+			fmt.Sprintf(`sum(cc_pg_stat_activity{sys_id=~"%s",sys_scope=~"%s",sys_type=~"%s"}) by (datname,sys_id,sys_scope,sys_type)`, systemID, systemScope, systemType),
+		}
+
+		options := make(map[string]string)
 		var dbNames []string
 
-		for _, result := range results {
-			metric, ok := result["metric"].(map[string]interface{})
-			if !ok {
-				continue
+		for _, query := range queries {
+			results, err := metrics_service.ExecuteRaw(query, options)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
 			}
-			if datname, ok := metric["datname"].(string); ok {
-				dbNames = append(dbNames, datname)
+
+			dbNames = extractDatabaseNames(results)
+			if len(dbNames) > 0 {
+				break
 			}
 		}
 
@@ -533,11 +542,26 @@ func databases_handler(metrics_service metrics.Service) http.HandlerFunc {
 		}
 		w.WriteHeader(http.StatusOK)
 		w.Write(js)
-
 	})
 }
 
-func info_handler(metrics_service metrics.Service) http.HandlerFunc {
+func extractDatabaseNames(results []map[string]interface{}) []string {
+	var dbNames []string
+	for _, result := range results {
+		metric, ok := result["metric"].(map[string]interface{})
+		if !ok {
+			continue
+		}
+		if datname, ok := metric["datname"].(string); ok {
+			if datname != "" {
+				dbNames = append(dbNames, datname)
+			}
+		}
+	}
+	return dbNames
+}
+
+func info_handler(metrics_service metrics.Service, _ *validator.Validate) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		query := `count(cc_pg_stat_activity) by (sys_id, sys_scope, sys_scope_fallback,sys_type)`
 		now := time.Now().UnixMilli()

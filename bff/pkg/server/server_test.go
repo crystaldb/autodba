@@ -475,12 +475,13 @@ func TestDatabasesHandler(t *testing.T) {
 			},
 		},
 	}
-	mockService.On("ExecuteRaw", "crystal_all_databases", map[string]string{}).Return(mockData, nil)
+	mockService.On("ExecuteRaw", "cc_all_databases{sys_id=~\"test1\",sys_scope=~\"us-west-2\",sys_type=~\"amazon_rds\"}", map[string]string{}).Return(mockData, nil)
 
-	handler := databases_handler(mockService)
+	validate := CreateValidator()
+	handler := databases_handler(mockService, validate)
 
 	record := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/instance/database?dbidentifier=DBIDENTIFIER_IGNORED", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/instance/database?dbidentifier=amazon_rds/test1/us-west-2", nil)
 
 	handler.ServeHTTP(record, req)
 	assert.Equal(t, http.StatusOK, record.Code)
