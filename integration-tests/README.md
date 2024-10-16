@@ -4,6 +4,7 @@
 
 To run the tests, use the following command structure, replacing the placeholders with your actual database details:
 The dbconfig json is a map of postgres versions to details for a db of that version. This corelation will be validated in the tests
+Note the format of the aws rds instance id
 
 ```bash
 go test ./... -v -timeout 20m -args -dbconfig='{
@@ -15,7 +16,7 @@ go test ./... -v -timeout 20m -args -dbconfig='{
     "username": "your-db-username",
     "password": "your-db-password",
     "port": "5432",
-    "aws_rds_instance": "your-aws-rds-instance",
+    "aws_rds_instance": "amazon_rds/your-instance-id/us-west-2/abcdefghijk",
     "aws_region": "your-aws-region",
     "aws_access_key": "your-aws-access-key",
     "aws_secret": "your-aws-secret-key"

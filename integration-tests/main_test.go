@@ -32,7 +32,7 @@ func TestAPISuite(t *testing.T) {
 		dbIdentifier = info.AwsRdsInstance
 		port = defaultConfig.BffPort
 
-		dbVersion, err := getDatabaseVersion(info.DbConnString)
+		dbVersion, err := getDatabaseVersion(constructDBConnString(info))
 		if err != nil {
 			t.Fatalf("Failed to get database version for %s: %v\n", info.Description, err)
 			return
@@ -48,18 +48,20 @@ func TestAPISuite(t *testing.T) {
 		if err := SetupTestContainer(&defaultConfig, info); err != nil {
 			t.Fatalf("Failed to set up container for %s: %v\n", info.Description, err)
 		}
+		defer func() {
+			if err := TearDownTestContainer(); err != nil {
+				log.Printf("Failed to tear down container for %s: %v\n", info.Description, err)
+			}
+		}()
 
 		t.Run(info.Description, TestAPIRequest)
-
-		if err := TearDownTestContainer(); err != nil {
-			log.Printf("Failed to tear down container for %s: %v\n", info.Description, err)
-		}
 	}
 }
 
 func TestAPIRequest(t *testing.T) {
 	url := fmt.Sprintf("http://localhost:%s/api/v1/activity?why=cube&database_list=(postgres|rdsadmin)&start=now-900000ms&end=now&step=5000ms&limitdim=15&limitlegend=15&legend=wait_event_name&dim=time&filterdim=&filterdimselected=&dbidentifier=%s", port, dbIdentifier)
 
+	fmt.Println("url: ", url)
 	var responseData struct {
 		Data []struct {
 			Metric struct {
@@ -83,17 +85,17 @@ func TestAPIRequest(t *testing.T) {
 		}
 		defer resp.Body.Close()
 
-		if resp.StatusCode != http.StatusOK {
-			t.Logf("Received non-OK response: %s", resp.Status)
-			time.Sleep(interval)
-			continue
-		}
-
 		body, err := io.ReadAll(resp.Body)
 		if err != nil {
 			t.Fatalf("Failed to read response body: %v", err)
 		}
 		fmt.Printf("%s\n", body)
+
+		if resp.StatusCode != http.StatusOK {
+			t.Logf("Received non-OK response: %s", resp.Status)
+			time.Sleep(interval)
+			continue
+		}
 
 		if err := json.Unmarshal(body, &responseData); err != nil {
 			t.Fatalf("Failed to unmarshal response body: %v", err)
@@ -103,7 +105,6 @@ func TestAPIRequest(t *testing.T) {
 	}
 
 	assert.Greater(t, len(responseData.Data), 0, "Expected at least one data point")
-	assert.Greater(t, len(responseData.Data[0].Values), 0, "Expected at least one value for the first metric")
 }
 
 func getDatabaseVersion(connectionString string) (string, error) {

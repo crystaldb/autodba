@@ -34,7 +34,6 @@ type ContainerConfig struct {
 
 type DbInfo struct {
 	Description    string `json:"description"`
-	DbConnString   string `json:"db_conn_string"`
 	Host           string `json:"host"`
 	Name           string `json:"name"`
 	Username       string `json:"username"`
@@ -111,6 +110,16 @@ aws_secret_access_key = %s
 	return absolutePath, nil
 }
 
+func constructDBConnString(info DbInfo) string {
+	return fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=require",
+		info.Username,
+		info.Password,
+		info.Host,
+		info.Port,
+		info.Name,
+	)
+}
+
 func SetupTestContainer(config *ContainerConfig, dbInfo DbInfo) error {
 	ctx := context.Background()
 	var err error
@@ -150,7 +159,7 @@ func SetupTestContainer(config *ContainerConfig, dbInfo DbInfo) error {
 	}
 
 	envVars := []string{
-		"DB_CONN_STRING=" + dbInfo.DbConnString,
+		"DB_CONN_STRING=" + constructDBConnString(dbInfo),
 		"AWS_RDS_INSTANCE=" + dbInfo.AwsRdsInstance,
 		"AWS_ACCESS_KEY_ID=" + dbInfo.AwsAccessKey,
 		"AWS_SECRET_ACCESS_KEY=" + dbInfo.AwsSecret,
@@ -291,8 +300,6 @@ func main() {
 	}
 
 	log.Printf("DbInfo :  %+v\n", dbInfo)
-	log.Println("RDS Instance: ", dbInfo.AwsRdsInstance)
-	log.Println("DB Connection String: ", dbInfo.DbConnString)
 
 	log.Println("Setting up test container...")
 	if err := SetupTestContainer(&defaultConfig, dbInfo); err != nil {
