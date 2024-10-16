@@ -24,25 +24,9 @@ jobs:
       - name: Get previous tag
         id: get_prev_tag
         run: |
-          PREV_VERSION=$(grep -oP 'autodba-\K[0-9]+\.[0-9]+\.[0-9]+$' "README.md")
+          PREV_VERSION=$(grep -oP 'autodba-\K[0-9]+\.[0-9]+\.[0-9]+(-rc\d+)?$' "README.md")
           echo "PREV_VERSION is \"$PREV_VERSION\""
           echo "PREV_RELEASE_TAG=${PREV_VERSION}" >> $GITHUB_ENV
-      
-      - name: Update README
-        uses: MathieuSoysal/file-updater-for-release@v1.0.3
-        with:
-          files: README.md
-          version: ${{ env.RELEASE_TAG }}
-          old-version: ${{ env.PREV_RELEASE_TAG }}
-          with-checkout: false
-      
-      - name: Push changes
-        uses: EndBug/add-and-commit@v9
-        with:
-          committer_name: GitHub Actions
-          committer_email: actions@github.com
-          add: .
-          message: 'Updated README.md for the new release.'
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -75,3 +59,19 @@ jobs:
           make_latest: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Update README
+        uses: MathieuSoysal/file-updater-for-release@v1.0.3
+        with:
+          files: README.md
+          version: ${{ env.RELEASE_TAG }}
+          old-version: ${{ env.PREV_RELEASE_TAG }}
+          with-checkout: false
+      
+      - name: Push changes
+        uses: EndBug/add-and-commit@v9
+        with:
+          committer_name: GitHub Actions
+          committer_email: actions@github.com
+          add: .
+          message: 'Updated README.md for the new release.'
