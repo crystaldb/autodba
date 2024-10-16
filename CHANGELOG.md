@@ -6,14 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [0.4.0] - 2024-10-15
 
-### Added
-- **Full Snapshots support** allowing complete data collection in each full snapshot collected from the Collector for improved reporting and analysis.
-
 ### Changed
 - **README automatically updated on release**, streamlining the release process.
 - **Removed AWS RDS requirement**, making AutoDBA usable without AWS credentials.
-- **Removed Prometheus exporters**, now integrating fully with the Collector for time-series data handling.
-- **Integration tests**, ensuring that the Collector API Server works as expected.
+- **Removed Prometheus exporters**, now integrating fully with the Collector for time-series data handling. This is made possible after adding support for ingesting Full Snapshots from the Collector.
+- **Lightweight integration tests**, ensuring basic end-to-end functionality from the database to the Collector API Server. While not comprehensive, these tests provide a foundation for validating core data flow.
 
 ## [0.3.0] - 2024-10-01
 
