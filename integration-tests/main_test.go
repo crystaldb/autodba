@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	_ "github.com/jackc/pgx/v4/stdlib" // Importing pgx driver
+	_ "github.com/jackc/pgx/v4/stdlib"
 	"github.com/stretchr/testify/assert"
 	"io"
 	"log"
@@ -18,6 +18,7 @@ import (
 var dbIdentifier string
 var port string
 var dbConfigStr = flag.String("dbconfig", "", "JSON string of database configuration map")
+var currentDbInfo DbInfo
 
 func TestAPISuite(t *testing.T) {
 	var dbInfoMap DbInfoMap
@@ -31,6 +32,7 @@ func TestAPISuite(t *testing.T) {
 	for version, info := range dbInfoMap {
 		dbIdentifier = info.AwsRdsInstance
 		port = defaultConfig.BffPort
+		currentDbInfo = info
 
 		dbVersion, err := getDatabaseVersion(constructDBConnString(info))
 		if err != nil {
@@ -44,22 +46,23 @@ func TestAPISuite(t *testing.T) {
 		if !strings.HasPrefix(dbVersion, versionPrefix) {
 			t.Fatalf("Database version %s does not match expected version %s for %s\n", dbVersion, version, info.Description)
 		}
-
-		if err := SetupTestContainer(&defaultConfig, info); err != nil {
-			t.Fatalf("Failed to set up container for %s: %v\n", info.Description, err)
-		}
-		defer func() {
-			if err := TearDownTestContainer(); err != nil {
-				log.Printf("Failed to tear down container for %s: %v\n", info.Description, err)
+		t.Run(info.Description, func(t *testing.T) {
+			if err := SetupTestContainer(&defaultConfig, info); err != nil {
+				t.Fatalf("Failed to set up container for %s: %v\n", info.Description, err)
 			}
-		}()
+			defer func() {
+				if err := TearDownTestContainer(); err != nil {
+					log.Printf("Failed to tear down container for %s: %v\n", info.Description, err)
+				}
+			}()
 
-		t.Run(info.Description, TestAPIRequest)
+			TestAPIRequest(t)
+		})
 	}
 }
 
 func TestAPIRequest(t *testing.T) {
-	url := fmt.Sprintf("http://localhost:%s/api/v1/activity?why=cube&database_list=(postgres|rdsadmin)&start=now-900000ms&end=now&step=5000ms&limitdim=15&limitlegend=15&legend=wait_event_name&dim=time&filterdim=&filterdimselected=&dbidentifier=%s", port, dbIdentifier)
+	url := fmt.Sprintf("http://localhost:%s/api/v1/activity?why=cube&database_list=(postgres|rdsadmin)&start=now-900000ms&end=now&step=5000ms&limitdim=15&limitlegend=15&legend=wait_event_name&dim=time&filterdim=&filterdimselected=&dbidentifier=%s", port, fmt.Sprintf("%s/%s/%s", currentDbInfo.SystemType, currentDbInfo.AwsRdsInstance, currentDbInfo.SystemScope))
 
 	fmt.Println("url: ", url)
 	var responseData struct {
@@ -107,6 +110,10 @@ func TestAPIRequest(t *testing.T) {
 		}
 
 		break
+	}
+
+	if len(responseData.Data) == 0 {
+		t.Fatalf("No valid data received after retries")
 	}
 
 	assert.Greater(t, len(responseData.Data[0].Values), 0, "Expected at least one value for the first metric")

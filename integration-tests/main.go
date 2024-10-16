@@ -43,6 +43,8 @@ type DbInfo struct {
 	AwsRegion      string `json:"aws_region"`
 	AwsAccessKey   string `json:"aws_access_key"`
 	AwsSecret      string `json:"aws_secret"`
+	SystemScope    string `json:"system_scope"`
+	SystemType     string `json:"system_type"`
 }
 
 type DbInfoMap map[string]DbInfo
