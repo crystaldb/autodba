@@ -41,7 +41,6 @@ fi
 # Define paths under the parent autodba directory
 INSTALL_DIR="${PARENT_DIR}/bin"
 WEBAPP_DIR="${PARENT_DIR}/share/webapp"
-EXPORTER_DIR="${PARENT_DIR}/share/prometheus_exporters"
 CONFIG_DIR="${PARENT_DIR}/config"
 PROMETHEUS_CONFIG_DIR="${CONFIG_DIR}/prometheus"
 PROMETHEUS_DIR="${PARENT_DIR}/prometheus"
@@ -68,10 +67,6 @@ if [ "$PARENT_DIR" != "$(pwd)" ]; then
     echo "Removing web application files..."
     [ -d "${WEBAPP_DIR}" ] && rm -rf "${WEBAPP_DIR}" || true
 
-    # Remove Prometheus exporters and directories
-    echo "Removing Prometheus exporters and directories..."
-    [ -d "${EXPORTER_DIR}" ] && rm -rf "${EXPORTER_DIR}" || true
-
     # Remove Prometheus configuration and storage
     echo "Removing Prometheus configuration and storage..."
     [ -d "${PROMETHEUS_DIR}" ] && rm -rf "${PROMETHEUS_DIR}" || true
@@ -89,7 +84,7 @@ if [ "$PARENT_DIR" != "$(pwd)" ]; then
     fi
 
     echo "Removing tmp directories..."
-    rm -rf /tmp/autodba-* /tmp/prometheus_rds_exporter /tmp/prometheus-* || true
+    rm -rf /tmp/autodba-* /tmp/prometheus-* || true
 else
     echo "Not removing the current directory as it is the installation directory."
 fi

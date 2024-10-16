@@ -8,18 +8,3 @@ scrape_configs:
   - job_name: "prometheus"
     static_configs:
       - targets: ["localhost:9090"]
-  - job_name: "pgexport"
-    scrape_interval: 10s
-    scrape_timeout: 10s
-    static_configs:
-      - targets: ["localhost:9187"]
-  - job_name: "sqlexport"
-    scrape_interval: 10s
-    scrape_timeout: 10s
-    static_configs:
-      - targets: ["localhost:9399"]
-  - job_name: "rds"
-    scrape_interval: 30s
-    static_configs:
-      - targets: ["localhost:9043"]
-        # :9043 rds exporter

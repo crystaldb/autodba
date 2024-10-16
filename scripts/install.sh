@@ -65,7 +65,6 @@ fi
 # Set paths relative to PARENT_DIR
 INSTALL_DIR="$PARENT_DIR/bin"
 WEBAPP_DIR="$PARENT_DIR/share/webapp"
-EXPORTER_DIR="$PARENT_DIR/share/prometheus_exporters"
 PROMETHEUS_CONFIG_DIR="$PARENT_DIR/config/prometheus"
 AUTODBA_CONFIG_DIR="$PARENT_DIR/config/autodba"
 PROMETHEUS_STORAGE_DIR="$PARENT_DIR/prometheus_data"

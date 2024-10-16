@@ -54,12 +54,6 @@ RUN wget -O go.tgz "https://golang.org/dl/go${GOLANG_VERSION}.linux-amd64.tar.gz
 ENV PATH="/usr/lib/go/bin:${PATH}" \
     GOROOT="/usr/lib/go"
 
-FROM go_builder as rdsexporter_builder
-RUN mkdir -p /usr/local/autodba/share/prometheus_exporters/rds_exporter && \
-    git clone https://github.com/crystaldb/prometheus-rds-exporter.git /usr/local/autodba/share/prometheus_exporters/rds_exporter && \
-    cd /usr/local/autodba/share/prometheus_exporters/rds_exporter && \
-    make build
-
 FROM go_builder as collector_builder
 RUN mkdir -p /usr/local/autodba/share/collector && \
     git clone --recurse-submodules https://github.com/crystaldb/collector.git /usr/local/autodba/share/collector && \
@@ -88,7 +82,6 @@ RUN cp main /usr/local/autodba/bin/autodba-bff
 
 FROM base AS builder
 COPY --from=solid_builder /home/autodba/solid/dist /usr/local/autodba/share/webapp
-COPY --from=rdsexporter_builder /usr/local/autodba/share/prometheus_exporters/rds_exporter /usr/local/autodba/share/prometheus_exporters/rds_exporter
 COPY --from=collector_builder /usr/local/autodba/share/collector /usr/local/autodba/share/collector
 COPY --from=collector_api_server_builder  /usr/local/autodba/share/collector_api_server /usr/local/autodba/share/collector_api_server
 COPY --from=bff_builder /usr/local/autodba/bin/autodba-bff /usr/local/autodba/bin/autodba-bff
@@ -144,27 +137,14 @@ EXPOSE 9090
 # BFF port
 EXPOSE 4000
 
-# Install Prometheus Exporters
-# SQL Exporter
-RUN mkdir -p /usr/local/autodba/share/prometheus_exporters/sql_exporter && \
-    wget -qO- https://github.com/burningalchemist/sql_exporter/releases/download/0.14.3/sql_exporter-0.14.3.linux-amd64.tar.gz | tar -xzf - -C /usr/local/autodba/share/prometheus_exporters/sql_exporter --strip-components=1
-RUN rm /usr/local/autodba/share/prometheus_exporters/sql_exporter/mssql_standard.collector.yml
-
-# Postgres Exporter
-RUN mkdir -p /usr/local/autodba/share/prometheus_exporters/postgres_exporter && \
-    wget -qO- https://github.com/prometheus-community/postgres_exporter/releases/download/v0.15.0/postgres_exporter-0.15.0.linux-amd64.tar.gz | tar -xzf - -C /usr/local/autodba/share/prometheus_exporters/postgres_exporter --strip-components=1
-
 # Copy built files from previous stages
 COPY --from=builder /usr/local/autodba/bin /usr/local/autodba/bin
 COPY --from=builder /usr/local/autodba/share/webapp /usr/local/autodba/share/webapp
 COPY --from=builder /usr/local/autodba/share/collector /usr/local/autodba/share/collector
 COPY --from=builder /usr/local/autodba/share/collector_api_server /usr/local/autodba/share/collector_api_server
-COPY --from=builder /usr/local/autodba/share/prometheus_exporters /usr/local/autodba/share/prometheus_exporters
 COPY --from=builder /usr/local/autodba/config/autodba/config.json /usr/local/autodba/config/autodba/config.json
 
 # Monitor setup
-COPY monitor/prometheus/sql_exporter/ /usr/local/autodba/share/prometheus_exporters/sql_exporter
-COPY monitor/prometheus/rds_exporter/ /usr/local/autodba/share/prometheus_exporters/rds_exporter
 COPY monitor/prometheus/prometheus.yml /usr/local/autodba/config/prometheus/prometheus.yml
 
 # Add backup script
