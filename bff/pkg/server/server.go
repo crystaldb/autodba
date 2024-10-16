@@ -516,7 +516,7 @@ func databases_handler(metrics_service metrics.Service, validate *validator.Vali
 
 		queries := []string{
 			fmt.Sprintf(`cc_all_databases{sys_id=~"%s",sys_scope=~"%s",sys_type=~"%s"}`, systemID, systemScope, systemType),
-			fmt.Sprintf(`sum(cc_pg_stat_activity{sys_id=~"%s",sys_scope=~"%s",sys_type=~"%s"}) by (datname)`, systemID, systemScope, systemType),
+			fmt.Sprintf(`sum(cc_pg_stat_activity{sys_id=~"%s",sys_scope=~"%s",sys_type=~"%s"}) by (datname,sys_id,sys_scope,sys_type)`, systemID, systemScope, systemType),
 		}
 
 		options := make(map[string]string)
