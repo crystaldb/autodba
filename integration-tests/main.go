@@ -10,6 +10,8 @@ import (
 
 	"encoding/json"
 	"flag"
+	"path/filepath"
+
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
@@ -17,7 +19,6 @@ import (
 	"github.com/docker/docker/pkg/archive"
 	"github.com/docker/go-connections/nat"
 	"github.com/spf13/viper"
-	"path/filepath"
 )
 
 type ContainerConfig struct {
@@ -139,11 +140,12 @@ func SetupTestContainer(config *ContainerConfig, dbInfo DbInfo) error {
 
 	log.Println("Preparing mounts and environment variables...")
 
+	mountTarget := "/usr/local/autodba/share/collector/collector.conf"
 	mounts := []mount.Mount{
 		{
 			Type:   mount.TypeBind,
 			Source: collectorConfigPath,
-			Target: "/usr/local/autodba/share/collector/collector.conf",
+			Target: mountTarget,
 		},
 	}
 
@@ -153,7 +155,7 @@ func SetupTestContainer(config *ContainerConfig, dbInfo DbInfo) error {
 		"AWS_ACCESS_KEY_ID=" + dbInfo.AwsAccessKey,
 		"AWS_SECRET_ACCESS_KEY=" + dbInfo.AwsSecret,
 		"AWS_REGION=" + dbInfo.AwsRegion,
-		"CONFIG_FILE=" + collectorConfigPath,
+		"CONFIG_FILE=" + mountTarget,
 		"DEFAULT_METRIC_COLLECTION_PERIOD_SECONDS=" + config.DefaultMetricPeriod,
 		"WARM_UP_TIME_SECONDS=" + config.WarmUpTime,
 	}
