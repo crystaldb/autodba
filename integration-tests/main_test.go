@@ -52,11 +52,6 @@ func TestAPISuite(t *testing.T) {
 		if err := SetupTestContainer(&config, info); err != nil {
 			t.Fatalf("Failed to set up container for %s: %v\n", info.Description, err)
 		}
-		defer func() {
-			if err := TearDownTestContainer(); err != nil {
-				log.Printf("Failed to tear down container for %s: %v\n", info.Description, err)
-			}
-		}()
 
 		t.Run(info.Description, TestAPIRequest)
 
@@ -92,22 +87,23 @@ func TestAPIRequest(t *testing.T) {
 		}
 		defer resp.Body.Close()
 
-		assert.Equal(t, http.StatusOK, resp.StatusCode)
+		if resp.StatusCode != http.StatusOK {
+			t.Logf("Received non-OK response: %s", resp.Status)
+			time.Sleep(interval)
+			continue
+		}
 
 		body, err := io.ReadAll(resp.Body)
 		if err != nil {
-			log.Fatal(err)
+			t.Fatalf("Failed to read response body: %v", err)
 		}
 		fmt.Printf("%s\n", body)
 
-		err = json.Unmarshal(body, &responseData)
-		assert.NoError(t, err)
-
-		if len(responseData.Data) > 0 && len(responseData.Data[0].Values) > 0 {
-			break
+		if err := json.Unmarshal(body, &responseData); err != nil {
+			t.Fatalf("Failed to unmarshal response body: %v", err)
 		}
 
-		time.Sleep(interval)
+		break
 	}
 
 	assert.Greater(t, len(responseData.Data), 0, "Expected at least one data point")

@@ -139,6 +139,10 @@ func SetupTestContainer(config *ContainerConfig, dbInfo DbInfo) error {
 	envVars := []string{
 		"DB_CONN_STRING=" + dbInfo.DbConnString,
 		"AWS_RDS_INSTANCE=" + dbInfo.AwsRdsInstance,
+		"AWS_ACCESS_KEY_ID=" + dbInfo.AwsAccessKey,
+		"AWS_SECRET_ACCESS_KEY=" + dbInfo.AwsSecret,
+		"AWS_REGION=" + dbInfo.AwsRegion,
+		"CONFIG_FILE=" + collectorConfigPath,
 		"DEFAULT_METRIC_COLLECTION_PERIOD_SECONDS=" + config.DefaultMetricPeriod,
 		"WARM_UP_TIME_SECONDS=" + config.WarmUpTime,
 	}
