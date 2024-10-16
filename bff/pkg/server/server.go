@@ -220,12 +220,16 @@ func metrics_handler(route_configs map[string]RouteConfig, metrics_service metri
 					http.Error(w, "The 'dbidentifier' parameter is required and cannot be empty.", http.StatusBadRequest)
 					return
 				} else if value != "" {
+					all_params := []string{param}
+					all_values := []string{value}
 					if param == "dbidentifier" {
-						value, err = getActualDbIdentifier(value)
+						systemType, systemID, systemScope, err := splitDbIdentifier(value)
 						if err != nil {
 							http.Error(w, "The 'dbidentifier' is malformatted.", http.StatusBadRequest)
 							return
 						}
+						all_params = []string{param, "sys_type", "sys_id", "sys_scope"}
+						all_values = []string{value, systemType, systemID, systemScope}
 					}
 					for metric, query := range route_config.Metrics {
 						var current_query string
@@ -235,7 +239,11 @@ func metrics_handler(route_configs map[string]RouteConfig, metrics_service metri
 							current_query = metrics[metric]
 						}
 
-						metrics[metric] = strings.ReplaceAll(current_query, replace_prefix+param, value)
+						for i, p := range all_params {
+							current_query = strings.ReplaceAll(current_query, replace_prefix+p, all_values[i])
+						}
+
+						metrics[metric] = current_query
 
 					}
 
