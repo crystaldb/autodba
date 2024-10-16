@@ -2,7 +2,7 @@
 
 # SPDX-Identifier: Apache-2.0
 
-set -e
+set -e -x
 
 # Get the directory of the currently executing script
 SOURCE_DIR=$(dirname "$(readlink -f "$0")")
