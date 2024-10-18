@@ -2,6 +2,12 @@
 
 ## Running the Tests
 
+First, build the main project docker image with the name autodba:latest
+```bash
+docker build -t autodba:latest ../
+```
+This image will be used by the test suite to create container instances to test against
+
 To run the tests, use the following command structure, replacing the placeholders with your actual database details:
 The dbconfig json is a map of postgres versions to details for a db of that version. This corelation will be validated in the tests
 

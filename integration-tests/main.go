@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"time"
@@ -12,11 +11,9 @@ import (
 	"flag"
 	"path/filepath"
 
-	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/client"
-	"github.com/docker/docker/pkg/archive"
 	"github.com/docker/go-connections/nat"
 	"github.com/spf13/viper"
 )
@@ -139,11 +136,6 @@ func SetupTestContainer(config *ContainerConfig, dbInfo DbInfo) error {
 		return err
 	}
 
-	log.Println("Building Docker image...")
-	if err := buildDockerImage(ctx, config); err != nil {
-		return err
-	}
-
 	log.Println("Stopping and removing existing container...")
 	if err := stopAndRemoveContainer(ctx, config.ContainerName); err != nil {
 		return err
@@ -228,32 +220,6 @@ func SetupTestContainer(config *ContainerConfig, dbInfo DbInfo) error {
 			log.Printf("Current container status: %s. Waiting...\n", containerJSON.State.Status)
 		}
 	}
-}
-
-func buildDockerImage(ctx context.Context, config *ContainerConfig) error {
-	log.Println("Preparing build context from Dockerfile...")
-	tarball, err := archive.TarWithOptions(config.ProjectDir, &archive.TarOptions{})
-	if err != nil {
-		return err
-	}
-	defer tarball.Close()
-
-	log.Println("Building the Docker image...")
-	resp, err := cli.ImageBuild(ctx, tarball, types.ImageBuildOptions{
-		Tags: []string{config.ImageName},
-	})
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	log.Println("Reading build output...")
-	if _, err := io.Copy(os.Stdout, resp.Body); err != nil {
-		return err
-	}
-
-	log.Println("Docker image built successfully.")
-	return nil
 }
 
 func stopAndRemoveContainer(ctx context.Context, containerName string) error {
