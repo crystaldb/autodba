@@ -2,27 +2,29 @@
 
 FROM ubuntu:20.04 AS base
 
-RUN useradd --system --user-group --home-dir /home/autodba --shell /bin/bash autodba
-
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl            \
-    jq              \
-    procps          \
-    wget           \
-    software-properties-common
+    curl \
+    wget \
+    software-properties-common \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN useradd --system --user-group --home-dir /home/autodba --shell /bin/bash autodba
 
 # Install nvm
 ENV NVM_DIR /usr/local/nvm
+ENV NODE_VERSION 16.17.0
 RUN mkdir -p $NVM_DIR \
     && curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.4/install.sh | bash \
-    && bash -c "source $NVM_DIR/nvm.sh && nvm install 16.17.0 && nvm use 16.17.0 && nvm alias default 16.17.0"
+    && . $NVM_DIR/nvm.sh \
+    && nvm install $NODE_VERSION \
+    && nvm alias default $NODE_VERSION \
+    && nvm use default
 
 # Add nvm and node to PATH
-ENV PATH $NVM_DIR/versions/node/v16.17.0/bin:$PATH
+ENV PATH $NVM_DIR/versions/node/v$NODE_VERSION/bin:$PATH
 
 USER root
-RUN mkdir -p /usr/local/autodba/config/autodba
-RUN mkdir -p /usr/local/autodba/bin
+RUN mkdir -p /usr/local/autodba/config/autodba /usr/local/autodba/bin
 WORKDIR /usr/local/autodba
 
 FROM base AS solid_builder
@@ -34,15 +36,16 @@ RUN npm install
 COPY --chown=autodba:autodba solid ./
 RUN npm run build
 
-FROM base as go_builder
-USER root
+FROM base AS go_builder
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    git             \
-    unzip             \
+    git \
+    unzip \
     make \
     libc-dev \
     gcc \
-    tar
+    tar \
+    && rm -rf /var/lib/apt/lists/*
 
 # Install golang
 ENV GOLANG_VERSION="1.22.1"
@@ -50,11 +53,17 @@ RUN wget -O go.tgz "https://golang.org/dl/go${GOLANG_VERSION}.linux-amd64.tar.gz
     && tar -C /usr/lib -xzf go.tgz \
     && rm go.tgz
 
-# Set golang env vars
 ENV PATH="/usr/lib/go/bin:${PATH}" \
     GOROOT="/usr/lib/go"
 
-FROM go_builder as collector_builder
+FROM go_builder AS go_builder_with_deps
+WORKDIR /app
+COPY bff/go.mod bff/go.sum ./bff/
+COPY collector-api/go.mod collector-api/go.sum ./collector-api/
+RUN cd bff && go mod download
+RUN cd collector-api && go mod download
+
+FROM go_builder_with_deps as collector_builder
 RUN mkdir -p /usr/local/autodba/share/collector && \
     git clone --recurse-submodules https://github.com/crystaldb/collector.git /usr/local/autodba/share/collector && \
     cd /usr/local/autodba/share/collector && \
@@ -65,28 +74,27 @@ RUN mkdir -p /usr/local/autodba/share/collector && \
     mv pganalyze-collector-setup collector-setup
 
 
-FROM go_builder as collector_api_server_builder
+FROM go_builder_with_deps as collector_api_server_builder
 WORKDIR /usr/local/autodba/share/collector_api_server
-COPY collector-api/ /usr/local/autodba/share/collector_api_server/
+COPY collector-api/ ./
 RUN go build -o collector-api-server ./cmd/server/main.go
 
-FROM go_builder as bff_builder
+FROM go_builder_with_deps as bff_builder
 # Build bff
 WORKDIR /home/autodba/bff
-COPY bff/go.mod bff/go.sum ./
-RUN go mod download
 COPY bff/ ./
 RUN go build -o main ./cmd/main.go
 RUN mkdir -p /usr/local/autodba/bin
 RUN cp main /usr/local/autodba/bin/autodba-bff
 
 FROM base AS builder
-COPY --from=solid_builder /home/autodba/solid/dist /usr/local/autodba/share/webapp
-COPY --from=collector_builder /usr/local/autodba/share/collector /usr/local/autodba/share/collector
-COPY --from=collector_api_server_builder  /usr/local/autodba/share/collector_api_server /usr/local/autodba/share/collector_api_server
-COPY --from=bff_builder /usr/local/autodba/bin/autodba-bff /usr/local/autodba/bin/autodba-bff
-COPY --from=bff_builder /home/autodba/bff/config.json /usr/local/autodba/config/autodba/config.json
-COPY entrypoint.sh /usr/local/autodba/bin/autodba-entrypoint.sh
+WORKDIR /usr/local/autodba
+COPY --from=solid_builder /home/autodba/solid/dist ./share/webapp
+COPY --from=collector_builder /usr/local/autodba/share/collector ./share/collector
+COPY --from=collector_api_server_builder  /usr/local/autodba/share/collector_api_server ./share/collector_api_server
+COPY --from=bff_builder /usr/local/autodba/bin/autodba-bff ./bin/autodba-bff
+COPY --from=bff_builder /home/autodba/bff/config.json ./config/autodba/config.json
+COPY entrypoint.sh ./bin/autodba-entrypoint.sh
 
 FROM bff_builder as lint
 WORKDIR /home/autodba/bff
@@ -118,18 +126,22 @@ RUN go test -v ./...
 FROM base AS autodba
 USER root
 
-# Install Prometheus
-RUN apt-get install -y --no-install-recommends \
+# Install Prometheus and SQLite
+RUN apt-get update && apt-get install -y --no-install-recommends \
     apt-transport-https \
-    sqlite3
+    sqlite3 \
+    && rm -rf /var/lib/apt/lists/*
 
-RUN wget -qO- https://github.com/prometheus/prometheus/releases/download/v2.42.0/prometheus-2.42.0.linux-amd64.tar.gz | tar -xzf - -C /tmp/
-RUN mkdir -p /usr/local/autodba/prometheus
-RUN cp /tmp/prometheus-2.42.0.linux-amd64/prometheus /usr/local/autodba/prometheus/
-RUN cp /tmp/prometheus-2.42.0.linux-amd64/promtool /usr/local/autodba/prometheus/
-RUN mkdir -p /usr/local/autodba/config/prometheus
-RUN cp -r /tmp/prometheus-2.42.0.linux-amd64/consoles /usr/local/autodba/config/prometheus/
-RUN cp -r /tmp/prometheus-2.42.0.linux-amd64/console_libraries /usr/local/autodba/config/prometheus/
+WORKDIR /usr/local/autodba
+
+# Install Prometheus
+RUN wget -qO- https://github.com/prometheus/prometheus/releases/download/v2.42.0/prometheus-2.42.0.linux-amd64.tar.gz | tar -xzf - -C /tmp/ \
+    && mkdir -p ./prometheus ./config/prometheus \
+    && cp /tmp/prometheus-2.42.0.linux-amd64/prometheus ./prometheus/ \
+    && cp /tmp/prometheus-2.42.0.linux-amd64/promtool ./prometheus/ \
+    && cp -r /tmp/prometheus-2.42.0.linux-amd64/consoles ./config/prometheus/ \
+    && cp -r /tmp/prometheus-2.42.0.linux-amd64/console_libraries ./config/prometheus/ \
+    && rm -rf /tmp/prometheus-2.42.0.linux-amd64
 
 # Prometheus port
 EXPOSE 9090
@@ -138,14 +150,14 @@ EXPOSE 9090
 EXPOSE 4000
 
 # Copy built files from previous stages
-COPY --from=builder /usr/local/autodba/bin /usr/local/autodba/bin
-COPY --from=builder /usr/local/autodba/share/webapp /usr/local/autodba/share/webapp
-COPY --from=builder /usr/local/autodba/share/collector /usr/local/autodba/share/collector
-COPY --from=builder /usr/local/autodba/share/collector_api_server /usr/local/autodba/share/collector_api_server
-COPY --from=builder /usr/local/autodba/config/autodba/config.json /usr/local/autodba/config/autodba/config.json
+COPY --from=builder /usr/local/autodba/bin ./bin
+COPY --from=builder /usr/local/autodba/share/webapp ./share/webapp
+COPY --from=builder /usr/local/autodba/share/collector ./share/collector
+COPY --from=builder /usr/local/autodba/share/collector_api_server ./share/collector_api_server
+COPY --from=builder /usr/local/autodba/config/autodba/config.json ./config/autodba/config.json
 
 # Monitor setup
-COPY monitor/prometheus/prometheus.yml /usr/local/autodba/config/prometheus/prometheus.yml
+COPY monitor/prometheus/prometheus.yml ./config/prometheus/prometheus.yml
 
 # Add backup script
 COPY scripts/agent/backup.sh /home/autodba/backup.sh
