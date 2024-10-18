@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [0.4.0] - 2024-10-15
 
+### Added
+- **PostgreSQL 12, 13, 14, 15, and 16 support**, extending compatibility to all these PostgreSQL versions.
+- **Google Cloud SQL support**, enabling monitoring of databases hosted on Google Cloud SQL.
+
 ### Changed
 - **README automatically updated on release**, streamlining the release process.
 - **Removed AWS RDS requirement**, making AutoDBA usable without AWS credentials.
