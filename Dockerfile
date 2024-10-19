@@ -126,6 +126,12 @@ RUN go test -v ./...
 FROM base AS autodba
 USER root
 
+# Prometheus port
+EXPOSE 9090
+
+# BFF port
+EXPOSE 4000
+
 # Install Prometheus and SQLite
 RUN apt-get update && apt-get install -y --no-install-recommends \
     apt-transport-https \
@@ -143,26 +149,20 @@ RUN wget -qO- https://github.com/prometheus/prometheus/releases/download/v2.42.0
     && cp -r /tmp/prometheus-2.42.0.linux-amd64/console_libraries ./config/prometheus/ \
     && rm -rf /tmp/prometheus-2.42.0.linux-amd64
 
-# Prometheus port
-EXPOSE 9090
-
-# BFF port
-EXPOSE 4000
-
-# Copy built files from previous stages
-COPY --from=builder /usr/local/autodba/bin ./bin
-COPY --from=builder /usr/local/autodba/share/webapp ./share/webapp
-COPY --from=builder /usr/local/autodba/share/collector ./share/collector
-COPY --from=builder /usr/local/autodba/share/collector_api_server ./share/collector_api_server
-COPY --from=builder /usr/local/autodba/config/autodba/config.json ./config/autodba/config.json
-
-# Monitor setup
+# Prometheus config
 COPY monitor/prometheus/prometheus.yml ./config/prometheus/prometheus.yml
 
 # Add backup script
 COPY scripts/agent/backup.sh /home/autodba/backup.sh
 RUN chmod +x /home/autodba/backup.sh
 RUN mkdir -p /home/autodba/backups
+
+# Copy built files from previous stages
+COPY --from=builder /usr/local/autodba/share/webapp ./share/webapp
+COPY --from=builder /usr/local/autodba/config/autodba/config.json ./config/autodba/config.json
+COPY --from=builder /usr/local/autodba/share/collector ./share/collector
+COPY --from=builder /usr/local/autodba/share/collector_api_server ./share/collector_api_server
+COPY --from=builder /usr/local/autodba/bin ./bin
 
 WORKDIR /usr/local/autodba/config/autodba
 
