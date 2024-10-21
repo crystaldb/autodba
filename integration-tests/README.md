@@ -2,7 +2,7 @@
 
 ## Running the Tests
 
-First, build the main project docker image with the name autodba:latest
+First, build the main project docker image with the name `autodba:latest`
 ```bash
 docker build -t autodba:latest ../
 ```
