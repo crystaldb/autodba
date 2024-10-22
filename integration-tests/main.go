@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"time"
@@ -12,11 +11,9 @@ import (
 	"flag"
 	"path/filepath"
 
-	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/client"
-	"github.com/docker/docker/pkg/archive"
 	"github.com/docker/go-connections/nat"
 	"github.com/spf13/viper"
 )
@@ -24,7 +21,6 @@ import (
 type ContainerConfig struct {
 	ProjectDir          string `json:"project_dir"`
 	Dockerfile          string `json:"dockerfile"`
-	ImageName           string `json:"image_name"`
 	ContainerName       string `json:"container_name"`
 	PrometheusPort      string `json:"prometheus_port"`
 	BffPort             string `json:"bff_port"`
@@ -57,7 +53,6 @@ var (
 var defaultConfig = ContainerConfig{
 	ProjectDir:          "../",
 	Dockerfile:          "../Dockerfile",
-	ImageName:           "autodba:latest",
 	ContainerName:       "autodba_test",
 	PrometheusPort:      "9090",
 	BffPort:             "4000",
@@ -122,7 +117,7 @@ func constructDBConnString(info DbInfo) string {
 	)
 }
 
-func SetupTestContainer(config *ContainerConfig, dbInfo DbInfo) error {
+func SetupTestContainer(config *ContainerConfig, dbInfo DbInfo, imageName string) error {
 	ctx := context.Background()
 	var err error
 
@@ -136,11 +131,6 @@ func SetupTestContainer(config *ContainerConfig, dbInfo DbInfo) error {
 	log.Println("Creating Docker client...")
 	cli, err = client.NewClientWithOpts(client.WithVersion("1.41"))
 	if err != nil {
-		return err
-	}
-
-	log.Println("Building Docker image...")
-	if err := buildDockerImage(ctx, config); err != nil {
 		return err
 	}
 
@@ -176,9 +166,18 @@ func SetupTestContainer(config *ContainerConfig, dbInfo DbInfo) error {
 		log.Println(envVar)
 	}
 
+	log.Printf("Checking if image %s exists...\n", imageName)
+	_, _, err = cli.ImageInspectWithRaw(ctx, imageName)
+	if err != nil {
+		if client.IsErrNotFound(err) {
+			return fmt.Errorf("image %s does not exist: %v", imageName, err)
+		}
+		return err
+	}
+
 	log.Println("Creating and starting the container...")
 	resp, err := cli.ContainerCreate(ctx, &container.Config{
-		Image: config.ImageName,
+		Image: imageName,
 		ExposedPorts: map[nat.Port]struct{}{
 			"9090/tcp": {},
 			"4000/tcp": {},
@@ -230,32 +229,6 @@ func SetupTestContainer(config *ContainerConfig, dbInfo DbInfo) error {
 	}
 }
 
-func buildDockerImage(ctx context.Context, config *ContainerConfig) error {
-	log.Println("Preparing build context from Dockerfile...")
-	tarball, err := archive.TarWithOptions(config.ProjectDir, &archive.TarOptions{})
-	if err != nil {
-		return err
-	}
-	defer tarball.Close()
-
-	log.Println("Building the Docker image...")
-	resp, err := cli.ImageBuild(ctx, tarball, types.ImageBuildOptions{
-		Tags: []string{config.ImageName},
-	})
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	log.Println("Reading build output...")
-	if _, err := io.Copy(os.Stdout, resp.Body); err != nil {
-		return err
-	}
-
-	log.Println("Docker image built successfully.")
-	return nil
-}
-
 func stopAndRemoveContainer(ctx context.Context, containerName string) error {
 	log.Println("Stopping the existing container...")
 	if err := cli.ContainerStop(ctx, containerName, container.StopOptions{}); err != nil && !client.IsErrNotFound(err) {
@@ -290,6 +263,7 @@ func TearDownTestContainer() error {
 func main() {
 
 	var dbConfigStr = flag.String("dbconfig", "", "JSON string of database configuration map")
+	var imageName = flag.String("imageName", "", "Name of docker image to test against")
 
 	var dbInfoMap DbInfoMap
 	if err := json.Unmarshal([]byte(*dbConfigStr), &dbInfoMap); err != nil {
@@ -304,7 +278,7 @@ func main() {
 	log.Printf("DbInfo :  %+v\n", dbInfo)
 
 	log.Println("Setting up test container...")
-	if err := SetupTestContainer(&defaultConfig, dbInfo); err != nil {
+	if err := SetupTestContainer(&defaultConfig, dbInfo, *imageName); err != nil {
 		log.Fatalf("Failed to set up container: %v\n", err)
 	}
 
