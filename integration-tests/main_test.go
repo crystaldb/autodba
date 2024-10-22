@@ -18,6 +18,7 @@ import (
 var dbIdentifier string
 var port string
 var dbConfigStr = flag.String("dbconfig", "", "JSON string of database configuration map")
+var imageName = flag.String("imageName", "", "Name of docker image to test against")
 var currentDbInfo DbInfo
 
 func TestAPISuite(t *testing.T) {
@@ -47,7 +48,7 @@ func TestAPISuite(t *testing.T) {
 			t.Fatalf("Database version %s does not match expected version %s for %s\n", dbVersion, version, info.Description)
 		}
 		t.Run(info.Description, func(t *testing.T) {
-			if err := SetupTestContainer(&defaultConfig, info); err != nil {
+			if err := SetupTestContainer(&defaultConfig, info, *imageName); err != nil {
 				t.Fatalf("Failed to set up container for %s: %v\n", info.Description, err)
 			}
 			defer func() {
