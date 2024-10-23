@@ -85,31 +85,6 @@ fi
     --web.enable-admin-api &
 PROMETHEUS_PID=$!
 
-if [ -n "$BACKUP_FILE" ]; then
-  echo "Restoring Prometheus backup from $BACKUP_FILE..."
-
-  sleep 1
-
-  # Ensure Prometheus is stopped
-  kill $PROMETHEUS_PID
-  wait $PROMETHEUS_PID || true
-
-  sleep 1
-
-  # Restore Prometheus snapshot
-  mkdir -p "$PARENT_DIR/prometheus"
-  cp -r /home/autodba/restore_backup_uncompressed/home/autodba/backups/prometheus_snapshot_recent/* "$PARENT_DIR/prometheus/"
-  echo "Prometheus backup restored."
-
-  # Start up Prometheus for real
-  "$PARENT_DIR/prometheus/prometheus" \
-      --config.file="$PARENT_DIR/config/prometheus/prometheus.yml" \
-      --storage.tsdb.path="$PARENT_DIR/prometheus" \
-      --web.console.templates="$PARENT_DIR/config/prometheus/consoles" \
-      --web.console.libraries="$PARENT_DIR/config/prometheus/console_libraries" \
-      --web.enable-admin-api &
-fi
-
 # Start up bff
 "$PARENT_DIR/bin/autodba-bff" -collectorConfigFile="$CONFIG_FILE" -webappPath "$PARENT_DIR/share/webapp" &
 BFF_PID=$!
