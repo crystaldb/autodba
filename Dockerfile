@@ -150,7 +150,7 @@ RUN wget -qO- https://github.com/prometheus/prometheus/releases/download/v2.42.0
     && rm -rf /tmp/prometheus-2.42.0.linux-amd64
 
 # Prometheus config
-COPY monitor/prometheus/prometheus.yml ./config/prometheus/prometheus.yml
+COPY prometheus/prometheus.yml ./config/prometheus/prometheus.yml
 
 # Add backup script
 COPY scripts/agent/backup.sh /home/autodba/backup.sh
