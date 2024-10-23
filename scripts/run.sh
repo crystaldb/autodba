@@ -202,6 +202,7 @@ fi
 # Adjust port numbers based on INSTANCE_ID
 PROMETHEUS_PORT=$((UID + 6000 + INSTANCE_ID))
 BFF_PORT=$((UID + 4000 + INSTANCE_ID))
+COLLECTOR_API_SERVER_PORT=$((UID + 7080 + INSTANCE_ID))
 CONTAINER_NAME="autodba-$USER-$INSTANCE_ID"
 
 # Check if we need to continue from existing agent data
@@ -254,14 +255,16 @@ echo "=============================================================="
 echo ""
 echo "Running Docker container: $CONTAINER_NAME"
 echo ""
-echo " prometheus port: $PROMETHEUS_PORT"
-echo "        bff port: $BFF_PORT"
+echo "           prometheus port: $PROMETHEUS_PORT"
+echo "                  bff port: $BFF_PORT"
+echo " collector API server port: $COLLECTOR_API_SERVER_PORT"
 echo ""
 echo "=============================================================="
 
 docker run --name "$CONTAINER_NAME" \
     -p "$PROMETHEUS_PORT":9090 \
     -p "$BFF_PORT":4000 \
+    -p "$COLLECTOR_API_SERVER_PORT":7080 \
     -e DB_CONN_STRING="$DB_CONN_STRING" \
     -e AWS_RDS_INSTANCE="$AWS_RDS_INSTANCE" \
     -e DEFAULT_METRIC_COLLECTION_PERIOD_SECONDS=$DEFAULT_METRIC_COLLECTION_PERIOD_SECONDS \
