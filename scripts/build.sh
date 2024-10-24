@@ -78,10 +78,10 @@ for arch in amd64 arm64; do
     # Cleanup
     rm -rf $TMP_DIR/prometheus-*
 
-    # Copy configuration files and monitor setup
-    echo "Copying configuration and monitor setup files..."
+    # Copy prometheus setup
+    echo "Copying prometheus setup files..."
     mkdir -p "${PROMETHEUS_CONFIG_DIR}"
-    cp monitor/prometheus/prometheus.yml "${PROMETHEUS_CONFIG_DIR}/prometheus.yml"
+    cp prometheus/prometheus.yml "${PROMETHEUS_CONFIG_DIR}/prometheus.yml"
 
     # Build collector
     PROTOC_ARCH_SUFFIX="x86_64" # We only build for x86_64, as we're going to run it on x86_64 and use its output at build time
