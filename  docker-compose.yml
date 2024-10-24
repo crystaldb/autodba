@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+    collector:
+        build:
+            context: .
+            dockerfile: collector/Dockerfile
+        volumes:
+            - ./collector.conf:/usr/local/autodba/share/collector/collector.conf
+        depends_on:
+            - collector-api
+
+    collector-api:
+        build:
+            context: .
+            dockerfile: collector-api/Dockerfile
+        ports:
+            - "7080:7080"
+        volumes:
+            - collector_api_storage:/usr/local/autodba/share/collector_api_server/storage
+            - collector_api_db:/usr/local/autodba/share/collector_api_server/crystaldb-collector.db
+        depends_on:
+            - prometheus
+
+    bff-webapp:
+        build:
+            context: .
+            dockerfile: bff-webapp/Dockerfile
+        ports:
+            - "4000:4000"
+        depends_on:
+            - prometheus
+
+    prometheus:
+        build:
+            context: .
+            dockerfile: prometheus/Dockerfile
+        ports:
+            - "9090:9090"
+        volumes:
+            - prometheus_data:/usr/local/autodba/prometheus_data
+
+volumes:
+    prometheus_data:
+    collector_api_storage:
+    collector_api_db:
