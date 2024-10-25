@@ -1,9 +1,11 @@
 FROM ubuntu:20.04
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt-get install -y --no-install-recommends \
     curl \
     wget \
     software-properties-common \
+    libc-dev \
+    gcc \
     && rm -rf /var/lib/apt/lists/*
 
 # Install golang
@@ -17,6 +19,8 @@ ENV PATH="/usr/lib/go/bin:${PATH}" \
 
 WORKDIR /usr/local/autodba/share/collector_api_server
 COPY ./ ./
+# Ensure CGO is enabled
+ENV CGO_ENABLED=1
 RUN go mod download
 RUN go build -o collector-api-server ./cmd/server/main.go
 

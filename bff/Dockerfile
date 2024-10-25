@@ -47,12 +47,14 @@ RUN mkdir -p /usr/local/autodba/bin
 RUN cp main /usr/local/autodba/bin/autodba-bff
 
 FROM base as bff_webapp
+WORKDIR /usr/local/autodba
 # Copy built files from previous stages
 COPY --from=solid_builder /home/autodba/solid/dist ./share/webapp
 COPY --from=bff_builder /home/autodba/bff/config.json ./config/autodba/config.json
 COPY --from=bff_builder /usr/local/autodba/bin ./bin
 
-COPY bff-entrypoint.sh /usr/local/autodba/bin/bff-entrypoint.sh
-RUN chmod +x /usr/local/autodba/bin/bff-entrypoint.sh
+COPY bff-entrypoint.sh ./bin/bff-entrypoint.sh
+RUN chmod +x ./bin/bff-entrypoint.sh
 
+WORKDIR /usr/local/autodba/config/autodba
 CMD ["/usr/local/autodba/bin/bff-entrypoint.sh"]
