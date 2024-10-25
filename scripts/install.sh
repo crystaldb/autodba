@@ -84,46 +84,6 @@ else
     echo "Using the current directory for installation, no copying needed."
 fi
 
-
-# Function to extract parts from the DB connection string
-function parse_db_conn_string() {
-  local conn_string="$1"
-  
-  db_host=$(echo "$conn_string" | sed -E 's/.*@([^:]+).*/\1/')  # Extract host
-  db_name=$(echo "$conn_string" | sed -E 's/.*\/([^?]+).*/\1/')  # Correct extraction of dbname
-  db_username=$(echo "$conn_string" | sed -E 's/.*\/\/([^:]+):.*/\1/')  # Extract username
-  db_password=$(echo "$conn_string" | sed -E 's/.*\/\/[^:]+:([^@]+)@.*/\1/')  # Extract password
-  db_port=$(echo "$conn_string" | sed -E 's/.*:(543[0-9]{1}).*/\1/')  # Extract port
-  
-  echo "Parsed connection string:"
-  echo "  DB Host: $db_host"
-  echo "  DB Name: $db_name"
-  echo "  DB Username: $db_username"
-  echo "  DB Password: (hidden)"
-  echo "  DB Port: $db_port"
-}
-
-# Function to create config file
-create_config_file() {
-    local config_file="$1"
-
-    # Parse the DB connection string
-    parse_db_conn_string "$DB_CONN_STRING"
-
-    cat > "$config_file" <<EOF
-[server1]
-db_host = $db_host
-db_name = $db_name
-db_username = $db_username
-db_password = $db_password
-db_port = $db_port
-aws_db_instance_id = $AWS_RDS_INSTANCE
-aws_region = $AWS_REGION
-aws_access_key_id = $AWS_ACCESS_KEY_ID
-aws_secret_access_key = $AWS_SECRET_ACCESS_KEY
-EOF
-}
-
 # Handle configuration file
 if [ -n "$CONFIG_FILE" ]; then
     if [ -f "$CONFIG_FILE" ]; then
@@ -144,41 +104,8 @@ elif [ ! -t 0 ]; then
 
     echo "Valid config saved at $AUTODBA_CONFIG_FILE"
 else
-    echo "No config file provided, and no input from stdin detected. Using environment variables."
-    # Remove any existing config file
-    if [ -f "$AUTODBA_CONFIG_FILE" ]; then
-        echo "Removing existing config file: $AUTODBA_CONFIG_FILE"
-        rm -f "$AUTODBA_CONFIG_FILE"
-    fi
-
-    # Check if required parameters are provided
-    if [[ -z "$DB_CONN_STRING" ]]; then
-        echo "DB_CONN_STRING environment variable is not set"
-        usage
-    fi
-
-    if [[ -z "$AWS_RDS_INSTANCE" ]]; then
-        echo "Warning: AWS_RDS_INSTANCE environment variable is not set"
-    fi
-
-    if [[ -n "$AWS_RDS_INSTANCE" ]]; then
-        if ! command_exists "aws"; then
-            echo "Warning: AWS CLI is not installed. Please install AWS CLI to fetch AWS credentials."
-        else
-            # Fetch AWS Access Key and AWS Secret Key
-            AWS_ACCESS_KEY_ID=$(aws configure get aws_access_key_id || echo "")
-            AWS_SECRET_ACCESS_KEY=$(aws configure get aws_secret_access_key || echo "")
-            AWS_REGION=$(aws configure get region || echo "")
-
-            if [[ -z "$AWS_ACCESS_KEY_ID" || -z "$AWS_SECRET_ACCESS_KEY" || -z "$AWS_REGION" ]]; then
-                echo "Warning: AWS credentials or region are not configured properly. Proceeding without AWS integration."
-            fi
-        fi
-    fi
-    mkdir -p "$AUTODBA_CONFIG_DIR"
-    create_config_file "${AUTODBA_CONFIG_FILE}"
-
-    echo "Generated config file at ${AUTODBA_CONFIG_FILE}"
+    echo "Error: no config file provided, and no input from stdin detected."
+    exit 1
 fi
 
 # Systemctl service setup (if needed)
