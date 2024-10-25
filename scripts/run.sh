@@ -78,5 +78,5 @@ echo " collector API server port: $COLLECTOR_API_PORT"
 echo ""
 echo "=============================================================="
 
-# Optionally, you can tail the logs
+# Tail the logs for convenience
 $COMPOSE_CMD logs -f
