@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
-FROM ubuntu:20.04 AS go_builder
+FROM ubuntu:20.04 AS builder
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
@@ -23,7 +23,7 @@ RUN wget -O go.tgz "https://golang.org/dl/go${GOLANG_VERSION}.linux-amd64.tar.gz
 ENV PATH="/usr/lib/go/bin:${PATH}" \
     GOROOT="/usr/lib/go"
 
-FROM go_builder as release
+FROM builder as release
 WORKDIR /home/autodba
 COPY ./ ./
 RUN ./scripts/build.sh && \
@@ -31,12 +31,12 @@ RUN ./scripts/build.sh && \
     mv build_output/tar.gz/autodba-*.tar.gz release_output/  && \
     rm -rf build_output
 
-FROM go_builder as lint
+FROM builder as lint
 COPY bff/ ./
 RUN go mod download
 RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.55.2
 
-FROM go_builder AS test
+FROM builder AS test
 WORKDIR /home/autodba/bff
 COPY bff/go.mod bff/go.sum ./
 RUN go mod download
