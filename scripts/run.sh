@@ -159,6 +159,7 @@ EOF
 }
 
 # Handle config file
+FIXED_CONFIG_FILE="./collector/autodba-collector.conf"
 if [[ -z "$CONFIG_FILE" ]]; then
     echo "No config file provided. Creating one based on provided parameters..."
 
@@ -167,14 +168,14 @@ if [[ -z "$CONFIG_FILE" ]]; then
         echo "Missing required parameters"
         usage
     fi
-
-    CONFIG_FILE="./autodba-collector.conf"
-    create_config_file "$CONFIG_FILE"
+    create_config_file "$FIXED_CONFIG_FILE"
 else
     if [[ ! -f "$CONFIG_FILE" ]]; then
         echo "Error: Provided config file $CONFIG_FILE does not exist" >&2
         exit 1
     fi
+
+    cp $CONFIG_FILE $FIXED_CONFIG_FILE
 fi
 
 # Adjust port numbers based on INSTANCE_ID
@@ -226,7 +227,7 @@ docker run --name "$CONTAINER_NAME" \
     -e AWS_REGION="${AWS_REGION:-""}" \
     -e DISABLE_DATA_COLLECTION="$DISABLE_DATA_COLLECTION" \
     -e CONFIG_FILE="/usr/local/autodba/config/autodba/collector.conf" \
-    --mount type=bind,source="$CONFIG_FILE",target="/usr/local/autodba/config/autodba/collector.conf",readonly \
+    --mount type=bind,source="$FIXED_CONFIG_FILE",target="/usr/local/autodba/config/autodba/collector.conf",readonly \
     $PROMETHEUS_DATA_MOUNT \
     "$IMAGE_NAME"
     # -v "$VOLUME_NAME":/var/lib/postgresql/data \

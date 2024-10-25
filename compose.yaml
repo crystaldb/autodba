@@ -3,17 +3,17 @@ version: '3.8'
 services:
     collector:
         build:
-            context: .
-            dockerfile: collector/Dockerfile
+            context: collector
+            dockerfile: Dockerfile
         volumes:
-            - ./collector.conf:/usr/local/autodba/share/collector/collector.conf
+            - ./collector/autodba-collector.conf:/usr/local/autodba/share/collector/collector.conf
         depends_on:
             - collector-api
 
     collector-api:
         build:
-            context: .
-            dockerfile: collector-api/Dockerfile
+            context: collector-api
+            dockerfile: Dockerfile
         ports:
             - "7080:7080"
         volumes:
@@ -24,8 +24,8 @@ services:
 
     bff-webapp:
         build:
-            context: .
-            dockerfile: bff-webapp/Dockerfile
+            context: bff
+            dockerfile: Dockerfile
         ports:
             - "4000:4000"
         depends_on:
@@ -33,8 +33,8 @@ services:
 
     prometheus:
         build:
-            context: .
-            dockerfile: prometheus/Dockerfile
+            context: prometheus
+            dockerfile: Dockerfile
         ports:
             - "9090:9090"
         volumes:
