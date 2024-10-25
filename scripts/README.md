@@ -59,14 +59,12 @@ If the input is provided via stdin, it will be validated as valid JSON before us
 
 ### Usage:
 ```
-./run.sh --db-url <TARGET_DATABASE_URL> [--instance-id <INSTANCE_ID>] [--rds-instance <RDS_INSTANCE_NAME>] [--restore-backup <BACKUP_FILE>] [--disable-data-collection] [--continue]
+./run.sh --db-url <TARGET_DATABASE_URL> [--instance-id <INSTANCE_ID>] [--rds-instance <RDS_INSTANCE_NAME>] [--disable-data-collection] [--continue]
 ```
 - `--db-url`: Required parameter for the target database URL.
 - `--instance-id`: Specify a unique instance ID if running multiple agents.
 - `--rds-instance`: Collect metrics from an AWS RDS instance.
-- `--restore-backup`: Restore a backup file into the agent's Prometheus and PostgreSQL databases.
 - `--disable-data-collection`: Disable data collection from the target database.
-- `--continue`: Continue from existing agent data, taking a backup before stopping the previous container.
 
 ### Notes
 - Use `sudo` for running system-wide `install.sh` and `uninstall.sh` scripts.
