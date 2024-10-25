@@ -47,10 +47,10 @@ cd ..
 
 # Build the UI (Solid project)
 echo "Building the UI..."
-cd solid
+cd bff/solid
 npm install
 npm run build
-cd ..
+cd ../..
 
 TMP_DIR="/tmp"
 
@@ -111,7 +111,7 @@ for arch in amd64 arm64; do
     
     cp -r ${OUTPUT_DIR}/autodba-bff-${arch} "${INSTALL_DIR}/autodba-bff"
     cp -r ${OUTPUT_DIR}/config.json "${AUTODBA_CONFIG_DIR}/config.json"
-    cp -r solid/dist/* "${WEBAPP_DIR}"
+    cp -r bff/solid/dist/* "${WEBAPP_DIR}"
     cp entrypoint.sh "${INSTALL_DIR}/autodba-entrypoint.sh"
     chmod +x "${INSTALL_DIR}/autodba-entrypoint.sh"
     
