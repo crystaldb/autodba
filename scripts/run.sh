@@ -52,7 +52,7 @@ else
 fi
 
 # Set environment variables for docker-compose
-export COLLECTOR_API_PORT=$((UID + 7080 + INSTANCE_ID))
+export COLLECTOR_API_PORT=$((UID + 7000 + INSTANCE_ID))
 export BFF_WEBAPP_PORT=$((UID + 4000 + INSTANCE_ID))
 export PROMETHEUS_PORT=$((UID + 6000 + INSTANCE_ID))
 export CONFIG_FILE="/usr/local/autodba/config/autodba/collector.conf"
