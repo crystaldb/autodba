@@ -17,6 +17,6 @@ Run formatting with: go fmt ./...
 To run the project locally:
 
 - In the base pgautoDBA project run : ./run.sh --db-url '<YOUR_POSTGRES_CONNECTION_STRING>' --rds-instance <YOUR_RDS_INSTANCE_ID>
-- Use docker ps to check which port is being forwarded to 9090 (prometheus) and put that port in the config.json , eg "prometheus_server": "http://localhost:9090",
+- Set the `PROMETHEUS_URL` environment variable with the Prometheus URL, e.g., `export PROMETHEUS_URL="http://localhost:9090"`
 - In the bff folder root, run go build ./cmd/main.go
 - in the bff folder root, run ./main, this will start up a server at the port in the config.json (default port 4000)

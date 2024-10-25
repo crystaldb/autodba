@@ -62,7 +62,11 @@ func run(collectorConfigFile, webappPath string) error {
 	var config Config
 	config.WebappPath = webappPath
 	config.Port = rawConfig["port"].(string)
-	config.PrometheusServer = rawConfig["prometheus_server"].(string)
+	prometheusURL := os.Getenv("PROMETHEUS_URL")
+	if prometheusURL == "" {
+		prometheusURL = "http://localhost:9090" // fallback to default if not set
+	}
+	config.PrometheusServer = prometheusURL
 
 	if routes, ok := rawConfig["routes_config"].(map[string]interface{}); ok {
 		config.RoutesConfig = make(map[string]server.RouteConfig)

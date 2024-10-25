@@ -5,6 +5,7 @@
 # Set the base directory based on installation
 PARENT_DIR="${PARENT_DIR:-/usr/local/autodba}"
 CONFIG_FILE="${CONFIG_FILE:-${PARENT_DIR}/share/collector/collector.conf}"
+COLLECTOR_API_URL="${COLLECTOR_API_URL:-http://localhost:7080}"
 
 if [ ! -f "${CONFIG_FILE}" ]; then
     echo "Error: Config file not found at ${CONFIG_FILE}"
@@ -16,7 +17,7 @@ TEMP_CONFIG=$(mktemp)
 {
   echo "[pganalyze]"
   echo "api_key = your-secure-api-key"
-  echo "api_base_url = http://collector-api:7080"
+  echo "api_base_url = ${COLLECTOR_API_URL}"
   echo ""
   cat "${CONFIG_FILE}"
 } > "$TEMP_CONFIG"

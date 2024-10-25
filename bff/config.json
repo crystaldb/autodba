@@ -1,6 +1,5 @@
 {
   "port": "4000",
-  "prometheus_server": "http://localhost:9090",
   "routes_config": {
     "/v1/health": {
       "params": [

@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"os"
 )
 
 func GrantHandler(w http.ResponseWriter, r *http.Request) {
@@ -34,10 +35,15 @@ func GrantHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Authenticated request from %s", r.RemoteAddr)
 	}
 
+	selfURL := os.Getenv("COLLECTOR_API_URL")
+	if selfURL == "" {
+		selfURL = "http://localhost:9090" // fallback to default if not set
+	}
+
 	// Populate GrantConfig with dummy data (replace this with actual server config)
 	grantConfig := models.GrantConfig{
 		ServerID:         "pgServer1",
-		ServerURL:        "http://localhost:7080",
+		ServerURL:        selfURL,
 		SentryDsn:        "",
 		EnableActivity:   true,
 		EnableLogs:       false,
@@ -55,7 +61,7 @@ func GrantHandler(w http.ResponseWriter, r *http.Request) {
 		Valid:    true,
 		Config:   grantConfig,
 		LocalDir: storage.GetLocalStorageDir(),
-		S3URL:    "http://localhost:7080/v2/upload",
+		S3URL:    selfURL + "/v2/upload",
 		S3Fields: map[string]string{"key": cfg.APIKey},
 	}
 
