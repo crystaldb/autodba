@@ -45,10 +45,25 @@ However, the following *temporary limitations* are presently in place:
 
 ### Prerequisites
 
-1. Linux server with network access to your PostgreSQL database.
+1. *Linux server* with network access to your PostgreSQL database.
 We recommend using a machine with at least 2&nbsp;GB of RAM and 10&nbsp;GB of disk space (e.g., `t3.small` on AWS).
-2. A database user with access to read the metrics
-3. AWS credentials with permissions to read database metrics
+
+2. *Enabling pg_stat_statements*: connect to your database using psql, and run the following SQL commands to enable the pg_stat_statements extension, and make sure it works:
+
+```sql
+CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
+SELECT * FROM pg_stat_statements LIMIT 1;
+```
+
+3. *Monitoring DB user*: connect to your database using psql. Then run the following to create a monitoring user. Replace 'YOUR_AUTODBA_PASSWORD' with your desired password for that user:
+
+```sql
+CREATE USER autodba WITH PASSWORD 'YOUR_AUTODBA_PASSWORD' CONNECTION LIMIT 5;
+GRANT pg_monitor TO autodba;
+GRANT USAGE ON SCHEMA public TO autodba;
+```
+
+4. AWS or Google Cloud credentials with permissions to read database metrics
 
 Follow these instructions to install AutoDBA on Linux.
 
@@ -66,9 +81,10 @@ tar -xzvf autodba-0.4.0-amd64.tar.gz
 cd autodba-0.4.0
 ```
 
-3. Create a configuration file `autodba.conf` and populate it with values appropriate to your environment.
+3. Run this command to create a configuration file (`autodba.conf`) and populate it with values appropriate to your environment:
 
 ```conf
+cat << EOF > autodba.conf
 [server1]
 db_host = <YOUR_PG_DATABASE_HOST, e.g., xyz.abcdefgh.us-west-2.rds.amazonaws.com>
 db_name = <YOUR_PG_DATABASE_NAMES, e.g., postgres>
@@ -80,22 +96,29 @@ aws_region = <YOUR_AWS_RDS_REGION, e.g., us-west-2>
 aws_access_key_id = <YOUR_AWS_ACCESS_KEY_ID>
 aws_secret_access_key = <YOUR_AWS_SECRET_ACCESS_KEY>
 
-# You can optionally add more servers by adding more sections similar to the above
+# You can optionally add more servers by adding more sections similar to the above, but with parameters for Google Cloud SQL
 # [server2]
-# db_host = <YOUR_PG_DATABASE_HOST, e.g., xyz.abcdefgh.us-west-2.rds.amazonaws.com>
+# db_host = <YOUR_PG_DATABASE_HOST, e.g., localhost>
 # db_name = <YOUR_PG_DATABASE_NAMES, e.g., postgres>
 # db_username = <YOUR_PG_DATABASE_USER_NAME, e.g., postgres>
 # db_password = <YOUR_PG_DATABASE_PASSWORD>
 # db_port = <YOUR_PG_DATABASE_PASSWORD, e.g., 5432>
-# aws_db_instance_id = <YOUR_AWS_RDS_INSTANCE_ID, e.g., xyz>
-# aws_region = <YOUR_AWS_RDS_REGION, e.g., us-west-2>
-# aws_access_key_id = <YOUR_AWS_ACCESS_KEY_ID>
-# aws_secret_access_key = <YOUR_AWS_SECRET_ACCESS_KEY>
+# gcp_project_id = <YOUR_GCP_PROJECT_ID>
+# gcp_cloudsql_instance_id = <YOUR_GCP_CLOUDSQL_INSTANCE_ID>
+# gcp_credentials_file = <YOUR_GCP_CREDENTIALS_FILE (default value: ~/.config/gcloud/application_default_credentials.json)>
+EOF
 ```
 
-PostgreSQL connection strings are of the form `postgres://<db_username>:<db_password>@<db_host>:<db_port>/<db_name>`.
+### Note: 
+ - PostgreSQL connection strings are of the form `postgres://<db_username>:<db_password>@<db_host>:<db_port>/<db_name>`.
 
-If you're using AWS RDS, then your `<db_host>` is in this format: `<aws_db_instance_id>.<aws_account_id>.<aws_region>.rds.amazonaws.com`
+  - If you're using AWS RDS, then your `<db_host>` is in this format: `<aws_db_instance_id>.<aws_account_id>.<aws_region>.rds.amazonaws.com`
+
+  - For Google Cloud SQL, you need to follow [these instructions](https://cloud.google.com/sql/docs/postgres/connect-auth-proxy) to install gcloud CLI and cloud-sql-proxy (if your database is not directly accessible from this machine). Then, you need to:
+    - init `gcloud`: `gcloud init`
+    - enable default auth on  `gcloud`: `gcloud auth application-default login`
+    - Run the proxy: `./cloud-sql-proxy --port <YOUR_PROXIED_DB_PORT> <YOUR_GCP_PROJECT_ID>:<YOUR_GCP_CLOUDSQL_INSTANCE_ID>`.
+    - Then, in the configuration file (`autodba.conf`), you should set `db_host = localhost`, and `db_port = <YOUR_PROXIED_DB_PORT>`.
 
 4. Run the `install.sh` script to install AutoDBA.
 
@@ -122,9 +145,14 @@ Or to install in the same extracted directory:
 systemctl is-active autodba
 ```
 
+6. Take a look at the AutoDBA service logs:
+```
+sudo journalctl -xefu autodba.service
+```
+
 This command should output `active`.
 
-5. Connect to the AutoDBA web portal on port 4000. If you have installed AutoDBA on a remote server you can use [ssh tunneling](https://www.ssh.com/academy/ssh/tunneling-example) to access it.
+7. Connect to the AutoDBA web portal on port 4000. If you have installed AutoDBA on a remote server you can use [ssh tunneling](https://www.ssh.com/academy/ssh/tunneling-example) to access it.
 For example:
 ```
 ssh -L4000:localhost:4000 <MY_USERNAME>@<MY_HOSTNAME>
