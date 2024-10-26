@@ -1,19 +1,6 @@
 version: '3.8'
 
 services:
-    collector:
-        build:
-            context: collector
-            dockerfile: Dockerfile
-        volumes:
-            - ./collector/autodba-collector.conf:/usr/local/autodba/share/collector/collector.conf:ro
-        depends_on:
-            - collector-api
-        networks:
-            - autodba_network
-        environment:
-            - COLLECTOR_API_URL=http://collector-api:7080
-
     collector-api:
         build:
             context: collector-api
