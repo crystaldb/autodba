@@ -31,26 +31,26 @@ mkdir -p "${TAR_GZ_DIR}"
 
 # Build the binary for multiple architectures
 echo "Building the project for multiple architectures..."
+(
+    cd bff
 
-cd bff
+    # Build for x86_64
+    GOARCH=amd64 GOOS=linux go build -o ${OUTPUT_DIR}/autodba-bff-amd64 ./cmd/main.go
 
-# Build for x86_64
-GOARCH=amd64 GOOS=linux go build -o ${OUTPUT_DIR}/autodba-bff-amd64 ./cmd/main.go
+    # Build for ARM64
+    GOARCH=arm64 GOOS=linux go build -o ${OUTPUT_DIR}/autodba-bff-arm64 ./cmd/main.go
 
-# Build for ARM64
-GOARCH=arm64 GOOS=linux go build -o ${OUTPUT_DIR}/autodba-bff-arm64 ./cmd/main.go
-
-# Copy the config.json
-cp config.json ${OUTPUT_DIR}/config.json
-
-cd ..
+    # Copy the config.json
+    cp config.json ${OUTPUT_DIR}/config.json
+)
 
 # Build the UI (Solid project)
 echo "Building the UI..."
-cd bff/solid
-npm install
-npm run build
-cd ../..
+(
+    cd bff/solid
+    npm install
+    npm run build
+)
 
 TMP_DIR="/tmp"
 
