@@ -57,7 +57,10 @@ func run(webappPath string) error {
 	config.Port = rawConfig["port"].(string)
 	prometheusURL := os.Getenv("PROMETHEUS_URL")
 	if prometheusURL == "" {
-		prometheusURL = "http://localhost:9090" // fallback to default if not set
+		prometheusURL, ok := rawConfig["prometheus_server"]
+		if !ok || prometheusURL == "" {
+			prometheusURL = "http://localhost:9090"
+		}
 	}
 	config.PrometheusServer = prometheusURL
 
