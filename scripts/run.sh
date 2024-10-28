@@ -58,7 +58,7 @@ export PROMETHEUS_PORT=$((UID + 6000 + INSTANCE_ID))
 export CONFIG_FILE="/usr/local/autodba/config/autodba/collector.conf"
 
 # Prepare docker-compose command
-COMPOSE_CMD="docker-compose -p autodba-${USER//./_}-${INSTANCE_ID} -f compose.yaml"
+COMPOSE_CMD="docker-compose -p autodba-${USER//./_}-${INSTANCE_ID} -f compose.yaml -f compose.collector.yaml"
 
 # Stop and remove existing containers
 echo "Stopping and removing existing containers..."
