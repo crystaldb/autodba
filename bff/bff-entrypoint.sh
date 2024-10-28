@@ -4,7 +4,6 @@
 
 # Set the base directory based on installation
 PARENT_DIR="${PARENT_DIR:-/usr/local/autodba}"
-CONFIG_FILE="${CONFIG_FILE:-${PARENT_DIR}/share/collector/collector.conf}"
 WEBAPP_PATH="${PARENT_DIR}/share/webapp"
 PROMETHEUS_URL="${PROMETHEUS_URL:-http://localhost:9090}"
 
@@ -15,4 +14,4 @@ until curl -s ${PROMETHEUS_URL}/-/ready > /dev/null; do
 done
 echo "Prometheus is ready."
 
-exec ${PARENT_DIR}/bin/autodba-bff -collectorConfigFile="${CONFIG_FILE}" -webappPath "${WEBAPP_PATH}"
+exec ${PARENT_DIR}/bin/autodba-bff -webappPath "${WEBAPP_PATH}"
