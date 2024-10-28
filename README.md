@@ -87,7 +87,7 @@ cd autodba-0.4.0
 cat << EOF > autodba.conf
 [autodba]
 api_key = your-secure-api-key
-api_base_url = <YOUR_AUTODBA_API_BASE_URL, e.g., localhost:7080>
+api_base_url = <YOUR_AUTODBA_API_BASE_URL, e.g., localhost:7080 or http://collector-api:7080 (if you are using run.sh)>
 
 [server1]
 db_host = <YOUR_PG_DATABASE_HOST, e.g., xyz.abcdefgh.us-west-2.rds.amazonaws.com>
