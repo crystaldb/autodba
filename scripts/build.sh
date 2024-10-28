@@ -101,6 +101,10 @@ for arch in amd64 arm64; do
     cp -r bff/solid/dist/* "${WEBAPP_DIR}"
     cp entrypoint.sh "${INSTALL_DIR}/autodba-entrypoint.sh"
     chmod +x "${INSTALL_DIR}/autodba-entrypoint.sh"
+
+    cp prometheus/prometheus-entrypoint.sh "${PARENT_DIR}/bin/"
+    cp collector-api/collector-api-entrypoint.sh "${PARENT_DIR}/bin/"
+    cp bff/bff-entrypoint.sh "${PARENT_DIR}/bin/"
     
     # Copy the `install.sh` and `uninstall.sh` scripts into the root of the tarball
     cp scripts/install.sh "${PARENT_DIR}/"

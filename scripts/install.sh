@@ -73,10 +73,14 @@ if [ "$PARENT_DIR" != "$(pwd)" ]; then
     mkdir -p "${PARENT_DIR}"
 
     cp -r ./* "$PARENT_DIR"
-    chmod +x "${INSTALL_DIR}/autodba-entrypoint.sh"
 else
     echo "Using the current directory for installation, no copying needed."
 fi
+
+chmod +x "${INSTALL_DIR}/autodba-entrypoint.sh"
+chmod +x "${INSTALL_DIR}/prometheus-entrypoint.sh"
+chmod +x "${INSTALL_DIR}/collector-api-entrypoint.sh"
+chmod +x "${INSTALL_DIR}/bff-entrypoint.sh"
 
 # Systemctl service setup (if needed)
 if $SYSTEM_INSTALL && command_exists "systemctl"; then
