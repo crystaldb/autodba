@@ -25,7 +25,7 @@ RUN mkdir -p /usr/local/autodba/share/collector && \
     git clone --recurse-submodules https://github.com/crystaldb/collector.git /usr/local/autodba/share/collector && \
     cd /usr/local/autodba/share/collector && \
     git checkout 636bc0996ecc881acc0942859f8a28684dadfc7e && \
-    wget https://github.com/protocolbuffers/protobuf/releases/download/v3.14.0/protoc-3.14.0-linux-x86_64.zip && unzip protoc-3.14.0-linux-x86_64.zip -d protoc && \
+    wget https://github.com/protocolbuffers/protobuf/releases/download/v28.2/protoc-28.2-linux-x86_64.zip && unzip protoc-28.2-linux-x86_64.zip -d protoc && \
     make build && \
     mv pganalyze-collector collector && \
     mv pganalyze-collector-helper collector-helper && \
