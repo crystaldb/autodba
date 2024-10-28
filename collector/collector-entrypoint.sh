@@ -16,4 +16,4 @@ TEMP_CONFIG=$(mktemp)
   sed 's/\[autodba\]/[pganalyze]/' "${CONFIG_FILE}"
 } > "$TEMP_CONFIG"
 
-./collector --config="${TEMP_CONFIG}" --statefile="./state" --verbose
+./autodba-collector --config="${TEMP_CONFIG}" --statefile="./state" --verbose

@@ -124,9 +124,9 @@ for arch in amd64 arm64; do
     make build
     
     # Move collector binaries to release directory instead of renaming in place
-    mv pganalyze-collector "${COLLECTOR_RELEASE_DIR}/collector"
-    mv pganalyze-collector-helper "${COLLECTOR_RELEASE_DIR}/collector-helper"
-    mv pganalyze-collector-setup "${COLLECTOR_RELEASE_DIR}/collector-setup"
+    mv pganalyze-collector "${COLLECTOR_RELEASE_DIR}/autodba-collector"
+    mv pganalyze-collector-helper "${COLLECTOR_RELEASE_DIR}/autodba-collector-helper"
+    mv pganalyze-collector-setup "${COLLECTOR_RELEASE_DIR}/autodba-collector-setup"
     cd -
     rm -rf "${COLLECTOR_DIR}"
 

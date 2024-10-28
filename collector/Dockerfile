@@ -27,9 +27,9 @@ RUN mkdir -p /usr/local/autodba/share/collector && \
     git checkout 636bc0996ecc881acc0942859f8a28684dadfc7e && \
     wget https://github.com/protocolbuffers/protobuf/releases/download/v28.2/protoc-28.2-linux-x86_64.zip && unzip protoc-28.2-linux-x86_64.zip -d protoc && \
     make build && \
-    mv pganalyze-collector collector && \
-    mv pganalyze-collector-helper collector-helper && \
-    mv pganalyze-collector-setup collector-setup
+    mv pganalyze-collector autodba-collector && \
+    mv pganalyze-collector-helper autodba-collector-helper && \
+    mv pganalyze-collector-setup autodba-collector-setup
 
 COPY collector-entrypoint.sh /usr/local/autodba/bin/collector-entrypoint.sh
 RUN chmod +x /usr/local/autodba/bin/collector-entrypoint.sh
