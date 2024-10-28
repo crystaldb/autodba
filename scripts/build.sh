@@ -63,6 +63,7 @@ for arch in amd64 arm64; do
     AUTODBA_CONFIG_DIR="$PARENT_DIR/config/autodba"
     PROMETHEUS_INSTALL_DIR="$PARENT_DIR/prometheus"
     COLLECTOR_DIR="${PARENT_DIR}/share/collector"
+    COLLECTOR_RELEASE_DIR="${TAR_GZ_DIR}/collector-${VERSION}-${arch}/collector-${VERSION}"
     COLLECTOR_API_SERVER_DIR="${PARENT_DIR}/share/collector_api_server"
 
     echo "Downloading Prometheus tarball for ${arch}..."
@@ -82,20 +83,6 @@ for arch in amd64 arm64; do
     echo "Copying prometheus setup files..."
     mkdir -p "${PROMETHEUS_CONFIG_DIR}"
     cp prometheus/prometheus.yml "${PROMETHEUS_CONFIG_DIR}/prometheus.yml"
-
-    # Build collector
-    PROTOC_ARCH_SUFFIX="x86_64" # We only build for x86_64, as we're going to run it on x86_64 and use its output at build time
-    echo "Building collector..."
-    mkdir -p "${COLLECTOR_DIR}"
-    git clone --recurse-submodules https://github.com/crystaldb/collector.git "${COLLECTOR_DIR}"
-    cd "${COLLECTOR_DIR}"
-    wget https://github.com/protocolbuffers/protobuf/releases/download/v3.14.0/protoc-3.14.0-linux-${PROTOC_ARCH_SUFFIX}.zip
-    unzip protoc-3.14.0-linux-${PROTOC_ARCH_SUFFIX}.zip -d protoc
-    make build
-    mv pganalyze-collector collector
-    mv pganalyze-collector-helper collector-helper
-    mv pganalyze-collector-setup collector-setup
-    cd -
 
     echo "Building collector-api-server..."
     mkdir -p "${COLLECTOR_API_SERVER_DIR}"
@@ -119,13 +106,34 @@ for arch in amd64 arm64; do
     cp scripts/install.sh "${PARENT_DIR}/"
     cp scripts/uninstall.sh "${PARENT_DIR}/"
     cp scripts/Makefile "${PARENT_DIR}/"
+
+    # Build collector
+    PROTOC_ARCH_SUFFIX="x86_64" # We only build for x86_64, as we're going to run it on x86_64 and use its output at build time
+    echo "Building collector..."
+    mkdir -p "${COLLECTOR_DIR}"
+    mkdir -p "${COLLECTOR_RELEASE_DIR}"
+    git clone --recurse-submodules https://github.com/crystaldb/collector.git "${COLLECTOR_DIR}"
+    cd "${COLLECTOR_DIR}"
+    wget https://github.com/protocolbuffers/protobuf/releases/download/v28.2/protoc-28.2-linux-${PROTOC_ARCH_SUFFIX}.zip
+    unzip protoc-28.2-linux-${PROTOC_ARCH_SUFFIX}.zip -d protoc
+    make build
+    
+    # Move collector binaries to release directory instead of renaming in place
+    mv pganalyze-collector "${COLLECTOR_RELEASE_DIR}/collector"
+    mv pganalyze-collector-helper "${COLLECTOR_RELEASE_DIR}/collector-helper"
+    mv pganalyze-collector-setup "${COLLECTOR_RELEASE_DIR}/collector-setup"
+    cd -
+    rm -rf "${COLLECTOR_DIR}"
 done
 
 # Function to create tar.gz package for each architecture
 create_tar_gz() {
     for arch in amd64 arm64; do
-        echo "Creating tar.gz package for ${arch}..."
+        echo "Creating tar.gz packages for ${arch}..."
+        # Create autodba package
         tar -czvf "${TAR_GZ_DIR}/autodba-${VERSION}-${arch}.tar.gz" -C "${TAR_GZ_DIR}/autodba-${VERSION}-${arch}" .
+        # Create collector package
+        tar -czvf "${TAR_GZ_DIR}/collector-${VERSION}-${arch}.tar.gz" -C "${TAR_GZ_DIR}/collector-${VERSION}-${arch}" .
     done
 }
 

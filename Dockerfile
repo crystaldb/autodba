@@ -29,6 +29,7 @@ COPY ./ ./
 RUN ./scripts/build.sh && \
     mkdir -p release_output && \
     mv build_output/tar.gz/autodba-*.tar.gz release_output/  && \
+    mv build_output/tar.gz/collector-*.tar.gz release_output/  && \
     rm -rf build_output
 
 FROM builder as lint
