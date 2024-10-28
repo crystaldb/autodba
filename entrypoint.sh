@@ -34,10 +34,6 @@ echo "Starting Collector API Server..."
 "$PARENT_DIR/bin/collector-api-entrypoint.sh" &
 COLLECTOR_API_SERVER_PID=$!
 
-echo "Starting Collector..."
-"$PARENT_DIR/bin/collector-entrypoint.sh" &
-COLLECTOR_PID=$!
-
 echo "Starting BFF..."
 "$PARENT_DIR/bin/bff-entrypoint.sh" &
 BFF_PID=$!
@@ -53,9 +49,6 @@ then
 elif (( $EXITED_PID == $BFF_PID ))
 then
     echo "BFF exited with return code $retcode - killing all jobs"
-elif (( $EXITED_PID == $COLLECTOR_PID ))
-then
-    echo "Collector exited with return code $retcode - killing all jobs"
 elif (( $EXITED_PID == $COLLECTOR_API_SERVER_PID ))
 then
     echo "Collector API Server exited with return code $retcode - killing all jobs"
