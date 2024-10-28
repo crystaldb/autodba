@@ -2,6 +2,10 @@ version: '3.8'
 
 services:
     collector-api:
+        x-omnistrate-mode-internal: false
+        x-omnistrate-integrations:
+            - omnistrateLogging
+            - omnistrateMetrics
         build:
             context: collector-api
             dockerfile: Dockerfile
@@ -18,6 +22,10 @@ services:
             - COLLECTOR_API_URL=http://collector-api:7080
 
     bff-webapp:
+        x-omnistrate-mode-internal: false
+        x-omnistrate-integrations:
+            - omnistrateLogging
+            - omnistrateMetrics
         build:
             context: bff
             dockerfile: Dockerfile
@@ -31,6 +39,10 @@ services:
             - PROMETHEUS_URL=http://prometheus:9090
 
     prometheus:
+        x-omnistrate-mode-internal: true
+        x-omnistrate-integrations:
+            - omnistrateLogging
+            - omnistrateMetrics
         build:
             context: prometheus
             dockerfile: Dockerfile
