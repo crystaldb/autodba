@@ -86,7 +86,7 @@ cd autodba-0.4.0
 ```conf
 cat << EOF > autodba.conf
 [autodba]
-api_key = <YOUR_AUTODBA_API_KEY>
+api_key = your-secure-api-key
 api_base_url = <YOUR_AUTODBA_API_BASE_URL, e.g., localhost:7080>
 
 [server1]
