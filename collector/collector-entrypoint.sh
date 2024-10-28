@@ -3,8 +3,7 @@
 # SPDX-Identifier: Apache-2.0
 
 # Set the base directory based on installation
-PARENT_DIR="${PARENT_DIR:-/usr/local/autodba}"
-CONFIG_FILE="${CONFIG_FILE:-${PARENT_DIR}/share/collector/collector.conf}"
+CONFIG_FILE="${CONFIG_FILE:-./collector.conf}"
 
 if [ ! -f "${CONFIG_FILE}" ]; then
     echo "Error: Config file not found at ${CONFIG_FILE}"
@@ -17,4 +16,4 @@ TEMP_CONFIG=$(mktemp)
   sed 's/\[autodba\]/[pganalyze]/' "${CONFIG_FILE}"
 } > "$TEMP_CONFIG"
 
-$PARENT_DIR/share/collector/collector --config="${TEMP_CONFIG}" --statefile="$PARENT_DIR/share/collector/state" --verbose
+./collector --config="${TEMP_CONFIG}" --statefile="./state" --verbose

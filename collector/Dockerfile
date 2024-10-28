@@ -33,4 +33,6 @@ RUN mkdir -p /usr/local/autodba/share/collector && \
 COPY collector-entrypoint.sh /usr/local/autodba/bin/collector-entrypoint.sh
 RUN chmod +x /usr/local/autodba/bin/collector-entrypoint.sh
 
+WORKDIR /usr/local/autodba/share/collector
+
 CMD ["/usr/local/autodba/bin/collector-entrypoint.sh"]

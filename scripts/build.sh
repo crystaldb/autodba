@@ -124,6 +124,11 @@ for arch in amd64 arm64; do
     mv pganalyze-collector-setup "${COLLECTOR_RELEASE_DIR}/collector-setup"
     cd -
     rm -rf "${COLLECTOR_DIR}"
+
+    cp ./collector/collector-entrypoint.sh "${COLLECTOR_RELEASE_DIR}/"
+
+    cp ./collector/collector-install.sh "${COLLECTOR_RELEASE_DIR}/install.sh"
+    cp ./collector/collector-uninstall.sh "${COLLECTOR_RELEASE_DIR}/uninstall.sh"
 done
 
 # Function to create tar.gz package for each architecture
