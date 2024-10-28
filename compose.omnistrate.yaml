@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+    collector-api:
+        build:
+            context: collector-api
+            dockerfile: Dockerfile
+        ports:
+            - "${COLLECTOR_API_PORT:-7080}:7080"
+        volumes:
+            - collector_api_storage:/usr/local/autodba/share/collector_api_server/storage
+        depends_on:
+            - prometheus
+        networks:
+            - autodba_network
+        environment:
+            - PROMETHEUS_HOST=prometheus:9090
+            - COLLECTOR_API_URL=http://collector-api:7080
+
+    bff-webapp:
+        build:
+            context: bff
+            dockerfile: Dockerfile
+        ports:
+            - "${BFF_WEBAPP_PORT:-4000}:4000"
+        depends_on:
+            - prometheus
+        networks:
+            - autodba_network
+        environment:
+            - PROMETHEUS_URL=http://prometheus:9090
+
+    prometheus:
+        build:
+            context: prometheus
+            dockerfile: Dockerfile
+        ports:
+            - "${PROMETHEUS_PORT:-9090}:9090"
+        volumes:
+            - prometheus_data:/usr/local/autodba/prometheus_data
+        networks:
+            - autodba_network
+
+networks:
+    autodba_network:
+        driver: bridge
+
+volumes:
+    prometheus_data:
+    collector_api_storage:
