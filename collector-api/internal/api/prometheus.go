@@ -22,7 +22,7 @@ import (
 var (
 	prometheusURL = url.URL{
 		Scheme: "http",
-		Host:   os.Getenv("PROMETHEUS_URL"),
+		Host:   os.Getenv("PROMETHEUS_HOST"),
 		Path:   "api/v1/write",
 	}
 )

@@ -6,8 +6,9 @@
 PARENT_DIR="${PARENT_DIR:-/usr/local/autodba}"
 CONFIG_FILE="${CONFIG_FILE:-${PARENT_DIR}/share/collector/collector.conf}"
 
-# Set default values for PROMETHEUS_URL and COLLECTOR_API_URL
-export PROMETHEUS_URL="${PROMETHEUS_URL:-http://localhost:9090}"
+# Set default values for PROMETHEUS_HOST and COLLECTOR_API_URL
+export PROMETHEUS_HOST="${PROMETHEUS_HOST:-localhost:9090}"
+export PROMETHEUS_URL="http://${PROMETHEUS_HOST}"
 export COLLECTOR_API_URL="${COLLECTOR_API_URL:-http://localhost:7080}"
 
 # Check if config file exists

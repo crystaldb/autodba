@@ -14,7 +14,7 @@ services:
         networks:
             - autodba_network
         environment:
-            - PROMETHEUS_URL=http://prometheus:9090
+            - PROMETHEUS_HOST=prometheus:9090
             - COLLECTOR_API_URL=http://collector-api:7080
 
     bff-webapp:

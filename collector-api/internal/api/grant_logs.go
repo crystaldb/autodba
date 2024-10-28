@@ -45,7 +45,7 @@ func GrantLogsHandler(w http.ResponseWriter, r *http.Request) {
 
 	selfURL := os.Getenv("COLLECTOR_API_URL")
 	if selfURL == "" {
-		selfURL = "http://localhost:9090" // fallback to default if not set
+		selfURL = "http://localhost:7080" // fallback to default if not set
 	}
 
 	// Populate GrantConfig with dummy data (replace this with actual server config)
