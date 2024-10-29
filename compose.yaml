@@ -17,7 +17,7 @@ services:
             - PROMETHEUS_HOST=prometheus:9090
             - COLLECTOR_API_URL=http://collector-api:7080
 
-    bff-webapp:
+    bff:
         build:
             context: bff
             dockerfile: Dockerfile
