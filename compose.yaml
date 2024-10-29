@@ -29,6 +29,7 @@ services:
             - autodba_network
         environment:
             - PROMETHEUS_URL=http://prometheus:9090
+            - API_KEY="DEFAULT-API-KEY"
 
     prometheus:
         build:
