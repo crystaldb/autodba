@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"os"
 	"path/filepath"
 )
 
@@ -42,10 +43,15 @@ func GrantLogsHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Logs directory resolved to: %s", logsDir)
 	}
 
+	selfURL := os.Getenv("COLLECTOR_API_URL")
+	if selfURL == "" {
+		selfURL = "http://localhost:7080" // fallback to default if not set
+	}
+
 	// Populate GrantConfig with dummy data (replace this with actual server config)
 	grantConfig := models.GrantConfig{
 		ServerID:         "pgServer1",
-		ServerURL:        "http://localhost:7080",
+		ServerURL:        selfURL,
 		SentryDsn:        "",
 		EnableActivity:   true,
 		EnableLogs:       false,

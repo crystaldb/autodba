@@ -4,38 +4,11 @@
 
 # Set the base directory based on installation
 PARENT_DIR="${PARENT_DIR:-/usr/local/autodba}"
-CONFIG_FILE="${CONFIG_FILE:-${PARENT_DIR}/share/collector/collector.conf}"
 
-# Check if config file exists
-if [ ! -f "${CONFIG_FILE}" ]; then
-    echo "Error: Config file not found at ${CONFIG_FILE}"
-    exit 1
-fi
-
-# Function to extract value from the first server section
-extract_value() {
-    grep -m1 "^$1" "${CONFIG_FILE}" | cut -d'=' -f2- | tr -d ' '
-}
-
-# Extract values for the first server
-DB_HOST=$(extract_value "db_host")
-DB_NAME=$(extract_value "db_name")
-DB_USERNAME=$(extract_value "db_username")
-DB_PASSWORD=$(extract_value "db_password")
-DB_PORT=$(extract_value "db_port")
-AWS_RDS_INSTANCE=$(extract_value "aws_db_instance_id")
-AWS_REGION=$(extract_value "aws_region")
-AWS_ACCESS_KEY_ID=$(extract_value "aws_access_key_id")
-AWS_SECRET_ACCESS_KEY=$(extract_value "aws_secret_access_key")
-
-# Construct the DB_CONN_STRING
-DB_CONN_STRING="postgresql://${DB_USERNAME}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}"
-
-# Ensure required environment variables are set
-if [ -z "$DB_CONN_STRING" ]; then
-  echo "Error: there is no PostgreSQL server connection string defined in the provided config."
-  exit 1
-fi
+# Set default values for PROMETHEUS_HOST and COLLECTOR_API_URL
+export PROMETHEUS_HOST="${PROMETHEUS_HOST:-localhost:9090}"
+export PROMETHEUS_URL="http://${PROMETHEUS_HOST}"
+export COLLECTOR_API_URL="${COLLECTOR_API_URL:-http://localhost:7080}"
 
 function clean_up {
     # Perform program exit housekeeping
@@ -46,98 +19,40 @@ function clean_up {
 
 trap clean_up SIGHUP SIGINT SIGTERM
 
-if [ -z "$DISABLE_DATA_COLLECTION" ] || [ "$DISABLE_DATA_COLLECTION" = false ]; then
-  echo "Starting Collector API Server..."
-  pushd "$PARENT_DIR/share/collector_api_server"
-  ./collector-api-server &
-  COLLECTOR_API_SERVER_PID=$!
-  popd
-  
-  # Start up Collector
-  if [ -f "${CONFIG_FILE}" ]; then
-    echo "Starting Collector..."
-    # Create a temporary file with the prefix and original content
-    TEMP_CONFIG=$(mktemp)
-    {
-      echo "[pganalyze]"
-      echo "api_key = your-secure-api-key"
-      echo "api_base_url = http://localhost:7080"
-      echo ""
-      cat "${CONFIG_FILE}"
-    } > "$TEMP_CONFIG"
-    $PARENT_DIR/share/collector/collector --config="${TEMP_CONFIG}" --statefile="$PARENT_DIR/share/collector/state" --verbose &
-    COLLECTOR_COLLECTOR_PID=$!
-  else
-    # Check if config file exists
-    echo "Error: Collector configuration file not found at ${CONFIG_FILE}"
-    exit 1
-  fi
-fi
 
-# Start up Prometheus for initialization
-"$PARENT_DIR/prometheus/prometheus" \
-    --config.file="$PARENT_DIR/config/prometheus/prometheus.yml" \
-    --enable-feature="remote-write-receiver" \
-    --storage.tsdb.path="$PARENT_DIR/prometheus_data" \
-    --query.lookback-delta="15m" \
-    --web.console.templates="$PARENT_DIR/config/prometheus/consoles" \
-    --web.console.libraries="$PARENT_DIR/config/prometheus/console_libraries" \
-    --web.enable-admin-api &
+echo "Starting Prometheus..."
+"$PARENT_DIR/bin/prometheus-entrypoint.sh" &
 PROMETHEUS_PID=$!
 
-if [ -n "$BACKUP_FILE" ]; then
-  echo "Restoring Prometheus backup from $BACKUP_FILE..."
+echo "Starting Collector API Server..."
+"$PARENT_DIR/bin/collector-api-entrypoint.sh" &
+COLLECTOR_API_SERVER_PID=$!
 
-  sleep 1
-
-  # Ensure Prometheus is stopped
-  kill $PROMETHEUS_PID
-  wait $PROMETHEUS_PID || true
-
-  sleep 1
-
-  # Restore Prometheus snapshot
-  mkdir -p "$PARENT_DIR/prometheus"
-  cp -r /home/autodba/restore_backup_uncompressed/home/autodba/backups/prometheus_snapshot_recent/* "$PARENT_DIR/prometheus/"
-  echo "Prometheus backup restored."
-
-  # Start up Prometheus for real
-  "$PARENT_DIR/prometheus/prometheus" \
-      --config.file="$PARENT_DIR/config/prometheus/prometheus.yml" \
-      --storage.tsdb.path="$PARENT_DIR/prometheus" \
-      --web.console.templates="$PARENT_DIR/config/prometheus/consoles" \
-      --web.console.libraries="$PARENT_DIR/config/prometheus/console_libraries" \
-      --web.enable-admin-api &
-fi
-
-# Start up bff
-"$PARENT_DIR/bin/autodba-bff" -collectorConfigFile="$CONFIG_FILE" -webappPath "$PARENT_DIR/share/webapp" &
+echo "Starting BFF..."
+"$PARENT_DIR/bin/bff-entrypoint.sh" &
 BFF_PID=$!
 
 # Wait for a process to exit
-wait -n # wait for any job to exit
+wait -n
 EXITED_PID=$!
 retcode=$? # store error code so we can propagate it to the container environment
 
 if (( $EXITED_PID == $PROMETHEUS_PID ))
 then
-  echo "Prometheus exited with return code $retcode - killing all jobs"
+    echo "Prometheus exited with return code $retcode - killing all jobs"
 elif (( $EXITED_PID == $BFF_PID ))
 then
-  echo "BFF exited with return code $retcode - killing all jobs"
-elif (( $EXITED_PID == $COLLECTOR_PID ))
-then
-  echo "Collector exited with return code $retcode - killing all jobs"
+    echo "BFF exited with return code $retcode - killing all jobs"
 elif (( $EXITED_PID == $COLLECTOR_API_SERVER_PID ))
 then
-  echo "Collector API Server exited with return code $retcode - killing all jobs"
+    echo "Collector API Server exited with return code $retcode - killing all jobs"
 else
-  echo "An unknown background process (with PID=$EXITED_PID) exited with return code $retcode - killing all jobs"
+    echo "An unknown background process (with PID=$EXITED_PID) exited with return code $retcode - killing all jobs"
 fi
 
 kill $(jobs -p)
 
 wait # wait for all children to exit -- this lets their logs make it out of the container environment
-echo done
+echo "All processes have exited."
 
 exit $retcode

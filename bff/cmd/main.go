@@ -20,30 +20,23 @@ type Config struct {
 
 func main() {
 	fmt.Println("Starting metrics server")
-	var collectorConfigFile string
 	var webappPath string
 
-	flag.StringVar(&collectorConfigFile, "collectorConfigFile", "", "Database identifier")
 	flag.StringVar(&webappPath, "webappPath", "", "Webapp Path")
 	flag.Parse()
-
-	if collectorConfigFile == "" {
-		fmt.Fprintf(os.Stderr, "Error: collectorConfigFile is required\n")
-		os.Exit(1)
-	}
 
 	if webappPath == "" {
 		fmt.Fprintf(os.Stderr, "Error: webappPath is required\n")
 		os.Exit(1)
 	}
 
-	if err := run(collectorConfigFile, webappPath); err != nil {
+	if err := run(webappPath); err != nil {
 		fmt.Fprintf(os.Stderr, "%s\n", err)
 		os.Exit(1)
 	}
 }
 
-func run(collectorConfigFile, webappPath string) error {
+func run(webappPath string) error {
 	viper.SetConfigName("config")
 	viper.SetConfigType("json")
 
@@ -62,7 +55,14 @@ func run(collectorConfigFile, webappPath string) error {
 	var config Config
 	config.WebappPath = webappPath
 	config.Port = rawConfig["port"].(string)
-	config.PrometheusServer = rawConfig["prometheus_server"].(string)
+	prometheusURL := os.Getenv("PROMETHEUS_URL")
+	if prometheusURL == "" {
+		prometheusURL, ok := rawConfig["prometheus_server"]
+		if !ok || prometheusURL == "" {
+			prometheusURL = "http://localhost:9090"
+		}
+	}
+	config.PrometheusServer = prometheusURL
 
 	if routes, ok := rawConfig["routes_config"].(map[string]interface{}); ok {
 		config.RoutesConfig = make(map[string]server.RouteConfig)

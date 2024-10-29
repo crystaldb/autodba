@@ -31,26 +31,26 @@ mkdir -p "${TAR_GZ_DIR}"
 
 # Build the binary for multiple architectures
 echo "Building the project for multiple architectures..."
+(
+    cd bff
 
-cd bff
+    # Build for x86_64
+    GOARCH=amd64 GOOS=linux go build -o ${OUTPUT_DIR}/autodba-bff-amd64 ./cmd/main.go
 
-# Build for x86_64
-GOARCH=amd64 GOOS=linux go build -o ${OUTPUT_DIR}/autodba-bff-amd64 ./cmd/main.go
+    # Build for ARM64
+    GOARCH=arm64 GOOS=linux go build -o ${OUTPUT_DIR}/autodba-bff-arm64 ./cmd/main.go
 
-# Build for ARM64
-GOARCH=arm64 GOOS=linux go build -o ${OUTPUT_DIR}/autodba-bff-arm64 ./cmd/main.go
-
-# Copy the config.json
-cp config.json ${OUTPUT_DIR}/config.json
-
-cd ..
+    # Copy the config.json
+    cp config.json ${OUTPUT_DIR}/config.json
+)
 
 # Build the UI (Solid project)
 echo "Building the UI..."
-cd solid
-npm install
-npm run build
-cd ..
+(
+    cd bff/solid
+    npm install
+    npm run build
+)
 
 TMP_DIR="/tmp"
 
@@ -63,6 +63,7 @@ for arch in amd64 arm64; do
     AUTODBA_CONFIG_DIR="$PARENT_DIR/config/autodba"
     PROMETHEUS_INSTALL_DIR="$PARENT_DIR/prometheus"
     COLLECTOR_DIR="${PARENT_DIR}/share/collector"
+    COLLECTOR_RELEASE_DIR="${TAR_GZ_DIR}/collector-${VERSION}-${arch}/collector-${VERSION}"
     COLLECTOR_API_SERVER_DIR="${PARENT_DIR}/share/collector_api_server"
 
     echo "Downloading Prometheus tarball for ${arch}..."
@@ -78,24 +79,10 @@ for arch in amd64 arm64; do
     # Cleanup
     rm -rf $TMP_DIR/prometheus-*
 
-    # Copy configuration files and monitor setup
-    echo "Copying configuration and monitor setup files..."
+    # Copy prometheus setup
+    echo "Copying prometheus setup files..."
     mkdir -p "${PROMETHEUS_CONFIG_DIR}"
-    cp monitor/prometheus/prometheus.yml "${PROMETHEUS_CONFIG_DIR}/prometheus.yml"
-
-    # Build collector
-    PROTOC_ARCH_SUFFIX="x86_64" # We only build for x86_64, as we're going to run it on x86_64 and use its output at build time
-    echo "Building collector..."
-    mkdir -p "${COLLECTOR_DIR}"
-    git clone --recurse-submodules https://github.com/crystaldb/collector.git "${COLLECTOR_DIR}"
-    cd "${COLLECTOR_DIR}"
-    wget https://github.com/protocolbuffers/protobuf/releases/download/v3.14.0/protoc-3.14.0-linux-${PROTOC_ARCH_SUFFIX}.zip
-    unzip protoc-3.14.0-linux-${PROTOC_ARCH_SUFFIX}.zip -d protoc
-    make build
-    mv pganalyze-collector collector
-    mv pganalyze-collector-helper collector-helper
-    mv pganalyze-collector-setup collector-setup
-    cd -
+    cp prometheus/prometheus.yml "${PROMETHEUS_CONFIG_DIR}/prometheus.yml"
 
     echo "Building collector-api-server..."
     mkdir -p "${COLLECTOR_API_SERVER_DIR}"
@@ -111,21 +98,52 @@ for arch in amd64 arm64; do
     
     cp -r ${OUTPUT_DIR}/autodba-bff-${arch} "${INSTALL_DIR}/autodba-bff"
     cp -r ${OUTPUT_DIR}/config.json "${AUTODBA_CONFIG_DIR}/config.json"
-    cp -r solid/dist/* "${WEBAPP_DIR}"
+    cp -r bff/solid/dist/* "${WEBAPP_DIR}"
     cp entrypoint.sh "${INSTALL_DIR}/autodba-entrypoint.sh"
     chmod +x "${INSTALL_DIR}/autodba-entrypoint.sh"
+
+    cp prometheus/prometheus-entrypoint.sh "${PARENT_DIR}/bin/"
+    cp collector-api/collector-api-entrypoint.sh "${PARENT_DIR}/bin/"
+    cp bff/bff-entrypoint.sh "${PARENT_DIR}/bin/"
     
     # Copy the `install.sh` and `uninstall.sh` scripts into the root of the tarball
     cp scripts/install.sh "${PARENT_DIR}/"
     cp scripts/uninstall.sh "${PARENT_DIR}/"
     cp scripts/Makefile "${PARENT_DIR}/"
+
+    # Build collector
+    PROTOC_ARCH_SUFFIX="x86_64" # We only build for x86_64, as we're going to run it on x86_64 and use its output at build time
+    echo "Building collector..."
+    mkdir -p "${COLLECTOR_DIR}"
+    mkdir -p "${COLLECTOR_RELEASE_DIR}"
+    git clone --recurse-submodules https://github.com/crystaldb/collector.git "${COLLECTOR_DIR}"
+    cd "${COLLECTOR_DIR}"
+    git checkout 636bc0996ecc881acc0942859f8a28684dadfc7e
+    wget https://github.com/protocolbuffers/protobuf/releases/download/v28.2/protoc-28.2-linux-${PROTOC_ARCH_SUFFIX}.zip
+    unzip protoc-28.2-linux-${PROTOC_ARCH_SUFFIX}.zip -d protoc
+    make build
+    
+    # Move collector binaries to release directory instead of renaming in place
+    mv pganalyze-collector "${COLLECTOR_RELEASE_DIR}/autodba-collector"
+    mv pganalyze-collector-helper "${COLLECTOR_RELEASE_DIR}/autodba-collector-helper"
+    mv pganalyze-collector-setup "${COLLECTOR_RELEASE_DIR}/autodba-collector-setup"
+    cd -
+    rm -rf "${COLLECTOR_DIR}"
+
+    cp ./collector/collector-entrypoint.sh "${COLLECTOR_RELEASE_DIR}/"
+
+    cp ./collector/collector-install.sh "${COLLECTOR_RELEASE_DIR}/install.sh"
+    cp ./collector/collector-uninstall.sh "${COLLECTOR_RELEASE_DIR}/uninstall.sh"
 done
 
 # Function to create tar.gz package for each architecture
 create_tar_gz() {
     for arch in amd64 arm64; do
-        echo "Creating tar.gz package for ${arch}..."
+        echo "Creating tar.gz packages for ${arch}..."
+        # Create autodba package
         tar -czvf "${TAR_GZ_DIR}/autodba-${VERSION}-${arch}.tar.gz" -C "${TAR_GZ_DIR}/autodba-${VERSION}-${arch}" .
+        # Create collector package
+        tar -czvf "${TAR_GZ_DIR}/collector-${VERSION}-${arch}.tar.gz" -C "${TAR_GZ_DIR}/collector-${VERSION}-${arch}" .
     done
 }
 

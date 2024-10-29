@@ -7,6 +7,7 @@ import (
 	"math"
 	"net/http"
 	"net/url"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -21,7 +22,7 @@ import (
 var (
 	prometheusURL = url.URL{
 		Scheme: "http",
-		Host:   "localhost:9090",
+		Host:   os.Getenv("PROMETHEUS_HOST"),
 		Path:   "api/v1/write",
 	}
 )
