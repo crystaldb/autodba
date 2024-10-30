@@ -100,9 +100,6 @@ func StoreCompactSnapshot(snapshot models.CompactSnapshot) error {
 func EnsureStorageDirectories(baseDir string) error {
 	subdirs := []string{
 		baseDir,
-		// filepath.Join(baseDir, "logs"),
-		// filepath.Join(baseDir, "snapshots"),
-		// filepath.Join(baseDir, "compact_snapshots"),
 	}
 
 	for _, subdir := range subdirs {
