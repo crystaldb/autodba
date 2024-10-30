@@ -51,6 +51,20 @@ else
     cp $CONFIG_FILE $FIXED_CONFIG_FILE
 fi
 
+INSTANCE_NAME="autodba-${USER//./_}-${INSTANCE_ID}"
+
+function clean_up {
+    # Perform program exit housekeeping
+    echo "Stopping all containers: ${INSTANCE_NAME}*"
+    docker ps --filter name="${INSTANCE_NAME}*" --filter status=running -aq | xargs docker stop
+    echo "Killing child processes"
+    kill $(jobs -p)
+    wait # wait for all children to exit -- this lets their logs make it out of the container environment
+    exit -1
+}
+
+trap clean_up SIGHUP SIGINT SIGTERM
+
 # Set environment variables for docker-compose
 export COLLECTOR_API_PORT=$((UID + 7000 + INSTANCE_ID))
 export BFF_WEBAPP_PORT=$((UID + 4000 + INSTANCE_ID))
@@ -58,7 +72,7 @@ export PROMETHEUS_PORT=$((UID + 6000 + INSTANCE_ID))
 export CONFIG_FILE="/usr/local/autodba/config/autodba/collector.conf"
 
 # Prepare docker-compose command
-COMPOSE_CMD="docker-compose -p autodba-${USER//./_}-${INSTANCE_ID} -f compose.yaml -f compose.collector.yaml"
+COMPOSE_CMD="docker-compose -p ${INSTANCE_NAME} -f compose.yaml -f compose.collector.yaml"
 
 # Stop and remove existing containers
 echo "Stopping and removing existing containers..."
