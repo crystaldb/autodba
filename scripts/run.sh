@@ -11,13 +11,16 @@ cd $SOURCE_DIR/..
 # Initialize variables
 INSTANCE_ID=0
 CONFIG_FILE=""
+KEEP_CONTAINERS=false  # Add this new variable
+
 
 # Function to display usage information
 usage() {
-    echo "Usage: $0 --config <CONFIG_FILE> [--instance-id <INSTANCE_ID>]"
+    echo "Usage: $0 --config <CONFIG_FILE> [--instance-id <INSTANCE_ID>] [--keep-containers]"
     echo "Options:"
     echo "--config                    <CONFIG_FILE> path to the configuration file"
     echo "--instance-id               <INSTANCE_ID> if you are running multiple instances of the agent, specify a unique number for each"
+    echo "--keep-containers           keep containers running after script exits"
     exit 1
 }
 
@@ -31,6 +34,10 @@ while [[ "$#" -gt 0 ]]; do
         --instance-id)
             INSTANCE_ID="$2"
             shift 2
+            ;;
+        --keep-containers)
+            KEEP_CONTAINERS=true
+            shift
             ;;
         *)
             echo "Invalid argument: $1" >&2
@@ -54,12 +61,15 @@ fi
 INSTANCE_NAME="autodba-${USER//./_}-${INSTANCE_ID}"
 
 function clean_up {
-    # Perform program exit housekeeping
-    echo "Stopping all containers: ${INSTANCE_NAME}*"
-    docker ps --filter name="${INSTANCE_NAME}*" --filter status=running -aq | xargs docker stop
-    echo "Killing child processes"
-    kill $(jobs -p)
-    wait # wait for all children to exit -- this lets their logs make it out of the container environment
+    # Only stop containers if --keep-containers wasn't specified
+    if [ "$KEEP_CONTAINERS" = false ]; then
+        # Perform program exit housekeeping
+        echo "Stopping all containers: ${INSTANCE_NAME}*"
+        docker ps --filter name="${INSTANCE_NAME}*" --filter status=running -aq | xargs docker stop
+        echo "Killing child processes"
+        kill $(jobs -p)
+        wait # wait for all children to exit -- this lets their logs make it out of the container environment
+    fi
     exit -1
 }
 
