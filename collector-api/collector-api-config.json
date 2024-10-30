@@ -3,6 +3,5 @@
     "server_port": 7080,
     "db_path": "./storage/crystaldb-collector.db",
     "storage_dir": "./storage/",
-    "api_key": "your-secure-api-key",
     "debug": true
 }
