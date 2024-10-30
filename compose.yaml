@@ -16,7 +16,7 @@ services:
         environment:
             - PROMETHEUS_HOST=autodba-prometheus:9090
             - COLLECTOR_API_URL=http://autodba-agent:7080
-            - API_KEY="DEFAULT-API-KEY"
+            - API_KEY=DEFAULT-API-KEY
 
     autodba-webapp:
         build:
