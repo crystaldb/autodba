@@ -25,6 +25,11 @@ func LoadConfig(configPath string) (*Config, error) {
 	}
 	defer file.Close()
 
+	apiKey := os.Getenv("API_KEY")
+	if apiKey == "" {
+		log.Fatalf("API_KEY env var is not set")
+	}
+
 	decoder := json.NewDecoder(file)
 	config := Config{}
 	err = decoder.Decode(&config)
@@ -32,6 +37,8 @@ func LoadConfig(configPath string) (*Config, error) {
 		log.Fatalf("Could not decode config JSON: %v", err)
 		return nil, err
 	}
+
+	config.APIKey = apiKey
 	return &config, nil
 }
 
