@@ -30,9 +30,6 @@ func LoadConfig(configPath string) (*Config, error) {
 		log.Fatalf("API_KEY env var is not set")
 	}
 
-	log.Printf(">>> API_KEY: %s", apiKey)
-	log.Printf(">>> COLLECTOR_API_URL: %s", os.Getenv("COLLECTOR_API_URL"))
-
 	decoder := json.NewDecoder(file)
 	config := Config{}
 	err = decoder.Decode(&config)
