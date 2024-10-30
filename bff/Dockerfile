@@ -40,21 +40,23 @@ ENV PATH="/usr/lib/go/bin:${PATH}" \
 FROM go_builder as bff_builder
 # Build BFF
 WORKDIR /home/autodba/bff
-COPY ./ ./
-RUN go mod download
-RUN go build -o main ./cmd/main.go
 RUN mkdir -p /usr/local/autodba/bin
+COPY ./go.mod ./go.sum ./
+RUN go mod download
+COPY ./ ./
+RUN go build -o main ./cmd/main.go
 RUN cp main /usr/local/autodba/bin/autodba-bff
 
 FROM base as bff_webapp
 WORKDIR /usr/local/autodba
+
+COPY bff-entrypoint.sh ./bin/bff-entrypoint.sh
+RUN chmod +x ./bin/bff-entrypoint.sh
+
 # Copy built files from previous stages
 COPY --from=solid_builder /home/autodba/solid/dist ./share/webapp
 COPY --from=bff_builder /home/autodba/bff/config.json ./config/autodba/config.json
 COPY --from=bff_builder /usr/local/autodba/bin ./bin
-
-COPY bff-entrypoint.sh ./bin/bff-entrypoint.sh
-RUN chmod +x ./bin/bff-entrypoint.sh
 
 WORKDIR /usr/local/autodba/config/autodba
 CMD ["/usr/local/autodba/bin/bff-entrypoint.sh"]
