@@ -30,6 +30,7 @@ services:
             - autodba_network
         environment:
             - PROMETHEUS_URL=http://autodba-prometheus:9090
+            - ACCESS_KEY=DEFAULT-ACCESS-KEY
 
     autodba-prometheus:
         build:

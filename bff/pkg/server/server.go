@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"local/bff/pkg/metrics"
+	"local/bff/pkg/middleware"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -32,6 +33,7 @@ type server_imp struct {
 	metrics_service metrics.Service
 	port            string
 	webappPath      string
+	accessKey       string
 	inputValidator  *validator.Validate
 }
 
@@ -73,8 +75,8 @@ func CORS(next http.Handler) http.Handler {
 	})
 }
 
-func CreateServer(r map[string]RouteConfig, m metrics.Service, port string, webappPath string) Server {
-	return server_imp{r, m, port, webappPath, CreateValidator()}
+func CreateServer(r map[string]RouteConfig, m metrics.Service, port string, webappPath string, accessKey string) Server {
+	return server_imp{r, m, port, webappPath, accessKey, CreateValidator()}
 }
 
 func CreateValidator() *validator.Validate {
@@ -108,6 +110,8 @@ func fileExists(filePath string) bool {
 func (s server_imp) Run() error {
 	r := chi.NewRouter()
 
+	authMiddleware := middleware.NewAuthMiddleware(s.accessKey)
+	r.Use(authMiddleware.Authenticate)
 	r.Use(CORS)
 
 	r.Get("/api/v1/activity", activity_handler(s.metrics_service, s.inputValidator))

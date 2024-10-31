@@ -16,6 +16,7 @@ type Config struct {
 	PrometheusServer string                        `json:"prometheus_server"`
 	RoutesConfig     map[string]server.RouteConfig `json:"routes_config"`
 	WebappPath       string                        `json:"webapp_path"`
+	AccessKey        string                        `json:"access_key"`
 }
 
 func main() {
@@ -55,9 +56,20 @@ func run(webappPath string) error {
 	var config Config
 	config.WebappPath = webappPath
 	config.Port = rawConfig["port"].(string)
+
+	// Get access key from environment variable with fallback to config file
+	accessKey := os.Getenv("ACCESS_KEY")
+	if accessKey == "" {
+		accessKey, ok := rawConfig["access_key"].(string)
+		if !ok || accessKey == "" {
+			accessKey = "DEFAULT-ACCESS-KEY"
+		}
+	}
+	config.AccessKey = accessKey
+
 	prometheusURL := os.Getenv("PROMETHEUS_URL")
 	if prometheusURL == "" {
-		prometheusURL, ok := rawConfig["prometheus_server"]
+		prometheusURL, ok := rawConfig["prometheus_server"].(string)
 		if !ok || prometheusURL == "" {
 			prometheusURL = "http://localhost:9090"
 		}
@@ -99,7 +111,7 @@ func run(webappPath string) error {
 	metrics_repo := prometheus.New(config.PrometheusServer)
 	metrics_service := metrics.CreateService(metrics_repo)
 
-	server := server.CreateServer(config.RoutesConfig, metrics_service, config.Port, config.WebappPath)
+	server := server.CreateServer(config.RoutesConfig, metrics_service, config.Port, config.WebappPath, config.AccessKey)
 
 	if err = server.Run(); err != nil {
 		return err

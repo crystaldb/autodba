@@ -17,6 +17,9 @@ export default defineConfig({
       "/api": {
         target: "http://localhost:5001/",
         secure: false,
+        headers: {
+          "ACCESS_KEY": process.env.VITE_ACCESS_KEY || "DEFAULT-ACCESS-KEY",
+        },
         //"pathRewrite": { "^/api": "" }
       },
     },

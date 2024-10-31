@@ -11,6 +11,7 @@ import {
 } from "./state";
 import { batch } from "solid-js";
 import { contextState } from "./context_state";
+import { fetchWithAuth } from "./api";
 
 const magicPrometheusMaxSamplesLimit = 11000;
 
@@ -41,7 +42,7 @@ export function retryQuery(
 
 export async function queryInstances(retryIfNeeded: boolean): Promise<boolean> {
   const { setState } = contextState();
-  const response = await fetch("/api/v1/instance", { method: "GET" });
+  const response = await fetchWithAuth("/api/v1/instance", { method: "GET" });
 
   if (!response.ok) {
     if (retryIfNeeded)
@@ -81,7 +82,7 @@ export async function queryDatabases(retryIfNeeded: boolean): Promise<boolean> {
       return retryQuery("timeout_queryDatabases", queryDatabases);
     return false;
   }
-  const response = await fetch(
+  const response = await fetchWithAuth(
     `/api/v1/instance/database?dbidentifier=${state.instance_active.dbIdentifier}`,
     { method: "GET" },
   );
@@ -146,36 +147,26 @@ async function queryActivityCubeFullTimeframe(): Promise<boolean> {
     return false;
   }
 
-  const url = `/api/v1/activity?why=cube&database_list=(${
-    state.database_list.join("|") //
-  })&start=${
-    `now-${state.timeframe_ms}ms` //
-  }&end=${
-    "now" //
-  }&step=${
-    state.interval_ms //
-  }ms&limitdim=${
-    state.activityCube.limit //
-  }&limitlegend=${
-    state.activityCube.limit //
-  }&legend=${
-    state.activityCube.uiLegend //
-  }&dim=${
-    state.activityCube.uiDimension1 //
-  }&filterdim=${
-    state.activityCube.uiFilter1 === DimensionName.none ||
-    !state.activityCube.uiFilter1Value
+  const url = `/api/v1/activity?why=cube&database_list=(${state.database_list.join("|") //
+    })&start=${`now-${state.timeframe_ms}ms` //
+    }&end=${"now" //
+    }&step=${state.interval_ms //
+    }ms&limitdim=${state.activityCube.limit //
+    }&limitlegend=${state.activityCube.limit //
+    }&legend=${state.activityCube.uiLegend //
+    }&dim=${state.activityCube.uiDimension1 //
+    }&filterdim=${state.activityCube.uiFilter1 === DimensionName.none ||
+      !state.activityCube.uiFilter1Value
       ? ""
       : state.activityCube.uiFilter1
-  }&filterdimselected=${encodeURIComponent(
-    state.activityCube.uiFilter1 !== DimensionName.none
-      ? state.activityCube.uiFilter1Value || ""
-      : "",
-  )}&dbidentifier=${
-    state.instance_active.dbIdentifier //
-  }`;
+    }&filterdimselected=${encodeURIComponent(
+      state.activityCube.uiFilter1 !== DimensionName.none
+        ? state.activityCube.uiFilter1Value || ""
+        : "",
+    )}&dbidentifier=${state.instance_active.dbIdentifier //
+    }`;
   setInFlight(ApiEndpoint.activity, url);
-  const response = await fetch(url, { method: "GET" });
+  const response = await fetchWithAuth(url, { method: "GET" });
   clearInFlight(ApiEndpoint.activity);
 
   if (!response.ok) {
@@ -242,8 +233,7 @@ async function queryActivityCubeTimeWindow(): Promise<boolean> {
     return false;
   }
 
-  const url = `/api/v1/activity?why=timewindow&${
-    ""
+  const url = `/api/v1/activity?why=timewindow&${""
     //   `t=${Math.floor(
     //       (request_time_begin - debugZero) / 1000 / 60,
     //     ).toString()}_${Math.floor(
@@ -254,36 +244,26 @@ async function queryActivityCubeTimeWindow(): Promise<boolean> {
     //       (request_time_end - debugZero) / 1000,
     //     ).toString()}&`
     // //
-  }database_list=(${
-    state.database_list.join("|") //
-  })&start=${
-    request_time_begin //
-  }&end=${
-    request_time_end //
-  }&step=${
-    state.interval_ms //
-  }ms&limitdim=${
-    state.activityCube.limit //
-  }&limitlegend=${
-    state.activityCube.limit //
-  }&legend=${
-    state.activityCube.uiLegend //
-  }&dim=${
-    state.activityCube.uiDimension1 //
-  }&filterdim=${
-    state.activityCube.uiFilter1 === DimensionName.none ||
-    !state.activityCube.uiFilter1Value
+    }database_list=(${state.database_list.join("|") //
+    })&start=${request_time_begin //
+    }&end=${request_time_end //
+    }&step=${state.interval_ms //
+    }ms&limitdim=${state.activityCube.limit //
+    }&limitlegend=${state.activityCube.limit //
+    }&legend=${state.activityCube.uiLegend //
+    }&dim=${state.activityCube.uiDimension1 //
+    }&filterdim=${state.activityCube.uiFilter1 === DimensionName.none ||
+      !state.activityCube.uiFilter1Value
       ? ""
       : state.activityCube.uiFilter1
-  }&filterdimselected=${encodeURIComponent(
-    state.activityCube.uiFilter1 !== DimensionName.none
-      ? state.activityCube.uiFilter1Value || ""
-      : "",
-  )}&dbidentifier=${
-    state.instance_active.dbIdentifier //
-  }`;
+    }&filterdimselected=${encodeURIComponent(
+      state.activityCube.uiFilter1 !== DimensionName.none
+        ? state.activityCube.uiFilter1Value || ""
+        : "",
+    )}&dbidentifier=${state.instance_active.dbIdentifier //
+    }`;
   setInFlight(ApiEndpoint.activity, url);
-  const response = await fetch(url, { method: "GET" });
+  const response = await fetchWithAuth(url, { method: "GET" });
   clearInFlight(ApiEndpoint.activity);
 
   if (!response.ok) {
@@ -315,28 +295,19 @@ export async function queryFilterOptions(): Promise<boolean> {
   if (!state.database_list.length) return false;
   if (!state.server_now) return false;
 
-  const url = `/api/v1/activity?why=filteroptions&database_list=(${
-    state.database_list.join("|") //
-  })&start=${
-    `now-${state.timeframe_ms}ms` //
-  }&end=${
-    "now" //
-  }&step=${
-    state.interval_ms //
-  }ms&limitdim=${
-    state.activityCube.limit //
-  }&limitlegend=${
-    state.activityCube.limit //
-  }&legend=${
-    state.activityCube.uiFilter1 //
-  }&dim=${
-    state.activityCube.uiFilter1 //
-  }&filterdim=${
-    "" //
-  }&filterdimselected=${encodeURIComponent(
-    "", //
-  )}`;
-  const response = await fetch(url, { method: "GET" });
+  const url = `/api/v1/activity?why=filteroptions&database_list=(${state.database_list.join("|") //
+    })&start=${`now-${state.timeframe_ms}ms` //
+    }&end=${"now" //
+    }&step=${state.interval_ms //
+    }ms&limitdim=${state.activityCube.limit //
+    }&limitlegend=${state.activityCube.limit //
+    }&legend=${state.activityCube.uiFilter1 //
+    }&dim=${state.activityCube.uiFilter1 //
+    }&filterdim=${"" //
+    }&filterdimselected=${encodeURIComponent(
+      "", //
+    )}`;
+  const response = await fetchWithAuth(url, { method: "GET" });
 
   if (!response.ok) {
     return true;
@@ -380,21 +351,15 @@ async function queryStandardEndpointFullTimeframe(
     return false;
   }
 
-  const url = `/api/v1/${
-    apiEndpoint //
-  }?datname=(${
-    state.database_list.join("|") //
-  })&start=${
-    `now-${state.timeframe_ms}ms` //
-  }&end=${
-    "now" //
-  }&step=${
-    state.interval_ms //
-  }ms&dbidentifier=${
-    state.instance_active.dbIdentifier //
-  }`;
+  const url = `/api/v1/${apiEndpoint //
+    }?datname=(${state.database_list.join("|") //
+    })&start=${`now-${state.timeframe_ms}ms` //
+    }&end=${"now" //
+    }&step=${state.interval_ms //
+    }ms&dbidentifier=${state.instance_active.dbIdentifier //
+    }`;
   setInFlight(ApiEndpoint.metric, url);
-  const response = await fetch(url, { method: "GET" });
+  const response = await fetchWithAuth(url, { method: "GET" });
 
   clearInFlight(ApiEndpoint.metric);
   if (!response.ok) {
