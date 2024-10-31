@@ -98,6 +98,6 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(responseXML)
 
 	if cfg.Debug {
-		log.Printf("Grant response successfully sent to %s", r.RemoteAddr)
+		log.Printf("Upload response successfully sent to %s", r.RemoteAddr)
 	}
 }

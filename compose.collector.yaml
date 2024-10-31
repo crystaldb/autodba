@@ -8,8 +8,8 @@ services:
     volumes:
       - ./collector/autodba-collector.conf:/usr/local/autodba/share/collector/collector.conf:ro
     depends_on:
-      - collector-api
+      - autodba-agent
     networks:
       - autodba_network
     environment:
-      - COLLECTOR_API_URL=http://collector-api:7080
+      - COLLECTOR_API_URL=http://autodba-agent:7080

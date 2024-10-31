@@ -18,16 +18,19 @@ ENV PATH="/usr/lib/go/bin:${PATH}" \
     GOROOT="/usr/lib/go"
 
 WORKDIR /usr/local/autodba/share/collector_api_server
-COPY ./ ./
-# Ensure CGO is enabled
-ENV CGO_ENABLED=1
-RUN go mod download
-RUN go build -o collector-api-server ./cmd/server/main.go
 
 # Create necessary directories
 RUN mkdir -p storage
 
+# Ensure CGO is enabled
+ENV CGO_ENABLED=1
+COPY ./go.mod ./go.sum ./
+RUN go mod download
+
 COPY collector-api-entrypoint.sh /usr/local/autodba/bin/collector-api-entrypoint.sh
 RUN chmod +x /usr/local/autodba/bin/collector-api-entrypoint.sh
+
+COPY ./ ./
+RUN go build -o collector-api-server ./cmd/server/main.go
 
 CMD ["/usr/local/autodba/bin/collector-api-entrypoint.sh"]

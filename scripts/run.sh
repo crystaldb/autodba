@@ -11,13 +11,16 @@ cd $SOURCE_DIR/..
 # Initialize variables
 INSTANCE_ID=0
 CONFIG_FILE=""
+KEEP_CONTAINERS=false  # Add this new variable
+
 
 # Function to display usage information
 usage() {
-    echo "Usage: $0 --config <CONFIG_FILE> [--instance-id <INSTANCE_ID>]"
+    echo "Usage: $0 --config <CONFIG_FILE> [--instance-id <INSTANCE_ID>] [--keep-containers]"
     echo "Options:"
     echo "--config                    <CONFIG_FILE> path to the configuration file"
     echo "--instance-id               <INSTANCE_ID> if you are running multiple instances of the agent, specify a unique number for each"
+    echo "--keep-containers           keep containers running after script exits"
     exit 1
 }
 
@@ -31,6 +34,10 @@ while [[ "$#" -gt 0 ]]; do
         --instance-id)
             INSTANCE_ID="$2"
             shift 2
+            ;;
+        --keep-containers)
+            KEEP_CONTAINERS=true
+            shift
             ;;
         *)
             echo "Invalid argument: $1" >&2
@@ -51,6 +58,23 @@ else
     cp $CONFIG_FILE $FIXED_CONFIG_FILE
 fi
 
+INSTANCE_NAME="autodba-${USER//./_}-${INSTANCE_ID}"
+
+function clean_up {
+    # Only stop containers if --keep-containers wasn't specified
+    if [ "$KEEP_CONTAINERS" = false ]; then
+        # Perform program exit housekeeping
+        echo "Stopping all containers: ${INSTANCE_NAME}*"
+        docker ps --filter name="${INSTANCE_NAME}*" --filter status=running -aq | xargs docker stop
+        echo "Killing child processes"
+        kill $(jobs -p)
+        wait # wait for all children to exit -- this lets their logs make it out of the container environment
+    fi
+    exit -1
+}
+
+trap clean_up SIGHUP SIGINT SIGTERM
+
 # Set environment variables for docker-compose
 export COLLECTOR_API_PORT=$((UID + 7000 + INSTANCE_ID))
 export BFF_WEBAPP_PORT=$((UID + 4000 + INSTANCE_ID))
@@ -58,7 +82,7 @@ export PROMETHEUS_PORT=$((UID + 6000 + INSTANCE_ID))
 export CONFIG_FILE="/usr/local/autodba/config/autodba/collector.conf"
 
 # Prepare docker-compose command
-COMPOSE_CMD="docker-compose -p autodba-${USER//./_}-${INSTANCE_ID} -f compose.yaml -f compose.collector.yaml"
+COMPOSE_CMD="docker-compose -p ${INSTANCE_NAME} -f compose.yaml -f compose.collector.yaml"
 
 # Stop and remove existing containers
 echo "Stopping and removing existing containers..."

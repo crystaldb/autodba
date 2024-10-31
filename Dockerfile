@@ -33,8 +33,9 @@ RUN ./scripts/build.sh && \
     rm -rf build_output
 
 FROM builder as lint
-COPY bff/ ./
+COPY bff/go.mod bff/go.sum ./
 RUN go mod download
+COPY bff/ ./
 RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.55.2
 
 FROM builder AS test
