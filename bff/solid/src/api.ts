@@ -1,6 +1,6 @@
 const getAccessKey = () => {
-  // In a real app, you might want to get this from a more secure source
-  return import.meta.env.VITE_ACCESS_KEY || "DEFAULT-ACCESS-KEY";
+  // In production, you might want to get this from a more secure source
+  return process.env.VITE_ACCESS_KEY || "DEFAULT-ACCESS-KEY";
 };
 
 export const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
