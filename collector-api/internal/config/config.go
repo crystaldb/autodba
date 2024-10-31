@@ -2,6 +2,7 @@ package config
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"os"
 )
@@ -25,9 +26,9 @@ func LoadConfig(configPath string) (*Config, error) {
 	}
 	defer file.Close()
 
-	apiKey := os.Getenv("API_KEY")
+	apiKey := os.Getenv("AUTODBA_API_KEY")
 	if apiKey == "" {
-		log.Fatalf("API_KEY env var is not set")
+		return nil, fmt.Errorf("access key must be set via the AUTODBA_API_KEY environment variable")
 	}
 
 	decoder := json.NewDecoder(file)

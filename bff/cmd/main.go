@@ -58,12 +58,9 @@ func run(webappPath string) error {
 	config.Port = rawConfig["port"].(string)
 
 	// Get access key from environment variable with fallback to config file
-	accessKey := os.Getenv("ACCESS_KEY")
+	accessKey := os.Getenv("AUTODBA_ACCESS_KEY")
 	if accessKey == "" {
-		accessKey, ok := rawConfig["access_key"].(string)
-		if !ok || accessKey == "" {
-			accessKey = "DEFAULT-ACCESS-KEY"
-		}
+		return fmt.Errorf("access key must be set via the AUTODBA_ACCESS_KEY environment variable")
 	}
 	config.AccessKey = accessKey
 

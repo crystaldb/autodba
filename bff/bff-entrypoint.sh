@@ -7,6 +7,7 @@ PARENT_DIR="${PARENT_DIR:-/usr/local/autodba}"
 WEBAPP_PATH="${PARENT_DIR}/share/webapp"
 PROMETHEUS_URL="${PROMETHEUS_URL:-http://localhost:9090}"
 
+export AUTODBA_ACCESS_KEY=${AUTODBA_ACCESS_KEY:-DEFAULT-ACCESS-KEY}
 export VITE_ACCESS_KEY=${VITE_ACCESS_KEY:-DEFAULT-ACCESS-KEY}
 
 # Wait for Prometheus to be ready
