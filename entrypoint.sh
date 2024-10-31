@@ -9,7 +9,7 @@ PARENT_DIR="${PARENT_DIR:-/usr/local/autodba}"
 export PROMETHEUS_HOST="${PROMETHEUS_HOST:-localhost:9090}"
 export PROMETHEUS_URL="http://${PROMETHEUS_HOST}"
 export COLLECTOR_API_URL="${COLLECTOR_API_URL:-http://localhost:7080}"
-export API_KEY="${API_KEY:-DEFAULT-API-KEY}"
+export AUTODBA_API_KEY="${AUTODBA_API_KEY:-DEFAULT-API-KEY}"
 
 function clean_up {
     # Perform program exit housekeeping

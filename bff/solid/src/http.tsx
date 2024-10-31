@@ -11,6 +11,7 @@ import {
 } from "./state";
 import { batch } from "solid-js";
 import { contextState } from "./context_state";
+import { fetchWithAuth } from "./api";
 
 const magicPrometheusMaxSamplesLimit = 11000;
 
@@ -41,7 +42,7 @@ export function retryQuery(
 
 export async function queryInstances(retryIfNeeded: boolean): Promise<boolean> {
   const { setState } = contextState();
-  const response = await fetch("/api/v1/instance", { method: "GET" });
+  const response = await fetchWithAuth("/api/v1/instance", { method: "GET" });
 
   if (!response.ok) {
     if (retryIfNeeded)
@@ -81,7 +82,7 @@ export async function queryDatabases(retryIfNeeded: boolean): Promise<boolean> {
       return retryQuery("timeout_queryDatabases", queryDatabases);
     return false;
   }
-  const response = await fetch(
+  const response = await fetchWithAuth(
     `/api/v1/instance/database?dbidentifier=${state.instance_active.dbIdentifier}`,
     { method: "GET" },
   );
@@ -175,7 +176,7 @@ async function queryActivityCubeFullTimeframe(): Promise<boolean> {
     state.instance_active.dbIdentifier //
   }`;
   setInFlight(ApiEndpoint.activity, url);
-  const response = await fetch(url, { method: "GET" });
+  const response = await fetchWithAuth(url, { method: "GET" });
   clearInFlight(ApiEndpoint.activity);
 
   if (!response.ok) {
@@ -283,7 +284,7 @@ async function queryActivityCubeTimeWindow(): Promise<boolean> {
     state.instance_active.dbIdentifier //
   }`;
   setInFlight(ApiEndpoint.activity, url);
-  const response = await fetch(url, { method: "GET" });
+  const response = await fetchWithAuth(url, { method: "GET" });
   clearInFlight(ApiEndpoint.activity);
 
   if (!response.ok) {
@@ -336,7 +337,7 @@ export async function queryFilterOptions(): Promise<boolean> {
   }&filterdimselected=${encodeURIComponent(
     "", //
   )}`;
-  const response = await fetch(url, { method: "GET" });
+  const response = await fetchWithAuth(url, { method: "GET" });
 
   if (!response.ok) {
     return true;
@@ -394,7 +395,7 @@ async function queryStandardEndpointFullTimeframe(
     state.instance_active.dbIdentifier //
   }`;
   setInFlight(ApiEndpoint.metric, url);
-  const response = await fetch(url, { method: "GET" });
+  const response = await fetchWithAuth(url, { method: "GET" });
 
   clearInFlight(ApiEndpoint.metric);
   if (!response.ok) {
