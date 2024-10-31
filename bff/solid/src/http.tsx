@@ -147,24 +147,34 @@ async function queryActivityCubeFullTimeframe(): Promise<boolean> {
     return false;
   }
 
-  const url = `/api/v1/activity?why=cube&database_list=(${state.database_list.join("|") //
-    })&start=${`now-${state.timeframe_ms}ms` //
-    }&end=${"now" //
-    }&step=${state.interval_ms //
-    }ms&limitdim=${state.activityCube.limit //
-    }&limitlegend=${state.activityCube.limit //
-    }&legend=${state.activityCube.uiLegend //
-    }&dim=${state.activityCube.uiDimension1 //
-    }&filterdim=${state.activityCube.uiFilter1 === DimensionName.none ||
-      !state.activityCube.uiFilter1Value
+  const url = `/api/v1/activity?why=cube&database_list=(${
+    state.database_list.join("|") //
+  })&start=${
+    `now-${state.timeframe_ms}ms` //
+  }&end=${
+    "now" //
+  }&step=${
+    state.interval_ms //
+  }ms&limitdim=${
+    state.activityCube.limit //
+  }&limitlegend=${
+    state.activityCube.limit //
+  }&legend=${
+    state.activityCube.uiLegend //
+  }&dim=${
+    state.activityCube.uiDimension1 //
+  }&filterdim=${
+    state.activityCube.uiFilter1 === DimensionName.none ||
+    !state.activityCube.uiFilter1Value
       ? ""
       : state.activityCube.uiFilter1
-    }&filterdimselected=${encodeURIComponent(
-      state.activityCube.uiFilter1 !== DimensionName.none
-        ? state.activityCube.uiFilter1Value || ""
-        : "",
-    )}&dbidentifier=${state.instance_active.dbIdentifier //
-    }`;
+  }&filterdimselected=${encodeURIComponent(
+    state.activityCube.uiFilter1 !== DimensionName.none
+      ? state.activityCube.uiFilter1Value || ""
+      : "",
+  )}&dbidentifier=${
+    state.instance_active.dbIdentifier //
+  }`;
   setInFlight(ApiEndpoint.activity, url);
   const response = await fetchWithAuth(url, { method: "GET" });
   clearInFlight(ApiEndpoint.activity);
@@ -233,7 +243,8 @@ async function queryActivityCubeTimeWindow(): Promise<boolean> {
     return false;
   }
 
-  const url = `/api/v1/activity?why=timewindow&${""
+  const url = `/api/v1/activity?why=timewindow&${
+    ""
     //   `t=${Math.floor(
     //       (request_time_begin - debugZero) / 1000 / 60,
     //     ).toString()}_${Math.floor(
@@ -244,24 +255,34 @@ async function queryActivityCubeTimeWindow(): Promise<boolean> {
     //       (request_time_end - debugZero) / 1000,
     //     ).toString()}&`
     // //
-    }database_list=(${state.database_list.join("|") //
-    })&start=${request_time_begin //
-    }&end=${request_time_end //
-    }&step=${state.interval_ms //
-    }ms&limitdim=${state.activityCube.limit //
-    }&limitlegend=${state.activityCube.limit //
-    }&legend=${state.activityCube.uiLegend //
-    }&dim=${state.activityCube.uiDimension1 //
-    }&filterdim=${state.activityCube.uiFilter1 === DimensionName.none ||
-      !state.activityCube.uiFilter1Value
+  }database_list=(${
+    state.database_list.join("|") //
+  })&start=${
+    request_time_begin //
+  }&end=${
+    request_time_end //
+  }&step=${
+    state.interval_ms //
+  }ms&limitdim=${
+    state.activityCube.limit //
+  }&limitlegend=${
+    state.activityCube.limit //
+  }&legend=${
+    state.activityCube.uiLegend //
+  }&dim=${
+    state.activityCube.uiDimension1 //
+  }&filterdim=${
+    state.activityCube.uiFilter1 === DimensionName.none ||
+    !state.activityCube.uiFilter1Value
       ? ""
       : state.activityCube.uiFilter1
-    }&filterdimselected=${encodeURIComponent(
-      state.activityCube.uiFilter1 !== DimensionName.none
-        ? state.activityCube.uiFilter1Value || ""
-        : "",
-    )}&dbidentifier=${state.instance_active.dbIdentifier //
-    }`;
+  }&filterdimselected=${encodeURIComponent(
+    state.activityCube.uiFilter1 !== DimensionName.none
+      ? state.activityCube.uiFilter1Value || ""
+      : "",
+  )}&dbidentifier=${
+    state.instance_active.dbIdentifier //
+  }`;
   setInFlight(ApiEndpoint.activity, url);
   const response = await fetchWithAuth(url, { method: "GET" });
   clearInFlight(ApiEndpoint.activity);
@@ -295,18 +316,27 @@ export async function queryFilterOptions(): Promise<boolean> {
   if (!state.database_list.length) return false;
   if (!state.server_now) return false;
 
-  const url = `/api/v1/activity?why=filteroptions&database_list=(${state.database_list.join("|") //
-    })&start=${`now-${state.timeframe_ms}ms` //
-    }&end=${"now" //
-    }&step=${state.interval_ms //
-    }ms&limitdim=${state.activityCube.limit //
-    }&limitlegend=${state.activityCube.limit //
-    }&legend=${state.activityCube.uiFilter1 //
-    }&dim=${state.activityCube.uiFilter1 //
-    }&filterdim=${"" //
-    }&filterdimselected=${encodeURIComponent(
-      "", //
-    )}`;
+  const url = `/api/v1/activity?why=filteroptions&database_list=(${
+    state.database_list.join("|") //
+  })&start=${
+    `now-${state.timeframe_ms}ms` //
+  }&end=${
+    "now" //
+  }&step=${
+    state.interval_ms //
+  }ms&limitdim=${
+    state.activityCube.limit //
+  }&limitlegend=${
+    state.activityCube.limit //
+  }&legend=${
+    state.activityCube.uiFilter1 //
+  }&dim=${
+    state.activityCube.uiFilter1 //
+  }&filterdim=${
+    "" //
+  }&filterdimselected=${encodeURIComponent(
+    "", //
+  )}`;
   const response = await fetchWithAuth(url, { method: "GET" });
 
   if (!response.ok) {
@@ -351,13 +381,19 @@ async function queryStandardEndpointFullTimeframe(
     return false;
   }
 
-  const url = `/api/v1/${apiEndpoint //
-    }?datname=(${state.database_list.join("|") //
-    })&start=${`now-${state.timeframe_ms}ms` //
-    }&end=${"now" //
-    }&step=${state.interval_ms //
-    }ms&dbidentifier=${state.instance_active.dbIdentifier //
-    }`;
+  const url = `/api/v1/${
+    apiEndpoint //
+  }?datname=(${
+    state.database_list.join("|") //
+  })&start=${
+    `now-${state.timeframe_ms}ms` //
+  }&end=${
+    "now" //
+  }&step=${
+    state.interval_ms //
+  }ms&dbidentifier=${
+    state.instance_active.dbIdentifier //
+  }`;
   setInFlight(ApiEndpoint.metric, url);
   const response = await fetchWithAuth(url, { method: "GET" });
 
