@@ -43,9 +43,9 @@ WORKDIR /home/autodba/bff
 COPY bff/go.mod bff/go.sum ./
 RUN go mod download
 COPY bff/ ./
-RUN go test ./pkg/server -v
-RUN go test ./pkg/metrics -v
-RUN go test ./pkg/prometheus -v
+RUN ACCESS_KEY=test-access-key go test ./pkg/server -v
+RUN ACCESS_KEY=test-access-key go test ./pkg/metrics -v
+RUN ACCESS_KEY=test-access-key go test ./pkg/prometheus -v
 
 WORKDIR /home/autodba/collector-api
 COPY collector-api/go.mod collector-api/go.sum ./
