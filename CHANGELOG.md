@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.5.0] - 2024-11-01
+
+### Added
+- **Docker Compose support** with multiple `Dockerfile`s for streamlined multi-container setup.
+- **Simple Auth between Browser and Agent**, enhancing security in communications.
+- **API key support as an environment variable** for `collector-api`, providing flexible configuration options.
+
+### Changed
+- **Incremental Docker build improvements**, reducing build time and enhancing efficiency.
+- **Service deployment changes** to improve deployment reliability and configuration.
+
+### Fixed
+- **Documentation updates**: added Google Cloud Platform usage details and missing prerequisites for improved setup guidance.
+
 ## [0.4.0] - 2024-10-15
 
 ### Added
