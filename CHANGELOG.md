@@ -7,10 +7,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ## [0.5.0] - 2024-11-01
 
 ### Added
-- **Docker Compose support** with multiple `Dockerfile`s. This improved  the architecture by running each service in a separate container.
+- **Docker Compose support** with multiple `Dockerfile`s. This improves the architecture by running each service in a separate container.
 - **Shared secret authentication between Browser and Agent**, enhancing security in communications.
 - **API key support as an environment variable** for `collector-api`, providing flexible configuration options.
-- **New Collector build artifact**, now available for simplified deployment and integration in diverse environments where collector is not on the same machine as the AutoDBA agent.
+- **New Collector build artifact**, allowing separation of metrics collection from processing at the AutoDBA agent.
 
 ### Changed
 - **Incremental Docker build improvements**, reducing build time and enhancing efficiency.
