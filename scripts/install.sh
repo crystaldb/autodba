@@ -27,12 +27,11 @@ while [[ $# -gt 0 ]]; do
 done
 
 usage() {
-    echo "Usage: $0 [--system] [--install-dir <path>] [--config <config.conf>]"
+    echo "Usage: $0 [--system] [--install-dir <path>]"
     echo ""
     echo "Options:"
     echo "  --system       Install globally under /usr/local/autodba"
     echo "  --install-dir  Specify a custom installation directory. If not specified, $HOME/autodba is used."
-    echo "  --config       Path to the AutoDBA config file (optional), or use standard input if not provided."
     exit 1
 }
 
