@@ -65,7 +65,7 @@ AUTODBA_CONFIG_DIR="$PARENT_DIR/config/autodba"
 PROMETHEUS_STORAGE_DIR="$PARENT_DIR/prometheus_data"
 PROMETHEUS_INSTALL_DIR="$PARENT_DIR/prometheus"
 
-echo "Installing AutoDBA under: $PARENT_DIR"
+echo "Installing AutoDBA Agent under: $PARENT_DIR"
 
 # Create directories only if PARENT_DIR is not current directory
 if [ "$PARENT_DIR" != "$(pwd)" ]; then

@@ -65,20 +65,22 @@ GRANT USAGE ON SCHEMA public TO autodba;
 
 4. AWS or Google Cloud credentials with permissions to read database metrics
 
-Follow these instructions to install AutoDBA on Linux.
+### AutoDBA Collector Installation
 
-1. Download the latest release of AutoDBA from the [releases page](https://github.com/crystaldb/autodba/releases).
+Follow these instructions to install AutoDBA Collector on Linux.
+
+1. Download the latest release of AutoDBA Collector from the [releases page](https://github.com/crystaldb/autodba/releases).
 Choose the version appropriate to your architecture and operating system.
 For example:
 
 ```bash
-wget https://github.com/crystaldb/autodba/releases/latest/download/autodba-0.4.0-amd64.tar.gz
+wget https://github.com/crystaldb/autodba/releases/latest/download/collector-0.4.0-amd64.tar.gz
 ```
 
 2. Extract the downloaded tar.gz file:
 ```bash
-tar -xzvf autodba-0.4.0-amd64.tar.gz
-cd autodba-0.4.0
+tar -xzvf collector-0.4.0-amd64.tar.gz
+cd collector-0.4.0
 ```
 
 3. Run this command to create a configuration file (`autodba.conf`) and populate it with values appropriate to your environment:
@@ -125,7 +127,7 @@ EOF
     - Run the proxy: `./cloud-sql-proxy --port <YOUR_PROXIED_DB_PORT> <YOUR_GCP_PROJECT_ID>:<YOUR_GCP_CLOUDSQL_INSTANCE_ID>`.
     - Then, in the configuration file (`autodba.conf`), you should set `db_host = localhost`, and `db_port = <YOUR_PROXIED_DB_PORT>`.
 
-4. Run the `install.sh` script to install AutoDBA.
+4. Run the `install.sh` script to install AutoDBA Collector.
 
 For system-wide installation:
 
@@ -136,7 +138,7 @@ sudo ./install.sh --config autodba.conf --system
 Or for a user-specific installation, specify your preferred install directory:
 
 ```bash
-./install.sh --config autodba.conf --install-dir "$HOME/autodba"
+./install.sh --config autodba.conf --install-dir "$HOME/autodba-collector"
 ```
 
 Or to install in the same extracted directory:
@@ -147,17 +149,67 @@ Or to install in the same extracted directory:
 5. Verify the AutoDBA service is running
 
 ```bash
-systemctl is-active autodba
+systemctl is-active autodba-collector
 ```
 
 6. Take a look at the AutoDBA service logs:
+```
+sudo journalctl -xefu autodba-collector.service
+```
+
+This command should output `active`.
+
+### AutoDBA Agent Installation
+
+Follow these instructions to install AutoDBA Agent on Linux.
+
+1. Download the latest release of AutoDBA Agent from the [releases page](https://github.com/crystaldb/autodba/releases).
+Choose the version appropriate to your architecture and operating system.
+For example:
+
+```bash
+wget https://github.com/crystaldb/autodba/releases/latest/download/autodba-0.4.0-amd64.tar.gz
+```
+
+2. Extract the downloaded tar.gz file:
+```bash
+tar -xzvf autodba-0.4.0-amd64.tar.gz
+cd autodba-0.4.0
+```
+
+3. Run the `install.sh` script to install AutoDBA Agent.
+
+For system-wide installation:
+
+```bash
+sudo ./install.sh --system
+```
+
+Or for a user-specific installation, specify your preferred install directory:
+
+```bash
+./install.sh --install-dir "$HOME/autodba"
+```
+
+Or to install in the same extracted directory:
+```bash
+./install.sh
+```
+
+4. Verify the AutoDBA service is running
+
+```bash
+systemctl is-active autodba
+```
+
+5. Take a look at the AutoDBA service logs:
 ```
 sudo journalctl -xefu autodba.service
 ```
 
 This command should output `active`.
 
-7. Connect to the AutoDBA web portal on port 4000. If you have installed AutoDBA on a remote server you can use [ssh tunneling](https://www.ssh.com/academy/ssh/tunneling-example) to access it.
+6. Connect to the AutoDBA web portal on port 4000. If you have installed AutoDBA on a remote server you can use [ssh tunneling](https://www.ssh.com/academy/ssh/tunneling-example) to access it.
 For example:
 ```
 ssh -L4000:localhost:4000 <MY_USERNAME>@<MY_HOSTNAME>
