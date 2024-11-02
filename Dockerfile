@@ -14,6 +14,18 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt-get install 
     tar \
     && rm -rf /var/lib/apt/lists/*
 
+# Install nvm and Node.js
+ENV NVM_DIR /usr/local/nvm
+ENV NODE_VERSION 16.17.0
+RUN mkdir -p $NVM_DIR \
+    && curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.4/install.sh | bash \
+    && . $NVM_DIR/nvm.sh \
+    && nvm install $NODE_VERSION \
+    && nvm alias default $NODE_VERSION \
+    && nvm use default
+
+ENV PATH $NVM_DIR/versions/node/v$NODE_VERSION/bin:$PATH
+
 # Install golang
 ENV GOLANG_VERSION="1.22.1"
 RUN wget -O go.tgz "https://golang.org/dl/go${GOLANG_VERSION}.linux-amd64.tar.gz" \
