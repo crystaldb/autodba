@@ -2,7 +2,9 @@ package api
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"math"
 	"net/http"
@@ -11,6 +13,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	gogoproto "github.com/gogo/protobuf/proto"
 	"github.com/golang/snappy"
@@ -43,9 +46,74 @@ type prometheusClient struct {
 	endpoint url.URL
 }
 
+type promResult struct {
+	Metric    map[string]string
+	Value     float64
+	Timestamp time.Time
+}
+
 func (c *prometheusClient) Do(req *http.Request) (*http.Response, error) {
 	req.Header.Set("User-Agent", "autodba")
 	return c.Client.Do(req)
+}
+
+func (c *prometheusClient) Query(query string, t time.Time) ([]promResult, error) {
+	// Construct the query URL
+	u := c.endpoint.JoinPath("/api/v1/query")
+	q := u.Query()
+	q.Set("query", query)
+	q.Set("time", fmt.Sprintf("%d", t.Unix()))
+	u.RawQuery = q.Encode()
+
+	// Make the request
+	req, err := http.NewRequest(http.MethodGet, u.String(), nil)
+	if err != nil {
+		return nil, fmt.Errorf("create request: %w", err)
+	}
+
+	resp, err := c.Client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("execute request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("unexpected status code %d: %s", resp.StatusCode, body)
+	}
+
+	var result struct {
+		Status string `json:"status"`
+		Data   struct {
+			ResultType string `json:"resultType"`
+			Result     []struct {
+				Metric map[string]string `json:"metric"`
+				Value  []interface{}     `json:"value"`
+			} `json:"result"`
+		} `json:"data"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("decode response: %w", err)
+	}
+
+	var results []promResult
+	for _, r := range result.Data.Result {
+		// Parse timestamp and value
+		ts := time.Unix(int64(r.Value[0].(float64)), 0)
+		val, err := strconv.ParseFloat(r.Value[1].(string), 64)
+		if err != nil {
+			continue
+		}
+
+		results = append(results, promResult{
+			Metric:    r.Metric,
+			Value:     val,
+			Timestamp: ts,
+		})
+	}
+
+	return results, nil
 }
 
 func (c *prometheusClient) RemoteWrite(data []prompb.TimeSeries) (*http.Response, error) {
