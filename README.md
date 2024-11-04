@@ -65,100 +65,6 @@ GRANT USAGE ON SCHEMA public TO autodba;
 
 4. AWS or Google Cloud credentials with permissions to read database metrics
 
-### AutoDBA Collector Installation
-
-Follow these instructions to install AutoDBA Collector on Linux.
-
-1. Download the latest release of AutoDBA Collector from the [releases page](https://github.com/crystaldb/autodba/releases).
-Choose the version appropriate to your architecture and operating system.
-For example:
-
-```bash
-wget https://github.com/crystaldb/autodba/releases/latest/download/collector-0.5.0-rc0-amd64.tar.gz
-```
-
-2. Extract the downloaded tar.gz file:
-```bash
-tar -xzvf collector-0.5.0-rc0-amd64.tar.gz
-cd collector-0.5.0-rc0
-```
-
-3. Run this command to create a configuration file (`autodba.conf`) and populate it with values appropriate to your environment:
-
-```conf
-cat << EOF > autodba.conf
-[autodba]
-api_key = DEFAULT-API-KEY
-api_base_url = <YOUR_AUTODBA_API_BASE_URL, e.g., localhost:7080 or http://autodba-agent:7080 (if you are using run.sh)>
-
-[server1]
-db_host = <YOUR_PG_DATABASE_HOST, e.g., xyz.abcdefgh.us-west-2.rds.amazonaws.com>
-db_name = <YOUR_PG_DATABASE_NAMES, e.g., postgres>
-db_username = <YOUR_PG_DATABASE_USER_NAME, e.g., postgres>
-db_password = <YOUR_PG_DATABASE_PASSWORD>
-db_port = <YOUR_PG_DATABASE_PASSWORD, e.g., 5432>
-aws_db_instance_id = <YOUR_AWS_RDS_INSTANCE_ID, e.g., xyz>
-aws_region = <YOUR_AWS_RDS_REGION, e.g., us-west-2>
-aws_access_key_id = <YOUR_AWS_ACCESS_KEY_ID>
-aws_secret_access_key = <YOUR_AWS_SECRET_ACCESS_KEY>
-
-# You can optionally add more servers by adding more sections similar to the above, but with parameters for Google Cloud SQL
-# [server2]
-# db_host = <YOUR_PG_DATABASE_HOST, e.g., localhost>
-# db_name = <YOUR_PG_DATABASE_NAMES, e.g., postgres>
-# db_username = <YOUR_PG_DATABASE_USER_NAME, e.g., postgres>
-# db_password = <YOUR_PG_DATABASE_PASSWORD>
-# db_port = <YOUR_PG_DATABASE_PASSWORD, e.g., 5432>
-# gcp_project_id = <YOUR_GCP_PROJECT_ID>
-# gcp_cloudsql_instance_id = <YOUR_GCP_CLOUDSQL_INSTANCE_ID>
-# gcp_credentials_file = <YOUR_GCP_CREDENTIALS_FILE (default value: ~/.config/gcloud/application_default_credentials.json)>
-EOF
-```
-
-### Note: 
- - PostgreSQL connection strings are of the form `postgres://<db_username>:<db_password>@<db_host>:<db_port>/<db_name>`.
-
-  - If you're using AWS RDS, then your `<db_host>` is in this format: `<aws_db_instance_id>.<aws_account_id>.<aws_region>.rds.amazonaws.com`
-
-  - For Google Cloud SQL, you need to follow [these instructions](https://cloud.google.com/sql/docs/postgres/connect-auth-proxy) to install gcloud CLI and cloud-sql-proxy (if your database is not directly accessible from this machine). Then, you need to:
-    - init `gcloud`: `gcloud init`
-    - auth to  `gcloud`: `gcloud auth login`
-    - enable default auth on  `gcloud`: `gcloud auth application-default login`
-    - Run the proxy: `./cloud-sql-proxy --port <YOUR_PROXIED_DB_PORT> <YOUR_GCP_PROJECT_ID>:<YOUR_GCP_CLOUDSQL_INSTANCE_ID>`.
-    - Then, in the configuration file (`autodba.conf`), you should set `db_host = localhost`, and `db_port = <YOUR_PROXIED_DB_PORT>`.
-
-4. Run the `install.sh` script to install AutoDBA Collector.
-
-For system-wide installation:
-
-```bash
-sudo ./install.sh --config autodba.conf --system
-```
-
-Or for a user-specific installation, specify your preferred install directory:
-
-```bash
-./install.sh --config autodba.conf --install-dir "$HOME/autodba-collector"
-```
-
-Or to install in the same extracted directory:
-```bash
-./install.sh --config autodba.conf
-```
-
-5. Verify the AutoDBA service is running
-
-```bash
-systemctl is-active autodba-collector
-```
-
-6. Take a look at the AutoDBA service logs:
-```
-sudo journalctl -xefu autodba-collector.service
-```
-
-This command should output `active`.
-
 ### AutoDBA Agent Installation
 
 Follow these instructions to install AutoDBA Agent on Linux.
@@ -214,6 +120,102 @@ For example:
 ```
 ssh -L4000:localhost:4000 <MY_USERNAME>@<MY_HOSTNAME>
 ```
+
+### AutoDBA Collector Installation
+
+Follow these instructions to install AutoDBA Collector on Linux.
+
+1. Download the latest release of AutoDBA Collector from the [releases page](https://github.com/crystaldb/autodba/releases).
+Choose the version appropriate to your architecture and operating system.
+For example:
+
+```bash
+wget https://github.com/crystaldb/autodba/releases/latest/download/collector-0.5.0-rc0-amd64.tar.gz
+```
+
+2. Extract the downloaded tar.gz file:
+```bash
+tar -xzvf collector-0.5.0-rc0-amd64.tar.gz
+cd collector-0.5.0-rc0
+```
+
+3. Run this command to create a configuration file (`autodba.conf`) and populate it with values appropriate to your environment:
+
+```conf
+cat << EOF > autodba.conf
+[autodba]
+api_key = DEFAULT-API-KEY
+api_base_url = <YOUR_AUTODBA_API_BASE_URL, e.g., http://localhost:7080 or http://autodba-agent:7080 (if you are using run.sh)>
+
+[server1]
+db_host = <YOUR_PG_DATABASE_HOST, e.g., xyz.abcdefgh.us-west-2.rds.amazonaws.com>
+db_name = <YOUR_PG_DATABASE_NAMES, e.g., postgres>
+db_username = <YOUR_PG_DATABASE_USER_NAME, e.g., postgres>
+db_password = <YOUR_PG_DATABASE_PASSWORD>
+db_port = <YOUR_PG_DATABASE_PASSWORD, e.g., 5432>
+aws_db_instance_id = <YOUR_AWS_RDS_INSTANCE_ID, e.g., xyz>
+aws_region = <YOUR_AWS_RDS_REGION, e.g., us-west-2>
+aws_access_key_id = <YOUR_AWS_ACCESS_KEY_ID>
+aws_secret_access_key = <YOUR_AWS_SECRET_ACCESS_KEY>
+
+# You can optionally add more servers by adding more sections similar to the above, but with parameters for Google Cloud SQL
+# [server2]
+# db_host = <YOUR_PG_DATABASE_HOST, e.g., localhost>
+# db_name = <YOUR_PG_DATABASE_NAMES, e.g., postgres>
+# db_username = <YOUR_PG_DATABASE_USER_NAME, e.g., postgres>
+# db_password = <YOUR_PG_DATABASE_PASSWORD>
+# db_port = <YOUR_PG_DATABASE_PASSWORD, e.g., 5432>
+# gcp_project_id = <YOUR_GCP_PROJECT_ID>
+# gcp_cloudsql_instance_id = <YOUR_GCP_CLOUDSQL_INSTANCE_ID>
+# gcp_credentials_file = <YOUR_GCP_CREDENTIALS_FILE (default value: ~/.config/gcloud/application_default_credentials.json)>
+EOF
+```
+
+### Note: 
+  - `api_base_url` should be the URL for `AutoDBA Agent` installed in the previous section.
+
+  - PostgreSQL connection strings are of the form `postgres://<db_username>:<db_password>@<db_host>:<db_port>/<db_name>`.
+
+  - If you're using AWS RDS, then your `<db_host>` is in this format: `<aws_db_instance_id>.<aws_account_id>.<aws_region>.rds.amazonaws.com`
+
+  - For Google Cloud SQL, you need to follow [these instructions](https://cloud.google.com/sql/docs/postgres/connect-auth-proxy) to install gcloud CLI and cloud-sql-proxy (if your database is not directly accessible from this machine). Then, you need to:
+    - init `gcloud`: `gcloud init`
+    - auth to  `gcloud`: `gcloud auth login`
+    - enable default auth on  `gcloud`: `gcloud auth application-default login`
+    - Run the proxy: `./cloud-sql-proxy --port <YOUR_PROXIED_DB_PORT> <YOUR_GCP_PROJECT_ID>:<YOUR_GCP_CLOUDSQL_INSTANCE_ID>`.
+    - Then, in the configuration file (`autodba.conf`), you should set `db_host = localhost`, and `db_port = <YOUR_PROXIED_DB_PORT>`.
+
+4. Run the `install.sh` script to install AutoDBA Collector.
+
+For system-wide installation:
+
+```bash
+sudo ./install.sh --config autodba.conf --system
+```
+
+Or for a user-specific installation, specify your preferred install directory:
+
+```bash
+./install.sh --config autodba.conf --install-dir "$HOME/autodba-collector"
+```
+
+Or to install in the same extracted directory:
+```bash
+./install.sh --config autodba.conf
+```
+
+5. Verify the AutoDBA service is running
+
+```bash
+systemctl is-active autodba-collector
+```
+
+6. Take a look at the AutoDBA service logs:
+```
+sudo journalctl -xefu autodba-collector.service
+```
+
+This command should output `active`.
 
 ## 🗺️ Roadmap
 
