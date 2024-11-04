@@ -35,8 +35,8 @@ usage() {
     echo "Usage: $0 [--system] [--install-dir <path>] [--config <config.conf>]"
     echo ""
     echo "Options:"
-    echo "  --system       Install globally under /usr/local/autodba"
-    echo "  --install-dir  Specify a custom installation directory. If not specified, $HOME/autodba is used."
+    echo "  --system       Install globally under /usr/local/autodba-collector"
+    echo "  --install-dir  Specify a custom installation directory. If not specified, the current directory ($(pwd)) is used."
     echo "  --config       Path to the AutoDBA config file (optional), or use standard input if not provided."
     exit 1
 }
@@ -82,9 +82,9 @@ else
     echo "Using the current directory for installation, no copying needed."
 fi
 
-chmod +x "${INSTALL_DIR}/collector"
-chmod +x "${INSTALL_DIR}/collector-helper"
-chmod +x "${INSTALL_DIR}/collector-setup"
+chmod +x "${INSTALL_DIR}/autodba-collector"
+chmod +x "${INSTALL_DIR}/autodba-collector-helper"
+chmod +x "${INSTALL_DIR}/autodba-collector-setup"
 chmod +x "${INSTALL_DIR}/collector-entrypoint.sh"
 
 # Handle configuration file
