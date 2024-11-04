@@ -31,7 +31,7 @@ usage() {
     echo ""
     echo "Options:"
     echo "  --system       Install globally under /usr/local/autodba"
-    echo "  --install-dir  Specify a custom installation directory. If not specified, the current directory ($(pwd)) is used."
+    echo "  --install-dir  Specify a custom installation directory. If not specified, $HOME/autodba is used."
     exit 1
 }
 
@@ -104,7 +104,7 @@ After=network.target
 
 [Service]
 Type=simple
-WorkingDirectory=${INSTALL_DIR}
+WorkingDirectory=${AUTODBA_CONFIG_DIR}
 ExecStart=${INSTALL_DIR}/autodba-entrypoint.sh
 Restart=on-failure
 User=autodba

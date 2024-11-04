@@ -130,7 +130,7 @@ After=network.target
 
 [Service]
 Type=simple
-WorkingDirectory=${AUTODBA_CONFIG_DIR}
+WorkingDirectory=${INSTALL_DIR}
 ExecStart=${INSTALL_DIR}/collector-entrypoint.sh
 Restart=on-failure
 User=autodba-collector
