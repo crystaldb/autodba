@@ -35,10 +35,10 @@ The core AI agent is under development and will be released once it reaches a re
 
 This is an early release of AutoDBA's observability features.
 We are committed to supporting PostgreSQL in all environments and popular major versions.
-However, the following *temporary limitations* are presently in place:
+However, the following temporary limitations are presently in place:
 
-- Only compatible with PostgreSQL version 16.
-- Only works with AWS RDS PostgreSQL.
+- Only compatible with PostgreSQL version 14 through 16.
+- Only works with Google Cloud SQL and AWS RDS PostgreSQL.
 
 
 ## 🚀 Installation
@@ -171,10 +171,8 @@ aws_secret_access_key = <YOUR_AWS_SECRET_ACCESS_KEY>
 EOF
 ```
 
-### Note: 
+### Note:
   - `api_base_url` should be the URL for `AutoDBA Agent` installed in the previous section.
-
-  - PostgreSQL connection strings are of the form `postgres://<db_username>:<db_password>@<db_host>:<db_port>/<db_name>`.
 
   - If you're using AWS RDS, then your `<db_host>` is in this format: `<aws_db_instance_id>.<aws_account_id>.<aws_region>.rds.amazonaws.com`
 
