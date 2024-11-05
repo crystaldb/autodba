@@ -58,20 +58,26 @@ func (c *prometheusClient) Do(req *http.Request) (*http.Response, error) {
 }
 
 func (c *prometheusClient) Query(query string, t time.Time) ([]promResult, error) {
-	// Construct the query URL
-	u := c.endpoint.JoinPath("/api/v1/query")
-	q := u.Query()
+	// Create a new URL with the query endpoint
+	queryURL := url.URL{
+		Scheme: c.endpoint.Scheme,
+		Host:   c.endpoint.Host,
+		Path:   "api/v1/query",
+	}
+
+	// Add query parameters
+	q := queryURL.Query()
 	q.Set("query", query)
 	q.Set("time", fmt.Sprintf("%d", t.Unix()))
-	u.RawQuery = q.Encode()
+	queryURL.RawQuery = q.Encode()
 
 	// Make the request
-	req, err := http.NewRequest(http.MethodGet, u.String(), nil)
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
 	if err != nil {
 		return nil, fmt.Errorf("create request: %w", err)
 	}
 
-	resp, err := c.Client.Do(req)
+	resp, err := c.Do(req) // Using c.Do instead of c.Client.Do to maintain consistent headers
 	if err != nil {
 		return nil, fmt.Errorf("execute request: %w", err)
 	}
@@ -781,18 +787,24 @@ func compactSnapshotMetrics(snapshot *collector_proto.CompactSnapshot, systemInf
 	return ts
 }
 
+var iii = 0
+
 func createStaleMarkers(prevMetrics, currentMetrics []prompb.TimeSeries, timestamp int64) []prompb.TimeSeries {
 	var staleMarkers []prompb.TimeSeries
 	currentMetricsMap := make(map[string]bool)
 
+	log.Printf(">>> createStaleMarkers %d", iii)
+
 	for _, metric := range currentMetrics {
 		key := getMetricKey(metric)
 		currentMetricsMap[key] = true
+		log.Printf(">>> currentMetricsMap key: %s", key)
 	}
 
 	for _, prevMetric := range prevMetrics {
 		key := getMetricKey(prevMetric)
 		if !currentMetricsMap[key] {
+			log.Printf(">>> NOOOOT prevMetric key MATCHED: %s", key)
 			staleMarker := prompb.TimeSeries{
 				Labels: prevMetric.Labels,
 				Samples: []prompb.Sample{
@@ -803,8 +815,12 @@ func createStaleMarkers(prevMetrics, currentMetrics []prompb.TimeSeries, timesta
 				},
 			}
 			staleMarkers = append(staleMarkers, staleMarker)
+		} else {
+			log.Printf(">>> IS prevMetric key MATCHED: %s", key)
 		}
 	}
+
+	iii += 1
 
 	return staleMarkers
 }
@@ -812,7 +828,7 @@ func createStaleMarkers(prevMetrics, currentMetrics []prompb.TimeSeries, timesta
 func getMetricKey(metric prompb.TimeSeries) string {
 	var labelPairs []string
 	for _, label := range metric.Labels {
-		if label.Name != "__name__" {
+		if label.Name != "__name__" && label.Value != "" {
 			labelPairs = append(labelPairs, fmt.Sprintf("%s=%s", label.Name, label.Value))
 		}
 	}

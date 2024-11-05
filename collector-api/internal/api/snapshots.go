@@ -183,53 +183,50 @@ func processFullSnapshotData(promClient *prometheusClient, s3Location string, sy
 }
 
 func initializePreviousMetrics(promClient *prometheusClient, systemInfo SystemInfo) error {
+	previousMetrics[systemInfo] = make(map[string][]prompb.TimeSeries)
+
 	if promClient == nil {
 		// Initialize empty map if no client is provided (e.g., during tests)
-		previousMetrics[systemInfo] = make(map[string][]prompb.TimeSeries)
 		return nil
+	}
+
+	// Query all metrics with the given system info labels
+	query := fmt.Sprintf(`{sys_id="%s",sys_scope="%s",sys_type="%s"}`,
+		systemInfo.SystemID,
+		systemInfo.SystemScope,
+		systemInfo.SystemType)
+
+	// Get the latest values within the last 15 minutes
+	result, err := promClient.Query(query, time.Now().Add(-15*time.Minute))
+	if err != nil {
+		return fmt.Errorf("query Prometheus for previous metrics: %w", err)
+	}
+
+	var metrics []prompb.TimeSeries
+	for _, sample := range result {
+		ts := prompb.TimeSeries{
+			Labels: make([]prompb.Label, 0, len(sample.Metric)),
+			Samples: []prompb.Sample{
+				{
+					Value:     float64(sample.Value),
+					Timestamp: sample.Timestamp.UnixMilli(),
+				},
+			},
+		}
+
+		// Convert metric labels to prompb.Label format
+		for name, value := range sample.Metric {
+			ts.Labels = append(ts.Labels, prompb.Label{
+				Name:  string(name),
+				Value: string(value),
+			})
+		}
+
+		metrics = append(metrics, ts)
 	}
 
 	// Query for both full and compact snapshot metrics
 	for _, snapshotType := range []string{FullSnapshotType, CompactSnapshotType} {
-		// Query all metrics with the given system info labels
-		query := fmt.Sprintf(`{sys_id="%s",sys_scope="%s",sys_type="%s"}`,
-			systemInfo.SystemID,
-			systemInfo.SystemScope,
-			systemInfo.SystemType)
-
-		// Get the latest values within the last 15 minutes
-		result, err := promClient.Query(query, time.Now().Add(-15*time.Minute))
-		if err != nil {
-			log.Printf("Error querying Prometheus for previous metrics: %v", err)
-			continue
-		}
-
-		var metrics []prompb.TimeSeries
-		for _, sample := range result {
-			ts := prompb.TimeSeries{
-				Labels: make([]prompb.Label, 0, len(sample.Metric)),
-				Samples: []prompb.Sample{
-					{
-						Value:     float64(sample.Value),
-						Timestamp: sample.Timestamp.UnixMilli(),
-					},
-				},
-			}
-
-			// Convert metric labels to prompb.Label format
-			for name, value := range sample.Metric {
-				ts.Labels = append(ts.Labels, prompb.Label{
-					Name:  string(name),
-					Value: string(value),
-				})
-			}
-
-			metrics = append(metrics, ts)
-		}
-
-		if previousMetrics[systemInfo] == nil {
-			previousMetrics[systemInfo] = make(map[string][]prompb.TimeSeries)
-		}
 		previousMetrics[systemInfo][snapshotType] = metrics
 
 	}
