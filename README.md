@@ -174,6 +174,8 @@ EOF
 ### Note:
   - `api_base_url` should be the URL for `AutoDBA Agent` installed in the previous section.
 
+  - If you have a PostgreSQL connection string (i.e., URI) of the form `postgres://<db_username>:<db_password>@<db_host>:<db_port>/<db_name>` you can extract `db_username`, `db_password`, `db_host`, `db_port`, and `db_name`.
+
   - If you're using AWS RDS, then your `<db_host>` is in this format: `<aws_db_instance_id>.<aws_account_id>.<aws_region>.rds.amazonaws.com`
 
   - For Google Cloud SQL, you need to follow [these instructions](https://cloud.google.com/sql/docs/postgres/connect-auth-proxy) to install gcloud CLI and cloud-sql-proxy (if your database is not directly accessible from this machine). Then, you need to:
