@@ -2,9 +2,8 @@ package api
 
 import (
 	"bytes"
-	"encoding/json"
+	"context"
 	"fmt"
-	"io"
 	"log"
 	"math"
 	"net/http"
@@ -18,6 +17,9 @@ import (
 	gogoproto "github.com/gogo/protobuf/proto"
 	"github.com/golang/snappy"
 	collector_proto "github.com/pganalyze/collector/output/pganalyze_collector"
+	"github.com/prometheus/client_golang/api"
+	v1 "github.com/prometheus/client_golang/api/prometheus/v1"
+	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/value"
 	"github.com/prometheus/prometheus/prompb"
 )
@@ -57,95 +59,118 @@ func (c *prometheusClient) Do(req *http.Request) (*http.Response, error) {
 	return c.Client.Do(req)
 }
 
-func (c *prometheusClient) Query(query string, t time.Time) ([]promResult, error) {
-	// Create a new URL with the query endpoint
-	queryURL := url.URL{
-		Scheme: c.endpoint.Scheme,
-		Host:   c.endpoint.Host,
-		Path:   "api/v1/query",
+func (c *prometheusClient) QueryWithRetry(query string, ts time.Time, maxRetries int) ([]promResult, error) {
+	result, err := c.Query(query, ts)
+	if err == nil {
+		return result, nil
 	}
 
-	// Add query parameters
-	q := queryURL.Query()
-	q.Set("query", query)
-	q.Set("time", fmt.Sprintf("%d", t.Unix()))
-	queryURL.RawQuery = q.Encode()
+	log.Printf("Initial Prometheus query failed: %v", err)
 
-	// Make the request
-	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
-	if err != nil {
-		return nil, fmt.Errorf("create request: %w", err)
+	if !strings.Contains(err.Error(), "503") {
+		return nil, fmt.Errorf("query Prometheus failed: %w", err)
 	}
 
-	resp, err := c.Do(req) // Using c.Do instead of c.Client.Do to maintain consistent headers
-	if err != nil {
-		return nil, fmt.Errorf("execute request: %w", err)
-	}
-	defer resp.Body.Close()
+	log.Printf("Received 503 error, starting retry attempts")
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("unexpected status code %d: %s", resp.StatusCode, body)
-	}
+	for retries := 0; retries < maxRetries; retries++ {
+		waitTime := time.Second * time.Duration(retries+1)
+		log.Printf("Retry attempt %d after waiting %v", retries+1, waitTime)
 
-	var result struct {
-		Status string `json:"status"`
-		Data   struct {
-			ResultType string `json:"resultType"`
-			Result     []struct {
-				Metric map[string]string `json:"metric"`
-				Value  []interface{}     `json:"value"`
-			} `json:"result"`
-		} `json:"data"`
-	}
+		time.Sleep(waitTime)
+		result, err = c.Query(query, ts)
 
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return nil, fmt.Errorf("decode response: %w", err)
-	}
-
-	var results []promResult
-	for _, r := range result.Data.Result {
-		// Parse timestamp and value
-		ts := time.Unix(int64(r.Value[0].(float64)), 0)
-		val, err := strconv.ParseFloat(r.Value[1].(string), 64)
-		if err != nil {
-			continue
+		if err == nil {
+			log.Printf("Retry attempt %d successful", retries+1)
+			return result, nil
 		}
-
-		results = append(results, promResult{
-			Metric:    r.Metric,
-			Value:     val,
-			Timestamp: ts,
-		})
+		log.Printf("Retry attempt %d failed: %v", retries+1, err)
 	}
 
+	return nil, fmt.Errorf("query Prometheus failed after %d retries: %w", maxRetries, err)
+}
+
+func (c *prometheusClient) Query(query string, t time.Time) ([]promResult, error) {
+	// Create v1 API client
+	client, err := api.NewClient(api.Config{
+		Address: fmt.Sprintf("%s://%s", c.endpoint.Scheme, c.endpoint.Host),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("error creating API client: %w", err)
+	}
+	v1api := v1.NewAPI(client)
+
+	// Execute query using v1 API
+	ctx := context.Background()
+	result, warnings, err := v1api.Query(ctx, query, t)
+	if err != nil {
+		return nil, fmt.Errorf("execute query: %w", err)
+	}
+
+	if len(warnings) > 0 {
+		log.Printf("Warnings from query (\"%s\"): %v", query, warnings)
+	}
+
+	// Convert result to promResult format
+	var results []promResult
+	if vector, ok := result.(model.Vector); ok {
+		for _, sample := range vector {
+			results = append(results, promResult{
+				Metric:    convertMetric(sample.Metric),
+				Value:     float64(sample.Value),
+				Timestamp: sample.Timestamp.Time(),
+			})
+		}
+	}
 	return results, nil
 }
 
+// Helper function to convert model.Metric to map[string]string
+func convertMetric(metric model.Metric) map[string]string {
+	result := make(map[string]string)
+	for k, v := range metric {
+		result[string(k)] = string(v)
+	}
+	return result
+}
+
 func (c *prometheusClient) RemoteWrite(data []prompb.TimeSeries) (*http.Response, error) {
+	// Create the write request
 	payload := &prompb.WriteRequest{
 		Timeseries: data,
 	}
+
+	// Marshal to protobuf
 	b, err := gogoproto.Marshal(payload)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to marshal payload: %w", err)
 	}
 
+	// Compress with snappy
 	compressed := snappy.Encode(nil, b)
 
+	// Create HTTP request
 	req, err := http.NewRequest(
 		http.MethodPost,
 		c.endpoint.String(),
 		bytes.NewBuffer(compressed),
 	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
+
+	// Set required headers for remote write
 	req.Header.Set("Content-Encoding", "snappy")
 	req.Header.Set("Content-Type", "application/x-protobuf")
 	req.Header.Set("X-Prometheus-Remote-Write-Version", "0.1.0")
 
-	return c.Do(req)
+	// Execute request
+	resp, err := c.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute request: %w", err)
+	}
+
+	return resp, nil
 }
 
 // Helper function to generate system-level labels
@@ -170,6 +195,8 @@ func createTimeSeries(systemInfo SystemInfo, metricName string, additionalLabels
 
 	// Add system info labels
 	labels = append(labels, systemLabels(systemInfo)...)
+
+	labels = filter(labels, nonEmptyValFilter)
 
 	// Sort labels by name
 	sortLabels(labels)
@@ -719,7 +746,7 @@ func createLabelsForBackend(backendKey BackendKey, systemInfo SystemInfo) []prom
 
 	if backendKey.Query != "" {
 		labels = append(labels, prompb.Label{Name: "query", Value: backendKey.Query})
-		labels = append(labels, prompb.Label{Name: "query_fp", Value: backendKey.QueryFingerPrint})
+		// labels = append(labels, prompb.Label{Name: "query_fp", Value: backendKey.QueryFingerPrint})
 		labels = append(labels, prompb.Label{Name: "query_full", Value: backendKey.QueryFull})
 	} else {
 		labels = append(labels, prompb.Label{Name: "query", Value: backendKey.QueryFull})
@@ -731,6 +758,8 @@ func createLabelsForBackend(backendKey BackendKey, systemInfo SystemInfo) []prom
 	if backendKey.Datname != "" {
 		labels = append(labels, prompb.Label{Name: "datname", Value: backendKey.Datname})
 	}
+
+	labels = filter(labels, nonEmptyValFilter)
 
 	// Sort labels by name
 	sortLabels(labels)
@@ -787,24 +816,18 @@ func compactSnapshotMetrics(snapshot *collector_proto.CompactSnapshot, systemInf
 	return ts
 }
 
-var iii = 0
-
 func createStaleMarkers(prevMetrics, currentMetrics []prompb.TimeSeries, timestamp int64) []prompb.TimeSeries {
 	var staleMarkers []prompb.TimeSeries
 	currentMetricsMap := make(map[string]bool)
 
-	log.Printf(">>> createStaleMarkers %d", iii)
-
 	for _, metric := range currentMetrics {
 		key := getMetricKey(metric)
 		currentMetricsMap[key] = true
-		log.Printf(">>> currentMetricsMap key: %s", key)
 	}
 
 	for _, prevMetric := range prevMetrics {
 		key := getMetricKey(prevMetric)
 		if !currentMetricsMap[key] {
-			log.Printf(">>> NOOOOT prevMetric key MATCHED: %s", key)
 			staleMarker := prompb.TimeSeries{
 				Labels: prevMetric.Labels,
 				Samples: []prompb.Sample{
@@ -815,12 +838,8 @@ func createStaleMarkers(prevMetrics, currentMetrics []prompb.TimeSeries, timesta
 				},
 			}
 			staleMarkers = append(staleMarkers, staleMarker)
-		} else {
-			log.Printf(">>> IS prevMetric key MATCHED: %s", key)
 		}
 	}
-
-	iii += 1
 
 	return staleMarkers
 }
@@ -828,7 +847,7 @@ func createStaleMarkers(prevMetrics, currentMetrics []prompb.TimeSeries, timesta
 func getMetricKey(metric prompb.TimeSeries) string {
 	var labelPairs []string
 	for _, label := range metric.Labels {
-		if label.Name != "__name__" && label.Value != "" {
+		if len(label.Value) != 0 {
 			labelPairs = append(labelPairs, fmt.Sprintf("%s=%s", label.Name, label.Value))
 		}
 	}
@@ -841,4 +860,17 @@ func sortLabels(labels []prompb.Label) {
 	sort.Slice(labels, func(i, j int) bool {
 		return labels[i].Name < labels[j].Name
 	})
+}
+
+func filter[T any](ss []T, test func(T) bool) (ret []T) {
+	for _, s := range ss {
+		if test(s) {
+			ret = append(ret, s)
+		}
+	}
+	return
+}
+
+func nonEmptyValFilter(l prompb.Label) bool {
+	return len(l.Value) != 0
 }
