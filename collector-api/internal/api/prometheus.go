@@ -113,14 +113,35 @@ func (c *prometheusClient) Query(query string, t time.Time) ([]promResult, error
 
 	// Convert result to promResult format
 	var results []promResult
-	if vector, ok := result.(model.Vector); ok {
-		for _, sample := range vector {
+	switch v := result.(type) {
+	case model.Vector:
+		for _, sample := range v {
 			results = append(results, promResult{
 				Metric:    convertMetric(sample.Metric),
 				Value:     float64(sample.Value),
 				Timestamp: sample.Timestamp.Time(),
 			})
 		}
+	case *model.Scalar:
+		results = append(results, promResult{
+			Metric:    make(map[string]string),
+			Value:     float64(v.Value),
+			Timestamp: v.Timestamp.Time(),
+		})
+	case model.Matrix:
+		// For matrix results, we'll take the most recent value from each series
+		for _, sampleStream := range v {
+			if len(sampleStream.Values) > 0 {
+				lastValue := sampleStream.Values[len(sampleStream.Values)-1]
+				results = append(results, promResult{
+					Metric:    convertMetric(sampleStream.Metric),
+					Value:     float64(lastValue.Value),
+					Timestamp: lastValue.Timestamp.Time(),
+				})
+			}
+		}
+	default:
+		return nil, fmt.Errorf("unsupported result type: %T", result)
 	}
 	return results, nil
 }
