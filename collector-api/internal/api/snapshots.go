@@ -14,6 +14,7 @@ import (
 	"path"
 	"strconv"
 	"strings"
+	"time"
 
 	"google.golang.org/protobuf/proto"
 
@@ -166,7 +167,7 @@ func processFullSnapshotData(promClient *prometheusClient, s3Location string, sy
 	currentMetrics := fullSnapshotMetrics(&fullSnapshot, systemInfo)
 
 	if previousMetrics[systemInfo] == nil {
-		err := initializePreviousMetrics(promClient, systemInfo)
+		err := initializePreviousMetrics(promClient, systemInfo, FullSnapshotType)
 		if err != nil {
 			log.Printf("Error in initializing previous metrics: %v", err)
 		}
@@ -181,9 +182,69 @@ func processFullSnapshotData(promClient *prometheusClient, s3Location string, sy
 	return allMetrics, nil
 }
 
-func initializePreviousMetrics(_ *prometheusClient, systemInfo SystemInfo) error {
+func initializePreviousMetrics(promClient *prometheusClient, systemInfo SystemInfo, snapshotType string) error {
 	previousMetrics[systemInfo] = make(map[string][]prompb.TimeSeries)
-	// TODO: implement reading previous metrics from prometheus
+
+	if promClient == nil {
+		// Initialize empty map if no client is provided (e.g., during tests)
+		return nil
+	}
+
+	timeSeriesName := "" // all time-series
+	if snapshotType == CompactSnapshotType {
+		timeSeriesName = "cc_pg_stat_activity"
+	}
+
+	// Query all metrics with the given system info labels
+	query := fmt.Sprintf(`%s{sys_id="%s",sys_scope="%s",sys_type="%s"}`,
+		timeSeriesName,
+		systemInfo.SystemID,
+		systemInfo.SystemScope,
+		systemInfo.SystemType)
+
+	// Get the latest values
+	ts := time.Now()
+	result, err := promClient.QueryWithRetry(query, ts, 10)
+	if err != nil {
+		return fmt.Errorf("query Prometheus for previous metrics: %w", err)
+	}
+
+	var metrics []prompb.TimeSeries
+	for _, sample := range result {
+		ts := prompb.TimeSeries{
+			Labels: make([]prompb.Label, 0, len(sample.Metric)),
+			Samples: []prompb.Sample{
+				{
+					Value:     float64(sample.Value),
+					Timestamp: sample.Timestamp.UnixMilli(),
+				},
+			},
+		}
+
+		skip := false
+
+		// Convert metric labels to prompb.Label format
+		for name, value := range sample.Metric {
+			if snapshotType == FullSnapshotType && name == "__name__" && value == "cc_pg_stat_activity" {
+				skip = true
+				break
+			}
+			ts.Labels = append(ts.Labels, prompb.Label{
+				Name:  string(name),
+				Value: string(value),
+			})
+		}
+
+		if skip {
+			continue
+		}
+
+		sortLabels(ts.Labels)
+		metrics = append(metrics, ts)
+	}
+
+	previousMetrics[systemInfo][snapshotType] = metrics
+
 	return nil
 }
 
@@ -351,7 +412,7 @@ func processCompactSnapshotData(promClient *prometheusClient, s3Location string,
 	currentMetrics := compactSnapshotMetrics(&compactSnapshot, systemInfo)
 
 	if previousMetrics[systemInfo] == nil {
-		err := initializePreviousMetrics(promClient, systemInfo)
+		err := initializePreviousMetrics(promClient, systemInfo, CompactSnapshotType)
 		if err != nil {
 			log.Printf("Error in initializing previous metrics: %v", err)
 		}
@@ -369,7 +430,7 @@ func processCompactSnapshotData(promClient *prometheusClient, s3Location string,
 func sendRemoteWrite(client prometheusClient, promPB []prompb.TimeSeries) error {
 	resp, err := client.RemoteWrite(promPB)
 	if err != nil {
-		return err
+		return fmt.Errorf("send remote write request: %w", err)
 	}
 	defer resp.Body.Close()
 
