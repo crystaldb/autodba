@@ -11,16 +11,18 @@ cd $SOURCE_DIR/..
 # Initialize variables
 INSTANCE_ID=0
 CONFIG_FILE=""
-KEEP_CONTAINERS=false  # Add this new variable
+KEEP_CONTAINERS=false
+USE_COLLECTOR=true
 
 
 # Function to display usage information
 usage() {
-    echo "Usage: $0 --config <CONFIG_FILE> [--instance-id <INSTANCE_ID>] [--keep-containers]"
+    echo "Usage: $0 --config <CONFIG_FILE> [--instance-id <INSTANCE_ID>] [--keep-containers] [--no-collector]"
     echo "Options:"
     echo "--config                    <CONFIG_FILE> path to the configuration file"
     echo "--instance-id               <INSTANCE_ID> if you are running multiple instances of the agent, specify a unique number for each"
     echo "--keep-containers           keep containers running after script exits"
+    echo "--no-collector             run without the collector component"
     exit 1
 }
 
@@ -37,6 +39,10 @@ while [[ "$#" -gt 0 ]]; do
             ;;
         --keep-containers)
             KEEP_CONTAINERS=true
+            shift
+            ;;
+        --no-collector)
+            USE_COLLECTOR=false
             shift
             ;;
         *)
@@ -82,7 +88,11 @@ export PROMETHEUS_PORT=$((UID + 6000 + INSTANCE_ID))
 export CONFIG_FILE="/usr/local/autodba/config/autodba/collector.conf"
 
 # Prepare docker-compose command
-COMPOSE_CMD="docker-compose -p ${INSTANCE_NAME} -f compose.yaml -f compose.collector.yaml"
+if [ "$USE_COLLECTOR" = true ]; then
+    COMPOSE_CMD="docker-compose -p ${INSTANCE_NAME} -f compose.yaml -f compose.collector.yaml"
+else
+    COMPOSE_CMD="docker-compose -p ${INSTANCE_NAME} -f compose.yaml"
+fi
 
 # Stop and remove existing containers
 echo "Stopping and removing existing containers..."
