@@ -17,9 +17,9 @@ USE_COLLECTOR=true
 
 # Function to display usage information
 usage() {
-    echo "Usage: $0 --config <CONFIG_FILE> [--instance-id <INSTANCE_ID>] [--keep-containers] [--no-collector]"
+    echo "Usage: $0 [--config <CONFIG_FILE>] [--instance-id <INSTANCE_ID>] [--keep-containers] [--no-collector]"
     echo "Options:"
-    echo "--config                    <CONFIG_FILE> path to the configuration file"
+    echo "--config                    <CONFIG_FILE> path to the configuration file (required unless --no-collector is set)"
     echo "--instance-id               <INSTANCE_ID> if you are running multiple instances of the agent, specify a unique number for each"
     echo "--keep-containers           keep containers running after script exits"
     echo "--no-collector             run without the collector component"
@@ -55,7 +55,12 @@ done
 # Handle config file
 FIXED_CONFIG_FILE="./collector/autodba-collector.conf"
 if [[ -z "$CONFIG_FILE" ]]; then
-    echo "No config file provided. Creating one based on provided parameters..."
+    if [ "$USE_COLLECTOR" = true ]; then
+        echo "Error: Config file is required when using collector" >&2
+        usage
+        exit 1
+    fi
+    echo "No config file provided, continuing without collector configuration..."
 else
     if [[ ! -f "$CONFIG_FILE" ]]; then
         echo "Error: Provided config file $CONFIG_FILE does not exist" >&2
