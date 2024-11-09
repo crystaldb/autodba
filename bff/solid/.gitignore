@@ -1,21 +1,15 @@
-node_modules
-dist# Devenv
+# Devenv
 .devenv*
 devenv.local.nix
 
 # direnv
 .direnv
 
+node_modules
+dist
+
 # pre-commit
 .pre-commit-config.yaml
-/test-results/
-/playwright-report/
-/blob-report/
-/playwright/.cache/
-/test-results/
-/playwright-report/
-/blob-report/
-/playwright/.cache/
 /test-results/
 /playwright-report/
 /blob-report/

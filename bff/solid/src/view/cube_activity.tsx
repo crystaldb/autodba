@@ -30,7 +30,7 @@ import { produce } from "solid-js/store";
 const MAX_WIDTH = 500;
 
 export const cssSelectorGeneralBase =
-  "border border-zinc-200 bg-zinc-100 dark:border-zinc-600 dark:bg-zinc-800";
+  "border border-zinc-200 bg-backgroundlite dark:border-zinc-600 dark:bg-zinc-800";
 
 export const cssSelectorGeneralHover =
   "dark:hover:bg-zinc-700 hover:bg-zinc-300";
@@ -60,7 +60,7 @@ export function CubeActivity() {
         fixedOrder((row) => row.item, ["CPU", "other"], { position: "end" }),
       ]),
       map((item, index) => ({
-        item: item.item!,
+        item: item.item || "Unknown Item",
         colorText: listColors[index]?.text || "",
         colorBg: listColors[index]?.bg || "",
       })),
@@ -128,7 +128,7 @@ function Legend(props: PropsLegend) {
             <p
               class={item.colorText}
               classList={{
-                "line-clamp-4 hover:line-clamp-none hover:dark:bg-black hover:bg-zinc-100 hover:z-10 hover:rounded-md hover:p-2 hover:ps-0":
+                "line-clamp-4 hover:line-clamp-none hover:dark:bg-backgrounddark hover:bg-backgroundlite hover:z-10 hover:rounded-md hover:p-2 hover:ps-0":
                   (item.item || "").length > 50,
               }}
             >
@@ -275,6 +275,7 @@ function Tab(props: { value: DimensionName; txt: string; selected: boolean }) {
   const { setState } = contextState();
   return (
     <button
+      type="button"
       value={props.value}
       class={`grow justify-center whitespace-pre tracking-wider flex text-sm px-1 py-2 font-normala ${cssSelectorGeneral}`}
       classList={{
@@ -300,6 +301,7 @@ function ViewFilterOptions(props: { cubeData: CubeData; class?: string }) {
           defaultOpen={true}
         />
         <button
+          type="button"
           class="hover:underline underline-offset-4 me-4"
           classList={{ invisible: !state.activityCube.uiFilter1Value }}
           onClick={() => {
@@ -333,7 +335,7 @@ function SelectButton(props: PropsSelectButton) {
     <div
       class={`flex text-sm px-2.5 py-2 border-s rounded-lg ${cssSelectorGeneral} ${props.class}`}
     >
-      <label class="whitespace-pre">{props.label}</label>
+      <div class="whitespace-pre">{props.label}</div>
       <SelectSliceBy
         dimension={props.dimension}
         list={props.list}
@@ -404,9 +406,9 @@ function filterOptions(cubeData: CubeData): [string, string][] {
             [
               rec.metric[state.activityCube.uiFilter1],
               rec.values[0]?.value
-                ? rec.values[0].value.toFixed(1) +
-                  ": " +
-                  rec.metric[state.activityCube.uiFilter1]
+                ? `${rec.values[0].value.toFixed(1)}: ${
+                    rec.metric[state.activityCube.uiFilter1]
+                  }`
                 : rec.metric[state.activityCube.uiFilter1],
             ] as [string, string],
         )

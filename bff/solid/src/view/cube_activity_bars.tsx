@@ -92,7 +92,9 @@ function DimensionRowGrouped(props: IDimensionRow) {
           {(record) => (
             <DimensionRowPart
               len={record.values[0].value}
-              txt={record.metric[state.activityCube.uiLegend]!}
+              txt={
+                record.metric[state.activityCube.uiLegend] || "unknown-metric"
+              }
               legend={props.legend}
             />
           )}
