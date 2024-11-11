@@ -66,6 +66,16 @@
         "io_write_throughput": "sum(cc_system_disk_write_bytes_per_second{sys_id=~\"$sys_id\",sys_scope=~\"$sys_scope\",sys_type=~\"$sys_type\"})",
         "free_storage_space": "sum(cc_system_diskpartition_free_bytes{sys_id=~\"$sys_id\",sys_scope=~\"$sys_scope\",sys_type=~\"$sys_type\"})"
       }
+    },
+    "/v1/snapshots": {
+      "params": [
+        "limit",
+        "type"
+      ],
+      "options": {
+        "limit": "$limit",
+        "type": "$type"
+      }
     }
   }
 }
