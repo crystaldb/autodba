@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 )
 
 func main() {
@@ -19,13 +20,15 @@ func main() {
 	// Load the configuration from the global config path
 	cfg, err := config.LoadConfigWithDefaultPath()
 	if err != nil {
-		log.Fatalf("Failed to load configuration: %v", err)
+		log.Printf("Failed to load configuration: %v", err)
+		os.Exit(-1)
 	}
 
 	// Ensure the required storage directories exist
 	err = storage.EnsureStorageDirectories(cfg.StorageDir)
 	if err != nil {
-		log.Fatalf("Failed to create storage directories: %v", err)
+		log.Printf("Failed to create storage directories: %v", err)
+		os.Exit(-1)
 	}
 
 	// Initialize the SQLite database
@@ -33,6 +36,7 @@ func main() {
 
 	if err := api.ReprocessSnapshots(cfg, *reprocessFull, *reprocessCompact); err != nil {
 		log.Printf("Error reprocessing snapshots: %v", err)
+		os.Exit(-1)
 	}
 
 	// Setup routes and handlers, passing the configuration
@@ -43,5 +47,6 @@ func main() {
 	log.Printf("Server starting on %s", address)
 	if err := http.ListenAndServe(address, router); err != nil {
 		log.Fatalf("Error starting server: %v", err)
+		os.Exit(-1)
 	}
 }
