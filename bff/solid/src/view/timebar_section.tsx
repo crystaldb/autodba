@@ -1,21 +1,21 @@
-import { contextState } from "../context_state";
+import { flip } from "@floating-ui/dom";
 import {
+  For,
+  type JSX,
+  Show,
   batch,
   createEffect,
   createMemo,
   createSignal,
-  For,
   getOwner,
-  JSX,
   on,
   onCleanup,
   runWithOwner,
-  Show,
   untrack,
 } from "solid-js";
-import { isLive, queryEndpointData, queryEndpointDataIfLive } from "../http";
 import { Popover } from "solid-simple-popover";
-import { flip } from "@floating-ui/dom";
+import { contextState } from "../context_state";
+import { isLive, queryEndpointData, queryEndpointDataIfLive } from "../http";
 import { cssSelectorGeneral } from "./cube_activity";
 import { EchartsTimebar } from "./echarts_timebar";
 
@@ -179,7 +179,8 @@ function TimeframeSelector() {
           batch(() => {
             setState("timeframe_ms", record.ms);
             setState("interval_ms", record.ms2);
-          })}
+          })
+        }
       />
     </>
   );
@@ -281,7 +282,8 @@ function IntervalSelector(props: PropsIntervalSelector) {
         onClick={(record) => () =>
           batch(() => {
             setState("interval_ms", record.ms);
-          })}
+          })
+        }
         class={props.class}
       />
     </>

@@ -1,15 +1,15 @@
-import { NavTopConfig1 } from "./NavTop";
 import { Navigate } from "@solidjs/router";
+import { Route, Router } from "@solidjs/router";
+import { type JSX, Show, createResource } from "solid-js";
+import { Dynamic } from "solid-js/web";
+import { NavTopConfig1 } from "./NavTop";
 import { ContextState, contextState } from "./context_state";
+import { queryDatabases, queryInstances } from "./http";
 import { PageActivity } from "./page/activity";
 import { PageMetric } from "./page/metric";
-import { Router, Route } from "@solidjs/router";
-import { createResource, JSX, Show } from "solid-js";
-import { queryInstances, queryDatabases } from "./http";
-import { Dynamic } from "solid-js/web";
 import { DarkmodeSelector } from "./view/darkmode";
-import { TimebarSection } from "./view/timebar_section";
 import { InstanceHeader } from "./view/instance_header";
+import { TimebarSection } from "./view/timebar_section";
 
 export default function App(): JSX.Element {
   return (

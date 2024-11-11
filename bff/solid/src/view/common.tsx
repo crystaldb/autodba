@@ -1,7 +1,8 @@
 import type { JSX } from "solid-js";
 
 export function DebugJson(props: {
-  json: /*eslint-disable */ any /*eslint-enable */;
+  // biome-ignore lint/suspicious/noExplicitAny: the goal is to show anything
+  json: any;
 }) {
   return (
     <pre class="break-words max-w-96 overflow-auto">

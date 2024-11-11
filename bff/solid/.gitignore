@@ -6,7 +6,8 @@ devenv.local.nix
 .direnv
 
 node_modules
-dist
+dist/
+.solid
 
 # pre-commit
 .pre-commit-config.yaml
@@ -14,3 +15,7 @@ dist
 /playwright-report/
 /blob-report/
 /playwright/.cache/
+
+# System Files
+.DS_Store
+Thumbs.db

@@ -1,12 +1,12 @@
+import { VsTriangleDown } from "solid-icons/vs";
+import { For, Show, batch, createSignal } from "solid-js";
 import { contextState } from "../context_state";
-import { batch, createSignal, For, Show } from "solid-js";
+import type { Instance } from "../state";
 import {
   cssSelectorGeneral,
   cssSelectorGeneralBase,
   cssSelectorGeneralHover,
 } from "../view/cube_activity";
-import { VsTriangleDown } from "solid-icons/vs";
-import { Instance } from "../state";
 
 interface PropsInstanceHeader {
   class?: string;
