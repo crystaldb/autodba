@@ -212,7 +212,7 @@ func initializePreviousMetrics(promClient *prometheusClient, systemInfo SystemIn
 	ts := time.Now()
 	result, err := promClient.QueryWithRetry(query, ts, 10)
 	if err != nil {
-		return fmt.Errorf("query Prometheus for previous metrics: %w", err)
+		return fmt.Errorf("query (%s) Prometheus for previous metrics: %w", query, err)
 	}
 
 	var metrics []prompb.TimeSeries
@@ -497,7 +497,7 @@ func ReprocessSnapshots(cfg *config.Config, reprocessFull, reprocessCompact bool
 					snapshot.S3Location, systemInfo, snapshotSystemInfo)
 			}
 
-			if err := handleFullSnapshot(cfg, snapshot.S3Location, snapshot.CollectedAt, systemInfo); err != nil {
+			if err := handleFullSnapshot(cfg, snapshot.S3Location, snapshot.CollectedAt, snapshotSystemInfo); err != nil {
 				log.Printf("Error processing full snapshot %s: %v", snapshot.S3Location, err)
 			}
 		}
@@ -558,6 +558,9 @@ func extractSystemInfoFromFullSnapshot(s3Location string) (SystemInfo, error) {
 }
 
 func deletePrometheusData(c *prometheusClient, matcher string) error {
+	maxRetries := 5
+	baseDelay := time.Second
+
 	// Create v1 API client
 	client, err := api.NewClient(api.Config{
 		Address: fmt.Sprintf("%s://%s", c.endpoint.Scheme, c.endpoint.Host),
@@ -569,16 +572,31 @@ func deletePrometheusData(c *prometheusClient, matcher string) error {
 
 	ctx := context.Background()
 
-	err = v1api.DeleteSeries(ctx, []string{matcher}, time.Time{}, time.Time{})
-	if err != nil {
-		return fmt.Errorf("delete series: %w", err)
+	for attempt := 0; attempt < maxRetries; attempt++ {
+		if attempt > 0 {
+			delay := time.Duration(attempt) * baseDelay
+			log.Printf("Retrying delete operation in %v (attempt %d/%d)", delay, attempt+1, maxRetries)
+			time.Sleep(delay)
+		}
+
+		err = v1api.DeleteSeries(ctx, []string{matcher}, time.Time{}, time.Time{})
+		if err == nil {
+			// Clean up the tombstones
+			err = v1api.CleanTombstones(ctx)
+			if err == nil {
+				return nil
+			}
+		}
+
+		if err != nil {
+			log.Printf("Attempt %d failed: %v", attempt+1, err)
+			// Check if it's a 503 error
+			if strings.Contains(err.Error(), "503") {
+				continue // Retry on 503
+			}
+			return fmt.Errorf("delete series: %w", err)
+		}
 	}
 
-	// Clean up the tombstones
-	err = v1api.CleanTombstones(ctx)
-	if err != nil {
-		return fmt.Errorf("clean tombstones: %w", err)
-	}
-
-	return nil
+	return fmt.Errorf("delete series failed after %d attempts: %w", maxRetries, err)
 }

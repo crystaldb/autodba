@@ -115,7 +115,7 @@ func GetAllFullSnapshots() ([]models.Snapshot, error) {
 	rows, err := db.Query(`
         SELECT collected_at, s3_location, system_id, system_scope, system_type 
         FROM snapshots 
-        ORDER BY collected_at`)
+        ORDER BY collected_at DESC`)
 	if err != nil {
 		return nil, err
 	}
@@ -124,9 +124,20 @@ func GetAllFullSnapshots() ([]models.Snapshot, error) {
 	var snapshots []models.Snapshot
 	for rows.Next() {
 		var s models.Snapshot
-		if err := rows.Scan(&s.CollectedAt, &s.S3Location, &s.SystemID, &s.SystemScope, &s.SystemType); err != nil {
+		var systemID, systemScope, systemType sql.NullString
+		if err := rows.Scan(
+			&s.CollectedAt,
+			&s.S3Location,
+			&systemID,
+			&systemScope,
+			&systemType,
+		); err != nil {
 			return nil, err
 		}
+		// Convert NullString to string, using empty string if NULL
+		s.SystemID = systemID.String
+		s.SystemScope = systemScope.String
+		s.SystemType = systemType.String
 		snapshots = append(snapshots, s)
 	}
 	return snapshots, rows.Err()
@@ -136,7 +147,7 @@ func GetAllCompactSnapshots() ([]models.CompactSnapshot, error) {
 	rows, err := db.Query(`
         SELECT collected_at, s3_location, system_id, system_scope, system_type 
         FROM compact_snapshots 
-        ORDER BY collected_at`)
+        ORDER BY collected_at DESC`)
 	if err != nil {
 		return nil, err
 	}
@@ -145,9 +156,20 @@ func GetAllCompactSnapshots() ([]models.CompactSnapshot, error) {
 	var snapshots []models.CompactSnapshot
 	for rows.Next() {
 		var s models.CompactSnapshot
-		if err := rows.Scan(&s.CollectedAt, &s.S3Location, &s.SystemID, &s.SystemScope, &s.SystemType); err != nil {
+		var systemID, systemScope, systemType sql.NullString
+		if err := rows.Scan(
+			&s.CollectedAt,
+			&s.S3Location,
+			&systemID,
+			&systemScope,
+			&systemType,
+		); err != nil {
 			return nil, err
 		}
+		// Convert NullString to string, using empty string if NULL
+		s.SystemID = systemID.String
+		s.SystemScope = systemScope.String
+		s.SystemType = systemType.String
 		snapshots = append(snapshots, s)
 	}
 	return snapshots, rows.Err()
