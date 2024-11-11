@@ -3,6 +3,7 @@ package db
 import (
 	"collector-api/pkg/models"
 	"database/sql"
+	"fmt"
 	"log"
 	"os"
 
@@ -39,14 +40,20 @@ func initSchema() {
 	CREATE TABLE IF NOT EXISTS snapshots (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		collected_at INTEGER,
-		s3_location TEXT
+		s3_location TEXT,
+        system_id TEXT,
+        system_scope TEXT,
+        system_type TEXT
 	);`
 
 	createCompactSnapshotTable := `
 	CREATE TABLE IF NOT EXISTS compact_snapshots (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		collected_at INTEGER,
-		s3_location TEXT
+		s3_location TEXT,
+        system_id TEXT,
+        system_scope TEXT,
+        system_type TEXT
 	);`
 
 	_, err := db.Exec(createSnapshotTable)
@@ -58,22 +65,90 @@ func initSchema() {
 	if err != nil {
 		log.Fatalf("Error creating compact_snapshots table: %v", err)
 	}
+
+	// Check if we need to add new columns
+	if err := addColumnsIfNotExist("snapshots", []string{"system_id", "system_scope", "system_type"}); err != nil {
+		log.Fatalf("Error adding columns to snapshots table: %v", err)
+	}
+
+	if err := addColumnsIfNotExist("compact_snapshots", []string{"system_id", "system_scope", "system_type"}); err != nil {
+		log.Fatalf("Error adding columns to compact_snapshots table: %v", err)
+	}
+}
+
+func addColumnsIfNotExist(table string, columns []string) error {
+	for _, col := range columns {
+		var count int
+		query := fmt.Sprintf("SELECT COUNT(*) FROM pragma_table_info('%s') WHERE name='%s';", table, col)
+		err := db.QueryRow(query).Scan(&count)
+		if err != nil {
+			return fmt.Errorf("check column existence: %w", err)
+		}
+
+		if count == 0 {
+			_, err = db.Exec(fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s TEXT;", table, col))
+			if err != nil {
+				return fmt.Errorf("add column %s: %w", col, err)
+			}
+		}
+	}
+	return nil
 }
 
 func StoreSnapshotMetadata(snapshot models.Snapshot) error {
-	// Insert metadata into the SQLite database
 	_, err := db.Exec(`
-		INSERT INTO snapshots (collected_at, s3_location)
-		VALUES (?, ?)`,
-		snapshot.CollectedAt, snapshot.S3Location)
+        INSERT INTO snapshots (collected_at, s3_location, system_id, system_scope, system_type)
+        VALUES (?, ?, ?, ?, ?)`,
+		snapshot.CollectedAt, snapshot.S3Location, snapshot.SystemID, snapshot.SystemScope, snapshot.SystemType)
 	return err
 }
 
 func StoreCompactSnapshotMetadata(snapshot models.CompactSnapshot) error {
-	// Insert compact snapshot metadata
 	_, err := db.Exec(`
-		INSERT INTO compact_snapshots (collected_at, s3_location)
-		VALUES (?, ?)`,
-		snapshot.CollectedAt, snapshot.S3Location)
+        INSERT INTO compact_snapshots (collected_at, s3_location, system_id, system_scope, system_type)
+        VALUES (?, ?, ?, ?, ?)`,
+		snapshot.CollectedAt, snapshot.S3Location, snapshot.SystemID, snapshot.SystemScope, snapshot.SystemType)
 	return err
+}
+
+func GetAllFullSnapshots() ([]models.Snapshot, error) {
+	rows, err := db.Query(`
+        SELECT collected_at, s3_location, system_id, system_scope, system_type 
+        FROM snapshots 
+        ORDER BY collected_at`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var snapshots []models.Snapshot
+	for rows.Next() {
+		var s models.Snapshot
+		if err := rows.Scan(&s.CollectedAt, &s.S3Location, &s.SystemID, &s.SystemScope, &s.SystemType); err != nil {
+			return nil, err
+		}
+		snapshots = append(snapshots, s)
+	}
+	return snapshots, rows.Err()
+}
+
+func GetAllCompactSnapshots() ([]models.CompactSnapshot, error) {
+	rows, err := db.Query(`
+        SELECT collected_at, s3_location, system_id, system_scope, system_type 
+        FROM compact_snapshots 
+        ORDER BY collected_at`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var snapshots []models.CompactSnapshot
+	for rows.Next() {
+		var s models.CompactSnapshot
+		if err := rows.Scan(&s.CollectedAt, &s.S3Location, &s.SystemID, &s.SystemScope, &s.SystemType); err != nil {
+			return nil, err
+		}
+		snapshots = append(snapshots, s)
+	}
+	return snapshots, rows.Err()
 }

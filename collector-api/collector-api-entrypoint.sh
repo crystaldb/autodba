@@ -16,4 +16,4 @@ echo "collector-api: Prometheus is ready."
 cd $PARENT_DIR/share/collector_api_server
 
 # Start the Collector API Server
-exec ./collector-api-server
+exec ./collector-api-server  --reprocess-full=${AUTODBA_REPROCESS_FULL_SNAPSHOTS:-false} --reprocess-compact=${AUTODBA_REPROCESS_COMPACT_SNAPSHOTS:-false}

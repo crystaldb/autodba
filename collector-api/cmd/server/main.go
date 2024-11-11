@@ -5,12 +5,17 @@ import (
 	"collector-api/internal/config"
 	"collector-api/internal/db"
 	"collector-api/internal/storage"
+	"flag"
 	"fmt"
 	"log"
 	"net/http"
 )
 
 func main() {
+	reprocessFull := flag.Bool("reprocess-full", false, "Reprocess all full snapshots")
+	reprocessCompact := flag.Bool("reprocess-compact", false, "Reprocess all compact snapshots")
+	flag.Parse()
+
 	// Load the configuration from the global config path
 	cfg, err := config.LoadConfigWithDefaultPath()
 	if err != nil {
@@ -25,6 +30,10 @@ func main() {
 
 	// Initialize the SQLite database
 	db.InitDB(cfg.DBPath)
+
+	if err := api.ReprocessSnapshots(cfg, *reprocessFull, *reprocessCompact); err != nil {
+		log.Printf("Error reprocessing snapshots: %v", err)
+	}
 
 	// Setup routes and handlers, passing the configuration
 	router := api.SetupRoutes(cfg)

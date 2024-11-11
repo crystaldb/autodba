@@ -720,14 +720,14 @@ func ValidateDim(fl validator.FieldLevel) bool {
 }
 
 var validSystemTypes = []string{
+	"self_hosted",
 	"amazon_rds",
+	"heroku",
 	"google_cloudsql",
 	"azure_database",
-	"heroku",
 	"crunchy_bridge",
 	"aiven",
 	"tembo",
-	"self_hosted",
 }
 var validClusterPrefixes = []string{
 	"cluster-ro-",

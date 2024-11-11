@@ -17,7 +17,8 @@ services:
             - PROMETHEUS_HOST=autodba-prometheus:9090
             - COLLECTOR_API_URL=http://autodba-agent:7080
             - AUTODBA_API_KEY=DEFAULT-API-KEY
-
+            - AUTODBA_REPROCESS_FULL_SNAPSHOTS=${AUTODBA_REPROCESS_FULL_SNAPSHOTS:-false}
+            - AUTODBA_REPROCESS_COMPACT_SNAPSHOTS=${AUTODBA_REPROCESS_COMPACT_SNAPSHOTS:-false}
     autodba-webapp:
         build:
             context: bff
