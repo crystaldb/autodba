@@ -3,14 +3,15 @@ package prometheus
 import (
 	"context"
 	"errors"
-	"github.com/prometheus/client_golang/api"
-	v1 "github.com/prometheus/client_golang/api/prometheus/v1"
-	"github.com/prometheus/common/model"
 	"local/bff/pkg/metrics"
 	"log"
 	"sort"
 	"strconv"
 	"time"
+
+	"github.com/prometheus/client_golang/api"
+	v1 "github.com/prometheus/client_golang/api/prometheus/v1"
+	"github.com/prometheus/common/model"
 )
 
 type queryApi interface {
@@ -202,7 +203,7 @@ func (r repository) ExecuteRaw(query string, options map[string]string) ([]map[s
 	}
 	switch r := result.(type) {
 	case model.Vector:
-		log.Printf("Vector: %v\n", r)
+		// log.Printf("Vector: %v\n", r)
 		jsonVector, err := processVector(r, legend, limitLegend)
 		if err != nil {
 			return nil, err
@@ -214,11 +215,11 @@ func (r repository) ExecuteRaw(query string, options map[string]string) ([]map[s
 		// 	return nil, err
 		// }
 
-		log.Println("Vector result (pretty-printed JSON):")
+		// log.Println("Vector result (pretty-printed JSON):")
 		// fmt.Println(string(jsonData))
 		return jsonVector, nil
 	case model.Matrix:
-		log.Printf("Matrix: %v\n", r)
+		// log.Printf("Matrix: %v\n", r)
 		jsonMatrix, err := processMatrix(r, isTimeSeriesQuery, legend, limitLegend)
 		if err != nil {
 			return nil, err
@@ -230,7 +231,7 @@ func (r repository) ExecuteRaw(query string, options map[string]string) ([]map[s
 		// 	return nil, err
 		// }
 
-		log.Println("Matrix result (pretty-printed JSON):")
+		// log.Println("Matrix result (pretty-printed JSON):")
 		// fmt.Println(string(jsonData))
 
 		return jsonMatrix, nil

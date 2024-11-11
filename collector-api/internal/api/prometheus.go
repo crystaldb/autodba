@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"log"
 	"math"
@@ -11,10 +12,14 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	gogoproto "github.com/gogo/protobuf/proto"
 	"github.com/golang/snappy"
 	collector_proto "github.com/pganalyze/collector/output/pganalyze_collector"
+	"github.com/prometheus/client_golang/api"
+	v1 "github.com/prometheus/client_golang/api/prometheus/v1"
+	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/value"
 	"github.com/prometheus/prometheus/prompb"
 )
@@ -43,35 +48,150 @@ type prometheusClient struct {
 	endpoint url.URL
 }
 
+type promResult struct {
+	Metric    map[string]string
+	Value     float64
+	Timestamp time.Time
+}
+
 func (c *prometheusClient) Do(req *http.Request) (*http.Response, error) {
 	req.Header.Set("User-Agent", "autodba")
 	return c.Client.Do(req)
 }
 
+func (c *prometheusClient) QueryWithRetry(query string, ts time.Time, maxRetries int) ([]promResult, error) {
+	result, err := c.Query(query, ts)
+	if err == nil {
+		return result, nil
+	}
+
+	log.Printf("Initial Prometheus query failed: %v", err)
+
+	if !strings.Contains(err.Error(), "503") {
+		return nil, fmt.Errorf("query Prometheus failed: %w", err)
+	}
+
+	log.Printf("Received 503 error, starting retry attempts")
+
+	for retries := 0; retries < maxRetries; retries++ {
+		waitTime := time.Second * time.Duration(retries+1)
+		log.Printf("Retry attempt %d after waiting %v", retries+1, waitTime)
+
+		time.Sleep(waitTime)
+		result, err = c.Query(query, ts)
+
+		if err == nil {
+			log.Printf("Retry attempt %d successful", retries+1)
+			return result, nil
+		}
+		log.Printf("Retry attempt %d failed: %v", retries+1, err)
+	}
+
+	return nil, fmt.Errorf("query Prometheus failed after %d retries: %w", maxRetries, err)
+}
+
+func (c *prometheusClient) Query(query string, t time.Time) ([]promResult, error) {
+	// Create v1 API client
+	client, err := api.NewClient(api.Config{
+		Address: fmt.Sprintf("%s://%s", c.endpoint.Scheme, c.endpoint.Host),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("error creating API client: %w", err)
+	}
+	v1api := v1.NewAPI(client)
+
+	// Execute query using v1 API
+	ctx := context.Background()
+	result, warnings, err := v1api.Query(ctx, query, t)
+	if err != nil {
+		return nil, fmt.Errorf("execute query: %w", err)
+	}
+
+	if len(warnings) > 0 {
+		log.Printf("Warnings from query (\"%s\"): %v", query, warnings)
+	}
+
+	// Convert result to promResult format
+	var results []promResult
+	switch v := result.(type) {
+	case model.Vector:
+		for _, sample := range v {
+			results = append(results, promResult{
+				Metric:    convertMetric(sample.Metric),
+				Value:     float64(sample.Value),
+				Timestamp: sample.Timestamp.Time(),
+			})
+		}
+	case *model.Scalar:
+		results = append(results, promResult{
+			Metric:    make(map[string]string),
+			Value:     float64(v.Value),
+			Timestamp: v.Timestamp.Time(),
+		})
+	case model.Matrix:
+		// For matrix results, we'll take the most recent value from each series
+		for _, sampleStream := range v {
+			if len(sampleStream.Values) > 0 {
+				lastValue := sampleStream.Values[len(sampleStream.Values)-1]
+				results = append(results, promResult{
+					Metric:    convertMetric(sampleStream.Metric),
+					Value:     float64(lastValue.Value),
+					Timestamp: lastValue.Timestamp.Time(),
+				})
+			}
+		}
+	default:
+		return nil, fmt.Errorf("unsupported result type: %T", result)
+	}
+	return results, nil
+}
+
+// Helper function to convert model.Metric to map[string]string
+func convertMetric(metric model.Metric) map[string]string {
+	result := make(map[string]string)
+	for k, v := range metric {
+		result[string(k)] = string(v)
+	}
+	return result
+}
+
 func (c *prometheusClient) RemoteWrite(data []prompb.TimeSeries) (*http.Response, error) {
+	// Create the write request
 	payload := &prompb.WriteRequest{
 		Timeseries: data,
 	}
+
+	// Marshal to protobuf
 	b, err := gogoproto.Marshal(payload)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to marshal payload: %w", err)
 	}
 
+	// Compress with snappy
 	compressed := snappy.Encode(nil, b)
 
+	// Create HTTP request
 	req, err := http.NewRequest(
 		http.MethodPost,
 		c.endpoint.String(),
 		bytes.NewBuffer(compressed),
 	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
+
+	// Set required headers for remote write
 	req.Header.Set("Content-Encoding", "snappy")
 	req.Header.Set("Content-Type", "application/x-protobuf")
 	req.Header.Set("X-Prometheus-Remote-Write-Version", "0.1.0")
 
-	return c.Do(req)
+	// Execute request
+	resp, err := c.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute request: %w", err)
+	}
+
+	return resp, nil
 }
 
 // Helper function to generate system-level labels
@@ -96,6 +216,8 @@ func createTimeSeries(systemInfo SystemInfo, metricName string, additionalLabels
 
 	// Add system info labels
 	labels = append(labels, systemLabels(systemInfo)...)
+
+	labels = filter(labels, nonEmptyValFilter)
 
 	// Sort labels by name
 	sortLabels(labels)
@@ -645,7 +767,7 @@ func createLabelsForBackend(backendKey BackendKey, systemInfo SystemInfo) []prom
 
 	if backendKey.Query != "" {
 		labels = append(labels, prompb.Label{Name: "query", Value: backendKey.Query})
-		labels = append(labels, prompb.Label{Name: "query_fp", Value: backendKey.QueryFingerPrint})
+		// labels = append(labels, prompb.Label{Name: "query_fp", Value: backendKey.QueryFingerPrint})
 		labels = append(labels, prompb.Label{Name: "query_full", Value: backendKey.QueryFull})
 	} else {
 		labels = append(labels, prompb.Label{Name: "query", Value: backendKey.QueryFull})
@@ -657,6 +779,8 @@ func createLabelsForBackend(backendKey BackendKey, systemInfo SystemInfo) []prom
 	if backendKey.Datname != "" {
 		labels = append(labels, prompb.Label{Name: "datname", Value: backendKey.Datname})
 	}
+
+	labels = filter(labels, nonEmptyValFilter)
 
 	// Sort labels by name
 	sortLabels(labels)
@@ -744,7 +868,7 @@ func createStaleMarkers(prevMetrics, currentMetrics []prompb.TimeSeries, timesta
 func getMetricKey(metric prompb.TimeSeries) string {
 	var labelPairs []string
 	for _, label := range metric.Labels {
-		if label.Name != "__name__" {
+		if len(label.Value) != 0 {
 			labelPairs = append(labelPairs, fmt.Sprintf("%s=%s", label.Name, label.Value))
 		}
 	}
@@ -757,4 +881,17 @@ func sortLabels(labels []prompb.Label) {
 	sort.Slice(labels, func(i, j int) bool {
 		return labels[i].Name < labels[j].Name
 	})
+}
+
+func filter[T any](ss []T, test func(T) bool) (ret []T) {
+	for _, s := range ss {
+		if test(s) {
+			ret = append(ret, s)
+		}
+	}
+	return
+}
+
+func nonEmptyValFilter(l prompb.Label) bool {
+	return len(l.Value) != 0
 }
