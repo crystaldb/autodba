@@ -1,17 +1,17 @@
-import { Part, produce } from "solid-js/store";
+import { batch } from "solid-js";
+import { type Part, produce } from "solid-js/store";
+import { fetchWithAuth } from "./api";
+import { contextState } from "./context_state";
 import {
-  allowInFlight,
   ApiEndpoint,
+  DimensionName,
+  type State,
+  allowInFlight,
   clearBusyWaiting,
   clearInFlight,
-  DimensionName,
   getTimeAtPercentage,
   setInFlight,
-  type State,
 } from "./state";
-import { batch } from "solid-js";
-import { contextState } from "./context_state";
-import { fetchWithAuth } from "./api";
 
 const magicPrometheusMaxSamplesLimit = 11000;
 
@@ -411,7 +411,7 @@ async function queryStandardEndpointFullTimeframe(
 
   batch(() => {
     setState("server_now", server_now);
-    const dataBucketName = (apiEndpoint + "Data") as Part<State, keyof State>;
+    const dataBucketName = `${apiEndpoint}Data` as Part<State, keyof State>;
     setState(dataBucketName, data);
 
     clearBusyWaiting();

@@ -1,31 +1,31 @@
-import { contextState } from "../context_state";
+import { arrange, distinct, filter, fixedOrder, map, tidy } from "@tidyjs/tidy";
 import {
+  For,
+  type JSX,
+  Match,
+  Show,
+  Switch,
   createEffect,
   createMemo,
   createSignal,
-  For,
-  JSX,
-  Match,
   on,
   onCleanup,
   onMount,
-  Show,
-  Switch,
   untrack,
 } from "solid-js";
-import {
-  DimensionField,
-  listColors,
-  DimensionName,
-  listDimensionTabNames,
-  CubeData,
-  ActivityCube,
-} from "../state";
-import { arrange, distinct, filter, fixedOrder, map, tidy } from "@tidyjs/tidy";
-import { CubeDimensionTime } from "./cube_activity_time";
-import { DimensionBars } from "./cube_activity_bars";
-import { queryFilterOptions } from "../http";
 import { produce } from "solid-js/store";
+import { contextState } from "../context_state";
+import { queryFilterOptions } from "../http";
+import {
+  type ActivityCube,
+  type CubeData,
+  DimensionField,
+  DimensionName,
+  listColors,
+  listDimensionTabNames,
+} from "../state";
+import { DimensionBars } from "./cube_activity_bars";
+import { CubeDimensionTime } from "./cube_activity_time";
 
 const MAX_WIDTH = 500;
 
@@ -246,6 +246,7 @@ function FilterBySelectButton(props: { class?: string }) {
           "activityCube",
           produce((dat: ActivityCube) => {
             dat[DimensionField.uiFilter1] = value;
+            // biome-ignore lint/style/noNonNullAssertion: required by SolidJS
             dat.uiFilter1Value = undefined!;
           }),
         );
@@ -406,9 +407,7 @@ function filterOptions(cubeData: CubeData): [string, string][] {
             [
               rec.metric[state.activityCube.uiFilter1],
               rec.values[0]?.value
-                ? `${rec.values[0].value.toFixed(1)}: ${
-                    rec.metric[state.activityCube.uiFilter1]
-                  }`
+                ? `${rec.values[0].value.toFixed(1)}: ${rec.metric[state.activityCube.uiFilter1]}`
                 : rec.metric[state.activityCube.uiFilter1],
             ] as [string, string],
         )
@@ -420,6 +419,7 @@ function filterOptions(cubeData: CubeData): [string, string][] {
         distinct((d) => d.result),
         filter(({ result }) => !!result),
       )
+        // biome-ignore lint/style/noNonNullAssertion: TS doesn't recognize the filter above
         .map(({ result }) => result!)
         .map((x) => [x, x]);
 

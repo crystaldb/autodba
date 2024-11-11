@@ -1,5 +1,5 @@
-import { test, expect } from "vitest";
 import { render } from "@solidjs/testing-library";
+import { expect, test } from "vitest";
 import App from "./App";
 import { test_setup } from "./test.setup";
 

@@ -1,8 +1,13 @@
-import { contextState } from "../context_state";
-import { createMemo, For, JSX } from "solid-js";
-import { DimensionName, CubeData, ApiEndpoint, LegendData } from "../state";
 import { first, groupBy, sum, summarize, tidy } from "@tidyjs/tidy";
-import { ILegend } from "./cube_activity";
+import { For, type JSX, createMemo } from "solid-js";
+import { contextState } from "../context_state";
+import {
+  ApiEndpoint,
+  type CubeData,
+  DimensionName,
+  type LegendData,
+} from "../state";
+import type { ILegend } from "./cube_activity";
 
 interface IDimensionBars {
   cubeData: CubeData;
