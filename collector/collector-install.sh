@@ -4,6 +4,8 @@
 
 set -e
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 # Initialize variables
 SYSTEM_INSTALL=false
 USER_INSTALL_DIR=""
@@ -77,7 +79,7 @@ if [ "$PARENT_DIR" != "$(pwd)" ]; then
     mkdir -p "${PARENT_DIR}"
     mkdir -p "${INSTALL_DIR}"
 
-    cp -r ./* "${INSTALL_DIR}"
+    cp -r "${SCRIPT_DIR}"/* "${INSTALL_DIR}"
 else
     echo "Using the current directory for installation, no copying needed."
 fi
