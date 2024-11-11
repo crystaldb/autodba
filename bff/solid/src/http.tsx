@@ -314,6 +314,7 @@ async function queryActivityCubeTimeWindow(): Promise<boolean> {
 export async function queryFilterOptions(): Promise<boolean> {
   const { state, setState } = contextState();
   if (!state.database_list.length) return false;
+  if (!state.instance_active?.dbIdentifier) return false;
   if (!state.server_now) return false;
 
   const url = `/api/v1/activity?why=filteroptions&database_list=(${
@@ -336,7 +337,9 @@ export async function queryFilterOptions(): Promise<boolean> {
     "" //
   }&filterdimselected=${encodeURIComponent(
     "", //
-  )}`;
+  )}&dbidentifier=${
+    state.instance_active.dbIdentifier //
+  }`;
   const response = await fetchWithAuth(url, { method: "GET" });
 
   if (!response.ok) {
