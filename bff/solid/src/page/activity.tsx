@@ -1,10 +1,10 @@
 import { Title } from "@solidjs/meta";
 import { CubeActivity } from "../view/cube_activity";
 
-export function PageActivity() {
+export function PageActivity(title = "Activity | AutoDBA") {
   return (
     <>
-      <Title>Activity | AutoDBA</Title>
+      <Title>{title}</Title>
       <section class="flex flex-col py-4 gap-y-4">
         <Header />
         <CubeActivity />

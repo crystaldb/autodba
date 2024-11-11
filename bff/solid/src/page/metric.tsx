@@ -1,16 +1,16 @@
+import { Title } from "@solidjs/meta";
 import { For } from "solid-js";
 import { contextState } from "../context_state";
-import { EchartsLinechart } from "../view/echarts_linechart";
 import { ApiEndpoint } from "../state";
-import { Title } from "@solidjs/meta";
+import { EchartsLinechart } from "../view/echarts_linechart";
 
-export function PageMetric() {
+export function PageMetric(title = "Metrics | AutoDBA") {
   const { state, setState } = contextState();
   setState("apiThrottle", "needDataFor", ApiEndpoint.metric);
 
   return (
     <>
-      <Title>Metrics | AutoDBA</Title>
+      <Title>{title}</Title>
       <section class="flex flex-col gap-y-12">
         <div class="flex flex-col p-4 gap-y-4 rounded-xl bg-neutral-100 dark:bg-neutral-800">
           <h2 class="font-medium">Database metrics</h2>

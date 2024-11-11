@@ -42,7 +42,7 @@ export function InstanceHeader(props: PropsInstanceHeader) {
                   <li
                     class={`px-6 py-4 cursor-pointer overflow-auto ${cssSelectorGeneralHover}`}
                     classList={{
-                      "text-fuchsia-500 rounded-md bg-white dark:bg-black":
+                      "text-fuchsia-500 rounded-md bg-backgroundlite dark:bg-backgrounddark":
                         instance.dbIdentifier ===
                         state.instance_active?.dbIdentifier,
                     }}
