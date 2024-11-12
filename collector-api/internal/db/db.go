@@ -115,7 +115,7 @@ func GetAllFullSnapshots() ([]models.Snapshot, error) {
 	rows, err := db.Query(`
         SELECT collected_at, s3_location, system_id, system_scope, system_type 
         FROM snapshots 
-        ORDER BY collected_at DESC`)
+        ORDER BY collected_at ASC`)
 	if err != nil {
 		return nil, err
 	}
@@ -147,7 +147,7 @@ func GetAllCompactSnapshots() ([]models.CompactSnapshot, error) {
 	rows, err := db.Query(`
         SELECT collected_at, s3_location, system_id, system_scope, system_type 
         FROM compact_snapshots 
-        ORDER BY collected_at DESC`)
+        ORDER BY collected_at ASC`)
 	if err != nil {
 		return nil, err
 	}
