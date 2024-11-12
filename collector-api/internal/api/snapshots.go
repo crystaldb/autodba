@@ -538,14 +538,14 @@ func ReprocessSnapshots(cfg *config.Config, reprocessFull, reprocessCompact bool
 	// Process snapshots in chronological order
 	for _, snapshot := range allSnapshots {
 		if snapshot.isCompact {
-			log.Printf("Processing compact snapshot: %s", snapshot.s3Location)
+			log.Printf("Processing compact snapshot: %s (system_id: %s)", snapshot.s3Location, snapshot.systemInfo.SystemID)
 			if err := handleCompactSnapshot(cfg, snapshot.s3Location, snapshot.timestamp, snapshot.systemInfo); err != nil {
-				log.Printf("Error processing compact snapshot %s: %v", snapshot.s3Location, err)
+				log.Printf("Error processing compact snapshot %s (system_id: %s): %v", snapshot.s3Location, snapshot.systemInfo.SystemID, err)
 			}
 		} else {
-			log.Printf("Processing full snapshot: %s", snapshot.s3Location)
+			log.Printf("Processing full snapshot: %s (system_id: %s)", snapshot.s3Location, snapshot.systemInfo.SystemID)
 			if err := handleFullSnapshot(cfg, snapshot.s3Location, snapshot.timestamp, snapshot.systemInfo); err != nil {
-				log.Printf("Error processing full snapshot %s: %v", snapshot.s3Location, err)
+				log.Printf("Error processing full snapshot %s (system_id: %s): %v", snapshot.s3Location, snapshot.systemInfo.SystemID, err)
 			}
 		}
 	}
