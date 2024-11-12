@@ -126,7 +126,7 @@ func init() {
 	previousMetrics = make(map[SystemInfo]map[string][]prompb.TimeSeries)
 }
 
-func handleSnapshot(cfg *config.Config, s3Location string, collectedAt int64, systemInfo SystemInfo, processFunc func(*prometheusClient, string, SystemInfo) ([]prompb.TimeSeries, error)) error {
+func handleSnapshot(cfg *config.Config, s3Location string, collectedAt int64, systemInfo SystemInfo, processFunc func(*prometheusClient, string, SystemInfo, int64) ([]prompb.TimeSeries, error)) error {
 	if cfg.Debug {
 		log.Printf("Processing snapshot with s3_location: %s and collected_at: %d", s3Location, collectedAt)
 	}
@@ -136,7 +136,7 @@ func handleSnapshot(cfg *config.Config, s3Location string, collectedAt int64, sy
 		endpoint: prometheusURL,
 	}
 
-	allMetrics, err := processFunc(&promClient, s3Location, systemInfo)
+	allMetrics, err := processFunc(&promClient, s3Location, systemInfo, collectedAt)
 	if err != nil {
 		return fmt.Errorf("process snapshot data: %w", err)
 	}
@@ -156,7 +156,7 @@ func handleFullSnapshot(cfg *config.Config, s3Location string, collectedAt int64
 	return handleSnapshot(cfg, s3Location, collectedAt, systemInfo, processFullSnapshotData)
 }
 
-func processFullSnapshotData(promClient *prometheusClient, s3Location string, systemInfo SystemInfo) ([]prompb.TimeSeries, error) {
+func processFullSnapshotData(promClient *prometheusClient, s3Location string, systemInfo SystemInfo, collectedAt int64) ([]prompb.TimeSeries, error) {
 	pbBytes, err := readAndDecompressSnapshot(s3Location)
 	if err != nil {
 		return nil, fmt.Errorf("read and decompress snapshot: %w", err)
@@ -167,7 +167,7 @@ func processFullSnapshotData(promClient *prometheusClient, s3Location string, sy
 		return nil, fmt.Errorf("unmarshal full snapshot: %w", err)
 	}
 
-	currentMetrics := fullSnapshotMetrics(&fullSnapshot, systemInfo)
+	currentMetrics := fullSnapshotMetrics(&fullSnapshot, systemInfo, collectedAt)
 
 	if previousMetrics[systemInfo] == nil {
 		err := initializePreviousMetrics(promClient, systemInfo, FullSnapshotType)
@@ -404,7 +404,7 @@ func handleCompactSnapshot(cfg *config.Config, s3Location string, collectedAt in
 	return handleSnapshot(cfg, s3Location, collectedAt, systemInfo, processCompactSnapshotData)
 }
 
-func processCompactSnapshotData(promClient *prometheusClient, s3Location string, systemInfo SystemInfo) ([]prompb.TimeSeries, error) {
+func processCompactSnapshotData(promClient *prometheusClient, s3Location string, systemInfo SystemInfo, collectedAt int64) ([]prompb.TimeSeries, error) {
 	pbBytes, err := readAndDecompressSnapshot(s3Location)
 	if err != nil {
 		return nil, fmt.Errorf("read and decompress snapshot: %w", err)
@@ -415,7 +415,7 @@ func processCompactSnapshotData(promClient *prometheusClient, s3Location string,
 		return nil, fmt.Errorf("unmarshal compact snapshot: %w", err)
 	}
 
-	currentMetrics := compactSnapshotMetrics(&compactSnapshot, systemInfo)
+	currentMetrics := compactSnapshotMetrics(&compactSnapshot, systemInfo, collectedAt)
 
 	if previousMetrics[systemInfo] == nil {
 		err := initializePreviousMetrics(promClient, systemInfo, CompactSnapshotType)
