@@ -65,7 +65,7 @@ func (c *prometheusClient) QueryWithRetry(query string, ts time.Time, maxRetries
 		return result, nil
 	}
 
-	log.Printf("Initial Prometheus query failed: %v", err)
+	log.Printf("Initial Prometheus query (%s) failed: %v", query, err)
 
 	if !strings.Contains(err.Error(), "503") {
 		return nil, fmt.Errorf("query Prometheus failed: %w", err)

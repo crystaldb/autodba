@@ -13,16 +13,19 @@ INSTANCE_ID=0
 CONFIG_FILE=""
 KEEP_CONTAINERS=false
 USE_COLLECTOR=true
-
+REPROCESS_FULL=false
+REPROCESS_COMPACT=false
 
 # Function to display usage information
 usage() {
     echo "Usage: $0 [--config <CONFIG_FILE>] [--instance-id <INSTANCE_ID>] [--keep-containers] [--no-collector]"
     echo "Options:"
-    echo "--config                    <CONFIG_FILE> path to the configuration file (required unless --no-collector is set)"
-    echo "--instance-id               <INSTANCE_ID> if you are running multiple instances of the agent, specify a unique number for each"
-    echo "--keep-containers           keep containers running after script exits"
-    echo "--no-collector             run without the collector component"
+    echo "--config                      <CONFIG_FILE> path to the configuration file (required unless --no-collector is set)"
+    echo "--instance-id                 <INSTANCE_ID> if you are running multiple instances of the agent, specify a unique number for each"
+    echo "--reprocess-full-snapshots    reprocess all full snapshots from storage"
+    echo "--reprocess-compact-snapshots reprocess all compact snapshots from storage"
+    echo "--keep-containers             keep containers running after script exits"
+    echo "--no-collector                run without the collector component"
     exit 1
 }
 
@@ -43,6 +46,14 @@ while [[ "$#" -gt 0 ]]; do
             ;;
         --no-collector)
             USE_COLLECTOR=false
+            shift
+            ;;
+        --reprocess-full-snapshots)
+            REPROCESS_FULL=true
+            shift
+            ;;
+        --reprocess-compact-snapshots)
+            REPROCESS_COMPACT=true
             shift
             ;;
         *)
@@ -102,6 +113,19 @@ fi
 # Stop and remove existing containers
 echo "Stopping and removing existing containers..."
 $COMPOSE_CMD down
+
+# Set reprocessing environment variables
+if [ "$REPROCESS_FULL" = true ]; then
+    export AUTODBA_REPROCESS_FULL_SNAPSHOTS=true
+else
+    export AUTODBA_REPROCESS_FULL_SNAPSHOTS=false
+fi
+
+if [ "$REPROCESS_COMPACT" = true ]; then
+    export AUTODBA_REPROCESS_COMPACT_SNAPSHOTS=true
+else
+    export AUTODBA_REPROCESS_COMPACT_SNAPSHOTS=false
+fi
 
 # Build and start the containers
 echo "Building and starting containers..."

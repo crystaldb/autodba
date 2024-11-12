@@ -17,13 +17,20 @@ func TestStoreSnapshotMetadata(t *testing.T) {
 	snapshot := models.Snapshot{
 		CollectedAt: 1234567890,
 		S3Location:  "/test/dir",
+		SystemID:    "test-system",
+		SystemScope: "test-scope",
+		SystemType:  "self_hosted",
 	}
 
 	// Store snapshot metadata
 	err := db.StoreSnapshotMetadata(snapshot)
 	assert.NoError(t, err)
 
-	// Check that snapshot was inserted (you can extend this with SELECT queries)
+	// Verify the data was stored correctly
+	snapshots, err := db.GetAllFullSnapshots()
+	assert.NoError(t, err)
+	assert.Len(t, snapshots, 1)
+	assert.Equal(t, snapshot, snapshots[0])
 }
 
 func TestStoreCompactSnapshotMetadata(t *testing.T) {
@@ -35,11 +42,17 @@ func TestStoreCompactSnapshotMetadata(t *testing.T) {
 	snapshot := models.CompactSnapshot{
 		CollectedAt: 1234567890,
 		S3Location:  "/test/dir",
+		SystemID:    "test-system",
+		SystemScope: "test-scope",
+		SystemType:  "self_hosted",
 	}
 
 	// Store compact snapshot metadata
 	err := db.StoreCompactSnapshotMetadata(snapshot)
 	assert.NoError(t, err)
 
-	// Check that compact snapshot was inserted (you can extend this with SELECT queries)
+	snapshots, err := db.GetAllCompactSnapshots()
+	assert.NoError(t, err)
+	assert.Len(t, snapshots, 1)
+	assert.Equal(t, snapshot, snapshots[0])
 }

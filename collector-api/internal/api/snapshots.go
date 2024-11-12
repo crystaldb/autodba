@@ -82,18 +82,21 @@ func SnapshotHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Received snapshot submission: s3_location=%s, collected_at=%d", s3Location, collectedAt)
 	}
 
+	systemInfo := extractSystemInfo(r)
+
 	// Store the snapshot metadata
 	snapshot := models.Snapshot{
 		S3Location:  s3Location,
 		CollectedAt: collectedAt,
+		SystemID:    systemInfo.SystemID,
+		SystemScope: systemInfo.SystemScope,
+		SystemType:  systemInfo.SystemType,
 	}
 	err = db.StoreSnapshotMetadata(snapshot)
 	if err != nil {
 		http.Error(w, "Error storing snapshot", http.StatusInternalServerError)
 		return
 	}
-
-	systemInfo := extractSystemInfo(r)
 
 	// Simulate handling the snapshot submission (replace with actual logic)
 	err = handleFullSnapshot(cfg, s3Location, collectedAt, systemInfo)
@@ -206,7 +209,7 @@ func initializePreviousMetrics(promClient *prometheusClient, systemInfo SystemIn
 	ts := time.Now()
 	result, err := promClient.QueryWithRetry(query, ts, 10)
 	if err != nil {
-		return fmt.Errorf("query Prometheus for previous metrics: %w", err)
+		return fmt.Errorf("query (%s) Prometheus for previous metrics: %w", query, err)
 	}
 
 	var metrics []prompb.TimeSeries
@@ -307,18 +310,21 @@ func CompactSnapshotHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Received compact snapshot: s3_location=%s, collected_at=%d", s3Location, collectedAt)
 	}
 
+	systemInfo := extractSystemInfo(r)
+
 	// Store the snapshot metadata
 	snapshot := models.CompactSnapshot{
 		S3Location:  s3Location,
 		CollectedAt: collectedAt,
+		SystemID:    systemInfo.SystemID,
+		SystemScope: systemInfo.SystemScope,
+		SystemType:  systemInfo.SystemType,
 	}
 	err = db.StoreCompactSnapshotMetadata(snapshot)
 	if err != nil {
 		http.Error(w, "Error storing compact snapshot", http.StatusInternalServerError)
 		return
 	}
-
-	systemInfo := extractSystemInfo(r)
 
 	// Simulate handling the compact snapshot (you'll replace this with your actual logic)
 	err = handleCompactSnapshot(cfg, s3Location, collectedAt, systemInfo)
@@ -442,4 +448,99 @@ func sendRemoteWrite(client prometheusClient, promPB []prompb.TimeSeries) error 
 		return fmt.Errorf("unexpected status code %d: %s", resp.StatusCode, body)
 	}
 	return nil
+}
+
+func ReprocessSnapshots(cfg *config.Config, reprocessFull, reprocessCompact bool) error {
+	if !reprocessFull && !reprocessCompact {
+		return nil
+	}
+
+	if reprocessFull {
+		log.Println("Reprocessing full snapshots...")
+
+		// Get all full snapshots from SQLite
+		snapshots, err := db.GetAllFullSnapshots()
+		if err != nil {
+			return fmt.Errorf("get snapshots: %w", err)
+		}
+
+		for _, snapshot := range snapshots {
+			log.Printf("Processing full snapshot: %s", snapshot.S3Location)
+
+			systemInfo := SystemInfo{
+				SystemID:    snapshot.SystemID,
+				SystemScope: snapshot.SystemScope,
+				SystemType:  snapshot.SystemType,
+			}
+
+			// Verify system info from snapshot matches database
+			snapshotSystemInfo, err := extractSystemInfoFromFullSnapshot(snapshot.S3Location)
+			if err != nil {
+				log.Printf("Error extracting system info from full snapshot %s: %v", snapshot.S3Location, err)
+				continue
+			}
+
+			if systemInfo != snapshotSystemInfo {
+				log.Printf("Warning: System info mismatch for snapshot %s. DB: %+v, Snapshot: %+v",
+					snapshot.S3Location, systemInfo, snapshotSystemInfo)
+			}
+
+			if err := handleFullSnapshot(cfg, snapshot.S3Location, snapshot.CollectedAt, snapshotSystemInfo); err != nil {
+				log.Printf("Error processing full snapshot %s: %v", snapshot.S3Location, err)
+			}
+		}
+	}
+
+	if reprocessCompact {
+		compactSnapshots, err := db.GetAllCompactSnapshots()
+		if err != nil {
+			return fmt.Errorf("get compact snapshots: %w", err)
+		}
+
+		for _, snapshot := range compactSnapshots {
+			log.Printf("Processing compact snapshot: %s", snapshot.S3Location)
+
+			systemInfo := SystemInfo{
+				SystemID:    snapshot.SystemID,
+				SystemScope: snapshot.SystemScope,
+				SystemType:  snapshot.SystemType,
+			}
+
+			if err := handleCompactSnapshot(cfg, snapshot.S3Location, snapshot.CollectedAt, systemInfo); err != nil {
+				log.Printf("Error processing compact snapshot %s: %v", snapshot.S3Location, err)
+			}
+		}
+	}
+
+	return nil
+}
+
+var validSystemTypes = []string{
+	"self_hosted",
+	"amazon_rds",
+	"heroku",
+	"google_cloudsql",
+	"azure_database",
+	"crunchy_bridge",
+	"aiven",
+	"tembo",
+}
+
+// New helper functions to extract system info from snapshots
+func extractSystemInfoFromFullSnapshot(s3Location string) (SystemInfo, error) {
+	pbBytes, err := readAndDecompressSnapshot(s3Location)
+	if err != nil {
+		return SystemInfo{}, fmt.Errorf("read and decompress snapshot: %w", err)
+	}
+
+	var fullSnapshot collector_proto.FullSnapshot
+	if err := proto.Unmarshal(pbBytes, &fullSnapshot); err != nil {
+		return SystemInfo{}, fmt.Errorf("unmarshal full snapshot: %w", err)
+	}
+
+	return SystemInfo{
+		SystemID:    fullSnapshot.System.GetSystemId(),
+		SystemScope: fullSnapshot.System.GetSystemScope(),
+		SystemType:  validSystemTypes[int(fullSnapshot.System.GetSystemInformation().GetType())],
+	}, nil
 }
