@@ -17,12 +17,14 @@ type Config struct {
 	RoutesConfig     map[string]server.RouteConfig `json:"routes_config"`
 	WebappPath       string                        `json:"webapp_path"`
 	AccessKey        string                        `json:"access_key"`
+	DataPath         string                        `json:"data_path"`
 }
 
 func main() {
 	fmt.Println("Starting metrics server")
 	var webappPath string
 
+	// TODO why is webappPath configured differently from other settings?
 	flag.StringVar(&webappPath, "webappPath", "", "Webapp Path")
 	flag.Parse()
 
@@ -45,17 +47,18 @@ func run(webappPath string) error {
 	err := viper.ReadInConfig()
 
 	if err != nil {
-		panic(fmt.Errorf("Fatal error config file: %s \n", err))
+		// TODO why panic rather than just return error?
+		panic(fmt.Errorf("fatal error config file: %s", err))
 	}
 
 	rawConfig := make(map[string]interface{})
 	if err := viper.Unmarshal(&rawConfig); err != nil {
-		return fmt.Errorf("Error unmarshaling config file: %s", err)
+		return fmt.Errorf("error unmarshaling config file: %s", err)
 	}
 
 	var config Config
 	config.WebappPath = webappPath
-	config.Port = rawConfig["port"].(string)
+	var ok bool
 
 	// Get access key from environment variable with fallback to config file
 	accessKey := os.Getenv("AUTODBA_ACCESS_KEY")
@@ -64,9 +67,28 @@ func run(webappPath string) error {
 	}
 	config.AccessKey = accessKey
 
+	// Get port from environment variable with fallback to config file
+	port := os.Getenv("AUTODBA_BFF_PORT")
+	if port == "" {
+		port, ok = rawConfig["port"].(string)
+		if !ok || port == "" {
+			return fmt.Errorf("port must be set via the AUTODBA_BFF_PORT environment variable or in the config file")
+		}
+	}
+	config.Port = port
+
+	dataPath := os.Getenv("AUTODBA_DATA_PATH")
+	if dataPath == "" {
+		dataPath, ok = rawConfig["data_path"].(string)
+		if !ok || dataPath == "" {
+			return fmt.Errorf("data path must be set via the AUTODBA_DATA_PATH environment variable or in the config file")
+		}
+	}
+	config.DataPath = dataPath
+
 	prometheusURL := os.Getenv("PROMETHEUS_URL")
 	if prometheusURL == "" {
-		prometheusURL, ok := rawConfig["prometheus_server"].(string)
+		prometheusURL, ok = rawConfig["prometheus_server"].(string)
 		if !ok || prometheusURL == "" {
 			prometheusURL = "http://localhost:9090"
 		}
@@ -108,7 +130,7 @@ func run(webappPath string) error {
 	metrics_repo := prometheus.New(config.PrometheusServer)
 	metrics_service := metrics.CreateService(metrics_repo)
 
-	server := server.CreateServer(config.RoutesConfig, metrics_service, config.Port, config.WebappPath, config.AccessKey)
+	server := server.CreateServer(config.RoutesConfig, metrics_service, config.Port, config.WebappPath, config.AccessKey, config.DataPath)
 
 	if err = server.Run(); err != nil {
 		return err

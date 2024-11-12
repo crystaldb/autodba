@@ -3,6 +3,8 @@ FROM ubuntu:20.04 AS base
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     wget \
+    libc-dev \
+    gcc \
     software-properties-common \
     && rm -rf /var/lib/apt/lists/*
 
@@ -40,6 +42,8 @@ ENV PATH="/usr/lib/go/bin:${PATH}" \
 FROM go_builder as bff_builder
 # Build BFF
 WORKDIR /home/autodba/bff
+# Ensure CGO is enabled
+ENV CGO_ENABLED=1
 RUN mkdir -p /usr/local/autodba/bin
 COPY ./go.mod ./go.sum ./
 RUN go mod download
