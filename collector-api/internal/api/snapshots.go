@@ -6,7 +6,6 @@ import (
 	"collector-api/internal/db"
 	"collector-api/pkg/models"
 	"compress/zlib"
-	"context"
 	"fmt"
 	"io"
 	"log"
@@ -20,8 +19,6 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	collector_proto "github.com/pganalyze/collector/output/pganalyze_collector"
-	"github.com/prometheus/client_golang/api"
-	v1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/prometheus/prompb"
 )
 
