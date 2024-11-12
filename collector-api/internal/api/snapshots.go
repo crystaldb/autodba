@@ -458,17 +458,8 @@ func ReprocessSnapshots(cfg *config.Config, reprocessFull, reprocessCompact bool
 		return nil
 	}
 
-	promClient := prometheusClient{
-		Client:   http.DefaultClient,
-		endpoint: prometheusURL,
-	}
-
 	if reprocessFull {
 		log.Println("Reprocessing full snapshots...")
-		// Delete existing prometheus data except cc_pg_stat_activity
-		if err := deletePrometheusData(&promClient, `{__name__=~"cc_.*", __name__!="cc_pg_stat_activity"}`); err != nil {
-			return fmt.Errorf("delete prometheus data: %w", err)
-		}
 
 		// Get all full snapshots from SQLite
 		snapshots, err := db.GetAllFullSnapshots()
@@ -555,48 +546,4 @@ func extractSystemInfoFromFullSnapshot(s3Location string) (SystemInfo, error) {
 		SystemScope: fullSnapshot.System.GetSystemScope(),
 		SystemType:  validSystemTypes[int(fullSnapshot.System.GetSystemInformation().GetType())],
 	}, nil
-}
-
-func deletePrometheusData(c *prometheusClient, matcher string) error {
-	maxRetries := 5
-	baseDelay := time.Second
-
-	// Create v1 API client
-	client, err := api.NewClient(api.Config{
-		Address: fmt.Sprintf("%s://%s", c.endpoint.Scheme, c.endpoint.Host),
-	})
-	if err != nil {
-		return fmt.Errorf("error creating API client: %w", err)
-	}
-	v1api := v1.NewAPI(client)
-
-	ctx := context.Background()
-
-	for attempt := 0; attempt < maxRetries; attempt++ {
-		if attempt > 0 {
-			delay := time.Duration(attempt) * baseDelay
-			log.Printf("Retrying delete operation in %v (attempt %d/%d)", delay, attempt+1, maxRetries)
-			time.Sleep(delay)
-		}
-
-		err = v1api.DeleteSeries(ctx, []string{matcher}, time.Time{}, time.Time{})
-		if err == nil {
-			// Clean up the tombstones
-			err = v1api.CleanTombstones(ctx)
-			if err == nil {
-				return nil
-			}
-		}
-
-		if err != nil {
-			log.Printf("Attempt %d failed: %v", attempt+1, err)
-			// Check if it's a 503 error
-			if strings.Contains(err.Error(), "503") {
-				continue // Retry on 503
-			}
-			return fmt.Errorf("delete series: %w", err)
-		}
-	}
-
-	return fmt.Errorf("delete series failed after %d attempts: %w", maxRetries, err)
 }
