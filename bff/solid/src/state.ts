@@ -1,8 +1,8 @@
 import { batch } from "solid-js";
-import { createStore, produce, SetStoreFunction } from "solid-js/store";
+import { type SetStoreFunction, createStore, produce } from "solid-js/store";
 import { queryEndpointData } from "./http";
 
-let dateZero = +new Date();
+const dateZero = +new Date();
 
 export type Instance = {
   /** uniquely identifies instance */
@@ -26,7 +26,25 @@ export type State = {
   instance_active?: Instance;
   instance_list: Instance[];
   activityCube: ActivityCube;
+  // biome-ignore lint/suspicious/noExplicitAny: TODO make this explicit
   metricData: any[];
+};
+
+export type Anything =
+  | number
+  | boolean
+  | Node
+  | JSX.ArrayElement
+  | (string & {})
+  | null
+  | undefined;
+
+export type OrgUser = {
+  userId: string;
+  name: string;
+  email: string;
+  roleType: string;
+  invitedAt: string;
 };
 
 /** ApiType: State used for handling API request throttling
@@ -275,11 +293,17 @@ const [state, setState]: [State, SetStoreFunction<State>] = createStore({
   force_refresh_by_incrementing: 0,
 } as State);
 
-export function useState(): { state: State; setState: SetStoreFunction<State> } {
+export function useState(): {
+  state: State;
+  setState: SetStoreFunction<State>;
+} {
   return { state, setState };
 }
 
-export const datazoomEventHandler = (event: any) => {
+export const datazoomEventHandler = (
+  // biome-ignore lint/suspicious/noExplicitAny: not sure what the event is
+  event: any,
+) => {
   console.log("Chart2 Data Zoom", event);
   batch(() => {
     const wasOriginalRangeEndEqualTo100: boolean = state.range_end === 100.0;
@@ -320,7 +344,9 @@ export function clearBusyWaiting() {
   setState(
     "apiThrottle",
     produce((apiThrottle: ApiThrottle) => {
+      // biome-ignore lint/style/noNonNullAssertion: required by SolidJS
       apiThrottle.requestWaiting = undefined!;
+      // biome-ignore lint/style/noNonNullAssertion: required by SolidJS
       apiThrottle.requestWaitingCount = undefined!;
     }),
   );
@@ -355,6 +381,7 @@ export function clearInFlight(endpoint: ApiEndpoint) {
   setState(
     "apiThrottle",
     produce((apiThrottle: ApiThrottle) => {
+      // biome-ignore lint/style/noNonNullAssertion: required by SolidJS
       apiThrottle.requestInFlight[endpoint] = undefined!;
     }),
   );

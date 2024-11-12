@@ -1,6 +1,6 @@
 import { EChartsAutoSize } from "echarts-solid";
-import { contextState } from "../context_state";
 import { mergeProps } from "solid-js";
+import { contextState } from "../context_state";
 import { datazoomEventHandler } from "../state";
 
 interface PropsEchartsLinechart {

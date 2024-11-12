@@ -1,9 +1,9 @@
 import type { Config } from "tailwindcss";
 
-import { green } from "tailwindcss/colors";
-// @ts-expect-error
-import pluginRtl from "tailwindcss-rtl";
 import pluginTypography from "@tailwindcss/typography";
+// @ts-expect-error tailwindcss-rtl has no typescript definition
+import pluginRtl from "tailwindcss-rtl";
+import { green, zinc } from "tailwindcss/colors";
 
 const config: Config = {
   content: ["./src/index.html", "./src/**/*.{js,jsx,ts,tsx}"],
@@ -14,6 +14,8 @@ const config: Config = {
         xs: "512px",
       },
       colors: {
+        backgrounddark: zinc[900],
+        backgroundlite: zinc[100],
         notificationdark: green,
         notificationlite: green,
       },

@@ -11,6 +11,11 @@ export default defineConfig({
     // devtools(),
     solidPlugin(),
   ],
+  resolve: {
+    alias: {
+      "~": "/src",
+    },
+  },
   server: {
     port: 3000,
     proxy: {
@@ -18,7 +23,8 @@ export default defineConfig({
         target: "http://localhost:5001/",
         secure: false,
         headers: {
-          "Autodba-Access-Key": process.env.VITE_ACCESS_KEY || "DEFAULT-ACCESS-KEY",
+          "Autodba-Access-Key":
+            process.env.VITE_ACCESS_KEY || "DEFAULT-ACCESS-KEY",
         },
         //"pathRewrite": { "^/api": "" }
       },

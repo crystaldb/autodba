@@ -1,8 +1,8 @@
 import { EChartsAutoSize } from "echarts-solid";
-import { contextState } from "../context_state";
-import { mergeProps, Show } from "solid-js";
-import { datazoomEventHandler, getTimeAtPercentage } from "../state";
 import moment from "moment-timezone";
+import { Show, mergeProps } from "solid-js";
+import { contextState } from "../context_state";
+import { datazoomEventHandler, getTimeAtPercentage } from "../state";
 
 interface IEchartsTimebarProps {
   class?: string;
@@ -82,36 +82,30 @@ export function EchartsTimebar(props: IEchartsTimebarProps) {
         >
           <p class="absolute isolate -z-10 -top-4 inset-x-0 text-sm px-1 flex bg-inherit">
             <span
-              style={{ "margin-left": state.range_begin + "%" }}
-              class="absolute z-10 bg-zinc-100 dark:bg-zinc-900 p-0.5 rounded"
+              style={{ "margin-left": `${state.range_begin}%` }}
+              class="absolute z-10 bg-backgroundlite dark:bg-backgrounddark p-0.5 rounded"
             >
               {moment(datasource()[1]).format(timeFormat).split(/ /)[0]}
             </span>
             <span
               style={{
-                "margin-left": "calc(" + state.range_end + "% - 3rem)",
-                opacity:
-                  "calc( 2 * " +
-                  (state.range_end - state.range_begin) / 100 +
-                  " )",
+                "margin-left": `calc(${state.range_end}% - 3rem)`,
+                opacity: `calc( 2 * ${(state.range_end - state.range_begin) / 100} )`,
               }}
-              class="-z-10 bg-zinc-100 dark:bg-zinc-900 p-0.5 rounded"
+              class="-z-10 bg-backgroundlite dark:bg-backgrounddark p-0.5 rounded"
             >
               {moment(datasource()[2]).format(timeFormat).split(/ /)[0]}
             </span>
           </p>
         </Show>
         <p class="absolute -z-10 top-4 inset-x-0 text-sm px-2.5 flex justify-between">
-          <span class="bg-zinc-100 dark:bg-zinc-900 p-0.5 rounded">
+          <span class="bg-backgroundlite dark:bg-backgrounddark p-0.5 rounded">
             {moment(datasource()[0]).format(timeFormat).split(/ /)[0]}
           </span>
-          <span class="bg-zinc-100 dark:bg-zinc-900 p-0.5 rounded">
-            {moment(datasource()[0]).format(timeFormat).split(/ /)[1] +
-              " (" +
-              timezoneAbbreviation +
-              ")"}
+          <span class="bg-backgroundlite dark:bg-backgrounddark p-0.5 rounded">
+            {`${moment(datasource()[0]).format(timeFormat).split(/ /)[1]} (${timezoneAbbreviation})`}
           </span>
-          <span class="bg-zinc-100 dark:bg-zinc-900 p-0.5 rounded">
+          <span class="bg-backgroundlite dark:bg-backgrounddark p-0.5 rounded">
             {moment(datasource()[3]).format(timeFormat).split(/ /)[0]}
           </span>
         </p>

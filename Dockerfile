@@ -49,6 +49,8 @@ COPY bff/go.mod bff/go.sum ./
 RUN go mod download
 COPY bff/ ./
 RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.55.2
+COPY bff/solid/ ./solid
+RUN cd ./solid && npm install && npx @biomejs/biome check .
 
 FROM builder AS test
 WORKDIR /home/autodba/bff
