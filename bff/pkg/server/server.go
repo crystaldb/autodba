@@ -17,11 +17,8 @@ import (
 	"time"
 
 	_ "github.com/mattn/go-sqlite3"
-
 	collector_proto "github.com/pganalyze/collector/output/pganalyze_collector"
-
 	"compress/zlib"
-
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"
 	"google.golang.org/protobuf/proto"
