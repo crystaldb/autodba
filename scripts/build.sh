@@ -118,7 +118,7 @@ for arch in amd64 arm64; do
     mkdir -p "${COLLECTOR_RELEASE_DIR}"
     git clone --recurse-submodules https://github.com/crystaldb/collector.git "${COLLECTOR_DIR}"
     cd "${COLLECTOR_DIR}"
-    git checkout 75a5236da6dd44fe7b90f0d05dd44780df6ae9d8
+    git checkout 636bc0996ecc881acc0942859f8a28684dadfc7e
     wget https://github.com/protocolbuffers/protobuf/releases/download/v28.2/protoc-28.2-linux-${PROTOC_ARCH_SUFFIX}.zip
     unzip protoc-28.2-linux-${PROTOC_ARCH_SUFFIX}.zip -d protoc
     make build
