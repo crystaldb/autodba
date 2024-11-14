@@ -407,7 +407,9 @@ function filterOptions(cubeData: CubeData): [string, string][] {
             [
               rec.metric[state.activityCube.uiFilter1],
               rec.values[0]?.value
-                ? `${rec.values[0].value.toFixed(1)}: ${rec.metric[state.activityCube.uiFilter1]}`
+                ? `${rec.values[0].value.toFixed(1)}: ${
+                    rec.metric[state.activityCube.uiFilter1]
+                  }`
                 : rec.metric[state.activityCube.uiFilter1],
             ] as [string, string],
         )

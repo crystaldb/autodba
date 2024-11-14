@@ -1,7 +1,7 @@
 import { batch } from "solid-js";
 import { type Part, produce } from "solid-js/store";
-import { fetchWithAuth } from "./api";
-import { contextState } from "./context_state";
+import { fetchWithAuth } from "~/api";
+import { contextState } from "~/context_state";
 import {
   ApiEndpoint,
   DimensionName,
@@ -11,7 +11,7 @@ import {
   clearInFlight,
   getTimeAtPercentage,
   setInFlight,
-} from "./state";
+} from "~/state";
 
 const magicPrometheusMaxSamplesLimit = 11000;
 
@@ -21,8 +21,8 @@ const magicPrometheusMaxSamplesLimit = 11000;
  */
 const retryMs = 5000;
 type GlobalWithTemporaryHackTimeouts = typeof globalThis & {
-  timeout_queryInstances: NodeJS.Timeout | null;
   timeout_queryDatabases: NodeJS.Timeout | null;
+  timeout_queryInstances: NodeJS.Timeout | null;
 };
 const globalWithTemporaryHackTimeouts =
   globalThis as GlobalWithTemporaryHackTimeouts;
@@ -51,6 +51,11 @@ export async function queryInstances(retryIfNeeded: boolean): Promise<boolean> {
   }
   const json = await response.json();
   const instance_list = json?.list || [];
+  if (!instance_list.length) {
+    if (retryIfNeeded)
+      return retryQuery("timeout_queryInstances", queryInstances);
+    return false;
+  }
   const instance_active = instance_list[0]
     ? JSON.parse(JSON.stringify(instance_list[0]))
     : null;
@@ -59,19 +64,14 @@ export async function queryInstances(retryIfNeeded: boolean): Promise<boolean> {
     setState("instance_list", [
       ...instance_list,
       // {
-      //   dbIdentifier:
-      //     "0000000000111111111222222222233333333334444444444455555555555" +
-      //     "::" +
-      //     "amazon_rds" +
-      //     "::" +
-      //     "us-west-99",
-      //   systemId:
-      //     "0000000000111111111222222222233333333334444444444455555555555",
+      //   dbIdentifier: "0000000000111111111222222222233333333334444444444455555555555" + "::" + "amazon_rds" + "::" + "us-west-99",
+      //   systemId: "0000000000111111111222222222233333333334444444444455555555555",
       //   systemType: "amazon_rds",
       //   systemScope: "us-west-99",
       // },
     ]);
   });
+  if (retryIfNeeded) queryDatabases(retryIfNeeded);
   return true;
 }
 
@@ -181,8 +181,14 @@ async function queryActivityCubeFullTimeframe(): Promise<boolean> {
 
   if (!response.ok) {
     clearBusyWaiting();
-    return true;
+    if (response.status === 400) {
+      setState("activityCube", "error", await response.text());
+    }
+    return false;
   }
+  // biome-ignore lint/style/noNonNullAssertion: required by SolidJS
+  setState("activityCube", "error", undefined!);
+
   const { data, server_now } = await response.json();
   if (!data) {
     clearBusyWaiting();
@@ -289,8 +295,14 @@ async function queryActivityCubeTimeWindow(): Promise<boolean> {
 
   if (!response.ok) {
     clearBusyWaiting();
-    return true;
+    if (response.status === 400) {
+      setState("activityCube", "error", await response.text());
+    }
+    return false;
   }
+  // biome-ignore lint/style/noNonNullAssertion: required by SolidJS
+  setState("activityCube", "error", undefined!);
+
   const json = await response.json();
   if (!json) {
     clearBusyWaiting();
@@ -343,8 +355,14 @@ export async function queryFilterOptions(): Promise<boolean> {
   const response = await fetchWithAuth(url, { method: "GET" });
 
   if (!response.ok) {
-    return true;
+    if (response.status === 400) {
+      setState("activityCube", "error", await response.text());
+    }
+    return false;
   }
+  // biome-ignore lint/style/noNonNullAssertion: required by SolidJS
+  setState("activityCube", "error", undefined!);
+
   const json = await response.json();
   if (!json) {
     return false;
