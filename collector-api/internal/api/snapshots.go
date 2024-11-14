@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -126,7 +127,7 @@ func init() {
 	previousMetrics = make(map[SystemInfo]map[string][]prompb.TimeSeries)
 }
 
-func handleSnapshot(cfg *config.Config, s3Location string, collectedAt int64, systemInfo SystemInfo, processFunc func(*prometheusClient, string, SystemInfo) ([]prompb.TimeSeries, error)) error {
+func handleSnapshot(cfg *config.Config, s3Location string, collectedAt int64, systemInfo SystemInfo, processFunc func(*prometheusClient, string, SystemInfo, int64) ([]prompb.TimeSeries, error)) error {
 	if cfg.Debug {
 		log.Printf("Processing snapshot with s3_location: %s and collected_at: %d", s3Location, collectedAt)
 	}
@@ -136,7 +137,7 @@ func handleSnapshot(cfg *config.Config, s3Location string, collectedAt int64, sy
 		endpoint: prometheusURL,
 	}
 
-	allMetrics, err := processFunc(&promClient, s3Location, systemInfo)
+	allMetrics, err := processFunc(&promClient, s3Location, systemInfo, collectedAt)
 	if err != nil {
 		return fmt.Errorf("process snapshot data: %w", err)
 	}
@@ -156,7 +157,7 @@ func handleFullSnapshot(cfg *config.Config, s3Location string, collectedAt int64
 	return handleSnapshot(cfg, s3Location, collectedAt, systemInfo, processFullSnapshotData)
 }
 
-func processFullSnapshotData(promClient *prometheusClient, s3Location string, systemInfo SystemInfo) ([]prompb.TimeSeries, error) {
+func processFullSnapshotData(promClient *prometheusClient, s3Location string, systemInfo SystemInfo, collectedAt int64) ([]prompb.TimeSeries, error) {
 	pbBytes, err := readAndDecompressSnapshot(s3Location)
 	if err != nil {
 		return nil, fmt.Errorf("read and decompress snapshot: %w", err)
@@ -167,7 +168,7 @@ func processFullSnapshotData(promClient *prometheusClient, s3Location string, sy
 		return nil, fmt.Errorf("unmarshal full snapshot: %w", err)
 	}
 
-	currentMetrics := fullSnapshotMetrics(&fullSnapshot, systemInfo)
+	currentMetrics := fullSnapshotMetrics(&fullSnapshot, systemInfo, collectedAt)
 
 	if previousMetrics[systemInfo] == nil {
 		err := initializePreviousMetrics(promClient, systemInfo, FullSnapshotType)
@@ -404,7 +405,7 @@ func handleCompactSnapshot(cfg *config.Config, s3Location string, collectedAt in
 	return handleSnapshot(cfg, s3Location, collectedAt, systemInfo, processCompactSnapshotData)
 }
 
-func processCompactSnapshotData(promClient *prometheusClient, s3Location string, systemInfo SystemInfo) ([]prompb.TimeSeries, error) {
+func processCompactSnapshotData(promClient *prometheusClient, s3Location string, systemInfo SystemInfo, collectedAt int64) ([]prompb.TimeSeries, error) {
 	pbBytes, err := readAndDecompressSnapshot(s3Location)
 	if err != nil {
 		return nil, fmt.Errorf("read and decompress snapshot: %w", err)
@@ -415,7 +416,7 @@ func processCompactSnapshotData(promClient *prometheusClient, s3Location string,
 		return nil, fmt.Errorf("unmarshal compact snapshot: %w", err)
 	}
 
-	currentMetrics := compactSnapshotMetrics(&compactSnapshot, systemInfo)
+	currentMetrics := compactSnapshotMetrics(&compactSnapshot, systemInfo, collectedAt)
 
 	if previousMetrics[systemInfo] == nil {
 		err := initializePreviousMetrics(promClient, systemInfo, CompactSnapshotType)
@@ -455,25 +456,27 @@ func ReprocessSnapshots(cfg *config.Config, reprocessFull, reprocessCompact bool
 		return nil
 	}
 
-	if reprocessFull {
-		log.Println("Reprocessing full snapshots...")
+	var allSnapshots []struct {
+		timestamp  int64
+		s3Location string
+		systemInfo SystemInfo
+		isCompact  bool
+	}
 
-		// Get all full snapshots from SQLite
-		snapshots, err := db.GetAllFullSnapshots()
+	// Collect full snapshots if requested
+	if reprocessFull {
+		fullSnapshots, err := db.GetAllFullSnapshots()
 		if err != nil {
-			return fmt.Errorf("get snapshots: %w", err)
+			return fmt.Errorf("get full snapshots: %w", err)
 		}
 
-		for _, snapshot := range snapshots {
-			log.Printf("Processing full snapshot: %s", snapshot.S3Location)
+		for _, snapshot := range fullSnapshots {
 
 			systemInfo := SystemInfo{
 				SystemID:    snapshot.SystemID,
 				SystemScope: snapshot.SystemScope,
 				SystemType:  snapshot.SystemType,
 			}
-
-			// Verify system info from snapshot matches database
 			snapshotSystemInfo, err := extractSystemInfoFromFullSnapshot(snapshot.S3Location)
 			if err != nil {
 				log.Printf("Error extracting system info from full snapshot %s: %v", snapshot.S3Location, err)
@@ -485,12 +488,21 @@ func ReprocessSnapshots(cfg *config.Config, reprocessFull, reprocessCompact bool
 					snapshot.S3Location, systemInfo, snapshotSystemInfo)
 			}
 
-			if err := handleFullSnapshot(cfg, snapshot.S3Location, snapshot.CollectedAt, snapshotSystemInfo); err != nil {
-				log.Printf("Error processing full snapshot %s: %v", snapshot.S3Location, err)
-			}
+			allSnapshots = append(allSnapshots, struct {
+				timestamp  int64
+				s3Location string
+				systemInfo SystemInfo
+				isCompact  bool
+			}{
+				timestamp:  snapshot.CollectedAt,
+				s3Location: snapshot.S3Location,
+				systemInfo: systemInfo,
+				isCompact:  false,
+			})
 		}
 	}
 
+	// Collect compact snapshots if requested
 	if reprocessCompact {
 		compactSnapshots, err := db.GetAllCompactSnapshots()
 		if err != nil {
@@ -498,16 +510,42 @@ func ReprocessSnapshots(cfg *config.Config, reprocessFull, reprocessCompact bool
 		}
 
 		for _, snapshot := range compactSnapshots {
-			log.Printf("Processing compact snapshot: %s", snapshot.S3Location)
-
 			systemInfo := SystemInfo{
 				SystemID:    snapshot.SystemID,
 				SystemScope: snapshot.SystemScope,
 				SystemType:  snapshot.SystemType,
 			}
 
-			if err := handleCompactSnapshot(cfg, snapshot.S3Location, snapshot.CollectedAt, systemInfo); err != nil {
-				log.Printf("Error processing compact snapshot %s: %v", snapshot.S3Location, err)
+			allSnapshots = append(allSnapshots, struct {
+				timestamp  int64
+				s3Location string
+				systemInfo SystemInfo
+				isCompact  bool
+			}{
+				timestamp:  snapshot.CollectedAt,
+				s3Location: snapshot.S3Location,
+				systemInfo: systemInfo,
+				isCompact:  true,
+			})
+		}
+	}
+
+	// Sort all snapshots by timestamp
+	sort.Slice(allSnapshots, func(i, j int) bool {
+		return allSnapshots[i].timestamp < allSnapshots[j].timestamp
+	})
+
+	// Process snapshots in chronological order
+	for _, snapshot := range allSnapshots {
+		if snapshot.isCompact {
+			log.Printf("Processing compact snapshot: %s (system_id: %s)", snapshot.s3Location, snapshot.systemInfo.SystemID)
+			if err := handleCompactSnapshot(cfg, snapshot.s3Location, snapshot.timestamp, snapshot.systemInfo); err != nil {
+				log.Printf("Error processing compact snapshot %s (system_id: %s): %v", snapshot.s3Location, snapshot.systemInfo.SystemID, err)
+			}
+		} else {
+			log.Printf("Processing full snapshot: %s (system_id: %s)", snapshot.s3Location, snapshot.systemInfo.SystemID)
+			if err := handleFullSnapshot(cfg, snapshot.s3Location, snapshot.timestamp, snapshot.systemInfo); err != nil {
+				log.Printf("Error processing full snapshot %s (system_id: %s): %v", snapshot.s3Location, snapshot.systemInfo.SystemID, err)
 			}
 		}
 	}

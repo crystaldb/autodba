@@ -8,7 +8,10 @@ services:
         ports:
             - "${COLLECTOR_API_PORT:-7080}:7080"
         volumes:
-            - collector_api_storage:/usr/local/autodba/share/collector_api_server/storage
+            - type: volume
+              source: collector_api_storage
+              target: /usr/local/autodba/share/collector_api_server/storage
+              read_only: false
         depends_on:
             - autodba-prometheus
         networks:
@@ -32,6 +35,12 @@ services:
         environment:
             - PROMETHEUS_URL=http://autodba-prometheus:9090
             - AUTODBA_ACCESS_KEY=DEFAULT-ACCESS-KEY
+            - AUTODBA_DATA_PATH=/usr/local/autodba/share/collector_api_server/storage
+        volumes:
+            - type: volume
+              source: collector_api_storage
+              target: /usr/local/autodba/share/collector_api_server/storage
+              read_only: true
 
     autodba-prometheus:
         build:

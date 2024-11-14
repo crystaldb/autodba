@@ -16,11 +16,12 @@ import (
 	"strings"
 	"time"
 
-	_ "github.com/mattn/go-sqlite3"
-	collector_proto "github.com/pganalyze/collector/output/pganalyze_collector"
 	"compress/zlib"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"
+	_ "github.com/mattn/go-sqlite3"
+	collector_proto "github.com/pganalyze/collector/output/pganalyze_collector"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -895,7 +896,7 @@ func snapshots_handler(dataPath string) http.HandlerFunc {
 		query := `
 			SELECT s3_location, collected_at
 			FROM (
-				SELECT s3_location, collected_at
+				SELECT DISTINCT s3_location, collected_at
 				FROM ` + tableName + `
 				ORDER BY collected_at DESC
 				LIMIT ?

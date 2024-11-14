@@ -3,6 +3,10 @@ global:
   evaluation_interval:  1m
   # scrape_timeout is set to the global default (10s).
 
+storage:
+  tsdb:
+    out_of_order_time_window: 5m
+
 scrape_configs:
   # The job name is added as a label `job=<job_name>` to any timeseries scraped from this config.
   - job_name: "prometheus"
