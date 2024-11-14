@@ -1,21 +1,21 @@
-import { contextState } from "../context_state";
+import { flip } from "@floating-ui/dom";
 import {
+  For,
+  type JSX,
+  Show,
   batch,
   createEffect,
   createMemo,
   createSignal,
-  For,
   getOwner,
-  JSX,
   on,
   onCleanup,
   runWithOwner,
-  Show,
   untrack,
 } from "solid-js";
-import { isLive, queryEndpointData, queryEndpointDataIfLive } from "../http";
 import { Popover } from "solid-simple-popover";
-import { flip } from "@floating-ui/dom";
+import { contextState } from "../context_state";
+import { isLive, queryEndpointData, queryEndpointDataIfLive } from "../http";
 import { cssSelectorGeneral } from "./cube_activity";
 import { EchartsTimebar } from "./echarts_timebar";
 
@@ -158,6 +158,7 @@ function TimeframeSelector() {
   const options = [
     { ms: 14 * 24 * 60 * 60 * 1000, label: "last 14d", ms2: 60 * 60 * 1000 },
     { ms: 7 * 24 * 60 * 60 * 1000, label: "last 7d", ms2: 30 * 60 * 1000 },
+    { ms: 2 * 24 * 60 * 60 * 1000, label: "last 2d", ms2: 30 * 60 * 1000 },
     { ms: 1 * 24 * 60 * 60 * 1000, label: "last 1d", ms2: 30 * 60 * 1000 },
     { ms: 12 * 60 * 60 * 1000, label: "last 12h", ms2: 30 * 60 * 1000 },
     { ms: 6 * 60 * 60 * 1000, label: "last 6h", ms2: 10 * 60 * 1000 },
@@ -178,7 +179,8 @@ function TimeframeSelector() {
           batch(() => {
             setState("timeframe_ms", record.ms);
             setState("interval_ms", record.ms2);
-          })}
+          })
+        }
       />
     </>
   );
@@ -208,6 +210,7 @@ function ViewSelector(props: PropsViewSelector) {
   return (
     <>
       <button
+        type="button"
         id={id}
         class={`flex gap-2 text-sm px-2.5 py-2 rounded-lg ${cssSelectorGeneral} ${props.class}`}
       >
@@ -230,6 +233,7 @@ function ViewSelector(props: PropsViewSelector) {
           <For each={props.options}>
             {(record) => (
               <button
+                type="button"
                 class={`flex justify-center gap-2 text-sm px-2.5 py-2 rounded-lg ${cssSelectorGeneral}`}
                 classList={{
                   "text-fuchsia-500": state[props.property] === record.ms,
@@ -278,7 +282,8 @@ function IntervalSelector(props: PropsIntervalSelector) {
         onClick={(record) => () =>
           batch(() => {
             setState("interval_ms", record.ms);
-          })}
+          })
+        }
         class={props.class}
       />
     </>

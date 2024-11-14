@@ -1,6 +1,11 @@
 const getAccessKey = () => {
   // In production, you might want to get this from a more secure source
-  return process.env.VITE_ACCESS_KEY || "DEFAULT-ACCESS-KEY";
+  return (
+    (typeof process === "object" &&
+      process.env &&
+      process.env.VITE_ACCESS_KEY) ||
+    "DEFAULT-ACCESS-KEY"
+  );
 };
 
 export const fetchWithAuth = async (url: string, options: RequestInit = {}) => {

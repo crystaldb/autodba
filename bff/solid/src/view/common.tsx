@@ -1,4 +1,15 @@
-import { JSX } from "solid-js";
+import type { JSX } from "solid-js";
+
+export function DebugJson(props: {
+  // biome-ignore lint/suspicious/noExplicitAny: the goal is to show anything
+  json: any;
+}) {
+  return (
+    <pre class="break-words max-w-96 overflow-auto">
+      {JSON.stringify(props.json, null, 2)}
+    </pre>
+  );
+}
 
 export function ViewTitle(props: {
   title:

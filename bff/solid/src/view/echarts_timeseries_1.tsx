@@ -1,8 +1,8 @@
-import { EChartsAutoSize } from "echarts-solid";
-import { contextState } from "../context_state";
-import { mergeProps } from "solid-js";
-import { datazoomEventHandler } from "../state";
 import { graphic } from "echarts";
+import { EChartsAutoSize } from "echarts-solid";
+import { mergeProps } from "solid-js";
+import { contextState } from "../context_state";
+import { datazoomEventHandler } from "../state";
 
 interface IProps {
   time: number[];
@@ -16,9 +16,7 @@ export function EchartsTimeseries1(props: IProps) {
   const base = {
     tooltip: {
       trigger: "axis",
-      position: function (pt: number[]) {
-        return [pt[0], "10%"];
-      },
+      position: (pt: number[]) => [pt[0], "10%"],
     },
     // title: {
     //   left: "center",

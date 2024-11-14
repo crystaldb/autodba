@@ -1,8 +1,13 @@
-import { contextState } from "../context_state";
-import { createMemo, For, JSX } from "solid-js";
-import { DimensionName, CubeData, ApiEndpoint, LegendData } from "../state";
 import { first, groupBy, sum, summarize, tidy } from "@tidyjs/tidy";
-import { ILegend } from "./cube_activity";
+import { For, type JSX, createMemo } from "solid-js";
+import { contextState } from "../context_state";
+import {
+  ApiEndpoint,
+  type CubeData,
+  DimensionName,
+  type LegendData,
+} from "../state";
+import type { ILegend } from "./cube_activity";
 
 interface IDimensionBars {
   cubeData: CubeData;
@@ -92,7 +97,9 @@ function DimensionRowGrouped(props: IDimensionRow) {
           {(record) => (
             <DimensionRowPart
               len={record.values[0].value}
-              txt={record.metric[state.activityCube.uiLegend]!}
+              txt={
+                record.metric[state.activityCube.uiLegend] || "unknown-metric"
+              }
               legend={props.legend}
             />
           )}

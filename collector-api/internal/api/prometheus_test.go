@@ -78,7 +78,7 @@ func TestCompactSnapshotMetrics(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			metrics := compactSnapshotMetrics(tc.snapshot, sysInfo)
+			metrics := compactSnapshotMetrics(tc.snapshot, sysInfo, 0)
 			assert.Equal(t, tc.expected, len(metrics), "Unexpected number of time series")
 
 			// Check if all metrics have the correct system info labels
@@ -221,8 +221,8 @@ func TestMultipleSystemsHandling(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			metrics1 := compactSnapshotMetrics(tc.snapshot1, system1)
-			metrics2 := compactSnapshotMetrics(tc.snapshot2, system2)
+			metrics1 := compactSnapshotMetrics(tc.snapshot1, system1, 0)
+			metrics2 := compactSnapshotMetrics(tc.snapshot2, system2, 0)
 
 			assert.Equal(t, tc.expectedMetrics[system1], len(metrics1), "Unexpected number of metrics for system 1")
 			assert.Equal(t, tc.expectedMetrics[system2], len(metrics2), "Unexpected number of metrics for system 2")

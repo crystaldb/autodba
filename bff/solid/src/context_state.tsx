@@ -1,19 +1,10 @@
-import { createContext, JSX, useContext } from "solid-js";
-import { useState, State } from "./state";
-import { SetStoreFunction } from "solid-js/store";
+import { createContext, useContext } from "solid-js";
+import type { SetStoreFunction } from "solid-js/store";
+import { type Anything, type State, useState } from "~/state";
 
 const StateContext = createContext(useState());
 
-export function ContextState(props: {
-  children:
-    | number
-    | boolean
-    | Node
-    | JSX.ArrayElement
-    | (string & {})
-    | null
-    | undefined;
-}) {
+export function ContextState(props: { children: Anything }) {
   return (
     <StateContext.Provider value={useState()}>
       {props.children}

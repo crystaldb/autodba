@@ -3,7 +3,7 @@
 // import { contextState } from "../context_state";
 
 import { A } from "@solidjs/router";
-import { JSX } from "solid-js";
+import type { JSX } from "solid-js";
 
 export function NavTop(props: {
   class?: string;

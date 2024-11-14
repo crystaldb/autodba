@@ -243,9 +243,9 @@ func createMultipleTimeSeries(systemInfo SystemInfo, metrics map[string]float64,
 }
 
 // fullSnapshotMetrics processes a FullSnapshot and generates Prometheus metrics, along with individual time-series tracking
-func fullSnapshotMetrics(snapshot *collector_proto.FullSnapshot, systemInfo SystemInfo) []prompb.TimeSeries {
+func fullSnapshotMetrics(snapshot *collector_proto.FullSnapshot, systemInfo SystemInfo, collectedAt int64) []prompb.TimeSeries {
 	var ts []prompb.TimeSeries
-	snapshotTimestamp := snapshot.CollectedAt.AsTime().UnixMilli()
+	snapshotTimestamp := collectedAt * 1000 // in milli-seconds
 
 	// Process system-level statistics
 	ts = append(ts, processSystemStats(snapshot, systemInfo, snapshotTimestamp)...)
@@ -790,9 +790,9 @@ func createLabelsForBackend(backendKey BackendKey, systemInfo SystemInfo) []prom
 
 // compactSnapshotMetrics processes a compact snapshot and returns time series for each backend
 // It also returns a map of seen backends for stale marker generation
-func compactSnapshotMetrics(snapshot *collector_proto.CompactSnapshot, systemInfo SystemInfo) []prompb.TimeSeries {
+func compactSnapshotMetrics(snapshot *collector_proto.CompactSnapshot, systemInfo SystemInfo, collectedAt int64) []prompb.TimeSeries {
 	var ts []prompb.TimeSeries
-	snapshotTimestamp := snapshot.CollectedAt.AsTime().UnixMilli()
+	snapshotTimestamp := collectedAt * 1000 // in milliseconds
 	baseRef := snapshot.GetBaseRefs()
 
 	for _, backend := range snapshot.GetActivitySnapshot().GetBackends() {

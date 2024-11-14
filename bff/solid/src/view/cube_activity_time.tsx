@@ -1,7 +1,3 @@
-import { EChartsAutoSize } from "echarts-solid";
-import { contextState } from "../context_state";
-import { createMemo, mergeProps, Show } from "solid-js";
-import { ApiEndpoint, datazoomEventHandler, listColors } from "../state";
 import {
   arrange,
   distinct,
@@ -10,8 +6,12 @@ import {
   pivotWider,
   tidy,
 } from "@tidyjs/tidy";
-import { truncateString } from "../util";
+import { EChartsAutoSize } from "echarts-solid";
 import moment from "moment-timezone";
+import { Show, createMemo, mergeProps } from "solid-js";
+import { contextState } from "../context_state";
+import { ApiEndpoint, datazoomEventHandler, listColors } from "../state";
+import { truncateString } from "../util";
 
 export function CubeDimensionTime() {
   const { state, setState } = contextState();
@@ -41,13 +41,13 @@ export function CubeDimensionTime() {
     },
     tooltip: {
       trigger: "axis",
-      formatter: function (
+      formatter: (
         params: {
           color: string;
           seriesName: string | number;
           value: { [x: string]: number | string | null };
         }[],
-      ) {
+      ) => {
         const createTooltipRow = (item: {
           color: string;
           seriesName: string | number;
@@ -83,23 +83,18 @@ export function CubeDimensionTime() {
       type: "category", // NOTE: this isn't "time" because we need to stack the bar chats below.
       axisPointer: {
         label: {
-          formatter: function (pointer: { value: string }) {
-            const timestamp = parseInt(pointer.value, 10);
+          formatter: (pointer: { value: string }) => {
+            const timestamp = Number.parseInt(pointer.value, 10);
             const date = moment(timestamp);
-            return date.format(timeFormat) + "(" + timezoneAbbreviation + ")";
+            return `${date.format(timeFormat)}(${timezoneAbbreviation})`;
           },
         },
       },
       axisLabel: {
-        formatter: function (value: string) {
-          const timestamp = parseInt(value, 10);
+        formatter: (value: string) => {
+          const timestamp = Number.parseInt(value, 10);
           const date = moment(timestamp);
-          return (
-            date.format(timeFormat).replace(/ /, "\n") +
-            "(" +
-            timezoneAbbreviation +
-            ")"
-          );
+          return `${date.format(timeFormat).replace(/ /, "\n")}(${timezoneAbbreviation})`;
         },
       },
     },

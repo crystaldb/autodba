@@ -7,7 +7,7 @@
     /* @apply scroll-smooth; */
   }
   body {
-    /* NOTE: bg-zinc-100 dark:bg-zinc-900 set in index.html with style element */
+    /* NOTE: bg-backgroundlite dark:bg-backgrounddark set in index.html with style element */
     @apply text-black dark:text-white;
   }
   [popover] {

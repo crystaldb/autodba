@@ -1,8 +1,10 @@
 package server
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
+	"io"
 	"local/bff/pkg/metrics"
 	"local/bff/pkg/middleware"
 	"net/http"
@@ -14,8 +16,13 @@ import (
 	"strings"
 	"time"
 
+	"compress/zlib"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"
+	_ "github.com/mattn/go-sqlite3"
+	collector_proto "github.com/pganalyze/collector/output/pganalyze_collector"
+	"google.golang.org/protobuf/proto"
 )
 
 type Server interface {
@@ -35,6 +42,7 @@ type server_imp struct {
 	webappPath      string
 	accessKey       string
 	inputValidator  *validator.Validate
+	dataPath        string
 }
 
 type InstanceInfo struct {
@@ -75,8 +83,8 @@ func CORS(next http.Handler) http.Handler {
 	})
 }
 
-func CreateServer(r map[string]RouteConfig, m metrics.Service, port string, webappPath string, accessKey string) Server {
-	return server_imp{r, m, port, webappPath, accessKey, CreateValidator()}
+func CreateServer(r map[string]RouteConfig, m metrics.Service, port string, webappPath string, accessKey string, dataPath string) Server {
+	return server_imp{r, m, port, webappPath, accessKey, CreateValidator(), dataPath}
 }
 
 func CreateValidator() *validator.Validate {
@@ -117,6 +125,7 @@ func (s server_imp) Run() error {
 	r.Get("/api/v1/activity", activity_handler(s.metrics_service, s.inputValidator))
 	r.Get("/api/v1/instance", info_handler(s.metrics_service, s.inputValidator))
 	r.Get("/api/v1/instance/database", databases_handler(s.metrics_service, s.inputValidator))
+	r.Get("/api/v1/snapshots", snapshots_handler(s.dataPath))
 
 	r.Route(api_prefix, func(r chi.Router) {
 		r.Mount("/", metrics_handler(s.routes_config, s.metrics_service))
@@ -832,4 +841,142 @@ func isValidClusterPrefix(clusterPrefix string) bool {
 		}
 	}
 	return false
+}
+
+type Snapshot struct {
+	S3Location  string    `json:"s3_location"`
+	CollectedAt time.Time `json:"collected_at"`
+}
+
+func snapshots_handler(dataPath string) http.HandlerFunc {
+	snapshotTableNames := map[string]string{
+		"full":    "snapshots",
+		"compact": "compact_snapshots",
+	}
+
+	openDatabase := func(dataPath string) (*sql.DB, error) {
+		dbPath := filepath.Join(dataPath, "crystaldb-collector.db")
+		db, err := sql.Open("sqlite3", dbPath+"?mode=ro")
+		if err != nil {
+			return nil, fmt.Errorf("failed to open database: %v", err)
+		}
+		return db, nil
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		limitStr := r.URL.Query().Get("limit")
+		snapshotType := r.URL.Query().Get("type")
+
+		limit := 1 // default to 1 if not specified
+		if limitStr != "" {
+			parsedLimit, err := strconv.Atoi(limitStr)
+			if err != nil || parsedLimit < 1 {
+				http.Error(w, "Invalid limit parameter", http.StatusBadRequest)
+				return
+			}
+			limit = parsedLimit
+		}
+
+		// Validate snapshot type
+		tableName, ok := snapshotTableNames[snapshotType]
+		if !ok {
+			http.Error(w, "Invalid type parameter. Must be 'compact' or 'full'", http.StatusBadRequest)
+			return
+		}
+
+		// Open database connection
+		db, err := openDatabase(dataPath)
+		if err != nil {
+			http.Error(w, "Failed to open database", http.StatusInternalServerError)
+			return
+		}
+		defer db.Close()
+
+		// Query the snapshots from SQLite
+		query := `
+			SELECT s3_location, collected_at
+			FROM (
+				SELECT DISTINCT s3_location, collected_at
+				FROM ` + tableName + `
+				ORDER BY collected_at DESC
+				LIMIT ?
+			)
+			ORDER BY collected_at ASC`
+		rows, err := db.Query(query, limit)
+		if err != nil {
+			http.Error(w, "Database query failed: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+		defer rows.Close()
+
+		var snapshots []Snapshot
+		for rows.Next() {
+			var location string
+			var unixTimestamp int64
+			err := rows.Scan(&location, &unixTimestamp)
+			if err != nil {
+				fmt.Printf("Error scanning results: %v\n", err)
+				http.Error(w, "Error scanning results", http.StatusInternalServerError)
+				return
+			}
+			snapshots = append(snapshots, Snapshot{location, time.Unix(unixTimestamp, 0)})
+		}
+
+		// For each snapshot, read the file and add its contents to the response
+		var response []interface{}
+		for _, snapshot := range snapshots {
+			file, err := os.Open(snapshot.S3Location)
+			if err != nil {
+				fmt.Printf("Error reading snapshot file: %v\n", err)
+				http.Error(w, "Error reading snapshot file", http.StatusInternalServerError)
+				return
+			}
+			defer file.Close()
+
+			// Create a gzip reader directly from the file
+			zlibReader, err := zlib.NewReader(file)
+			if err != nil {
+				fmt.Printf("Error creating gzip reader: %v\n", err)
+				http.Error(w, "Error decompressing snapshot data", http.StatusInternalServerError)
+				return
+			}
+			defer zlibReader.Close()
+
+			// Read the decompressed data
+			data, err := io.ReadAll(zlibReader)
+			if err != nil {
+				fmt.Printf("Error reading decompressed data: %v\n", err)
+				http.Error(w, "Error reading decompressed data", http.StatusInternalServerError)
+				return
+			}
+
+			var snapshotData interface{}
+
+			// Determine snapshot type and unmarshal accordingly
+			if snapshotType == "full" {
+				fullSnapshot := &collector_proto.FullSnapshot{}
+				if err := proto.Unmarshal(data, fullSnapshot); err != nil {
+					fmt.Printf("Error unmarshalling full snapshot: %v\n", err)
+					http.Error(w, "Error parsing full snapshot protobuf data", http.StatusInternalServerError)
+					return
+				}
+				snapshotData = fullSnapshot
+			} else { // compact
+				compactSnapshot := &collector_proto.CompactSnapshot{}
+				if err := proto.Unmarshal(data, compactSnapshot); err != nil {
+					fmt.Printf("Error unmarshalling compact snapshot: %v\n", err)
+					http.Error(w, "Error parsing compact snapshot protobuf data", http.StatusInternalServerError)
+					return
+				}
+				snapshotData = compactSnapshot
+			}
+			response = append(response, snapshotData)
+		}
+
+		// Write the response
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			http.Error(w, "Error encoding response", http.StatusInternalServerError)
+			return
+		}
+	}
 }

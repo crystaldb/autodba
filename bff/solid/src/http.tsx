@@ -1,17 +1,17 @@
-import { Part, produce } from "solid-js/store";
+import { batch } from "solid-js";
+import { type Part, produce } from "solid-js/store";
+import { fetchWithAuth } from "./api";
+import { contextState } from "./context_state";
 import {
-  allowInFlight,
   ApiEndpoint,
+  DimensionName,
+  type State,
+  allowInFlight,
   clearBusyWaiting,
   clearInFlight,
-  DimensionName,
   getTimeAtPercentage,
   setInFlight,
-  type State,
 } from "./state";
-import { batch } from "solid-js";
-import { contextState } from "./context_state";
-import { fetchWithAuth } from "./api";
 
 const magicPrometheusMaxSamplesLimit = 11000;
 
@@ -314,6 +314,7 @@ async function queryActivityCubeTimeWindow(): Promise<boolean> {
 export async function queryFilterOptions(): Promise<boolean> {
   const { state, setState } = contextState();
   if (!state.database_list.length) return false;
+  if (!state.instance_active?.dbIdentifier) return false;
   if (!state.server_now) return false;
 
   const url = `/api/v1/activity?why=filteroptions&database_list=(${
@@ -336,7 +337,9 @@ export async function queryFilterOptions(): Promise<boolean> {
     "" //
   }&filterdimselected=${encodeURIComponent(
     "", //
-  )}`;
+  )}&dbidentifier=${
+    state.instance_active.dbIdentifier //
+  }`;
   const response = await fetchWithAuth(url, { method: "GET" });
 
   if (!response.ok) {
@@ -408,7 +411,7 @@ async function queryStandardEndpointFullTimeframe(
 
   batch(() => {
     setState("server_now", server_now);
-    const dataBucketName = (apiEndpoint + "Data") as Part<State, keyof State>;
+    const dataBucketName = `${apiEndpoint}Data` as Part<State, keyof State>;
     setState(dataBucketName, data);
 
     clearBusyWaiting();
