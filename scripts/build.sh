@@ -19,7 +19,7 @@ fi
 VERSION=${VERSION#v}
 
 # Define Prometheus version
-PROMETHEUS_VERSION="2.42.0"
+PROMETHEUS_VERSION="2.55.1"
 
 # Define output directories
 OUTPUT_DIR="$SOURCE_DIR/../build_output"
