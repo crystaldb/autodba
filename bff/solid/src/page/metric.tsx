@@ -57,9 +57,9 @@ export function PageMetric(title = "Metrics | AutoDBA") {
                     "IOPS",
                     "",
                     [
-                      "ebs_current_provisioned_iops",
-                      "ebs_read_iops",
-                      "ebs_write_iops",
+                      "disk_current_provisioned_iops",
+                      "disk_read_iops",
+                      "disk_write_iops",
                     ],
                   ],
                   [
