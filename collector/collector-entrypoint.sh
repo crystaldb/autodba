@@ -10,6 +10,12 @@ if [ ! -f "${CONFIG_FILE}" ]; then
     exit 1
 fi
 
+# Check if [autodba] section exists
+if ! grep -q "\[autodba\]" "${CONFIG_FILE}"; then
+    echo "Error: Required [autodba] section not found in ${CONFIG_FILE}"
+    exit 1
+fi
+
 # Create a temporary file with the prefix and original content
 TEMP_CONFIG=$(mktemp)
 {
