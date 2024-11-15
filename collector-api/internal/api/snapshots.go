@@ -120,6 +120,8 @@ var previousMetrics = make(map[SystemInfo]map[string][]prompb.TimeSeries)
 const (
 	FullSnapshotType            = "full"
 	CompactActivitySnapshotType = "compact_activity"
+	CompactLogSnapshotType      = "compact_log"
+	CompactSystemSnapshotType   = "compact_system"
 )
 
 func init() {
@@ -423,34 +425,42 @@ func processCompactSnapshotData(promClient *prometheusClient, s3Location string,
 		return nil, fmt.Errorf("unmarshal compact snapshot: %w", err)
 	}
 
-	var allMetrics []prompb.TimeSeries
+	var currentMetrics []prompb.TimeSeries
+	snapshotType := "n/a"
 
 	// Handle different types of snapshot data
 	switch data := compactSnapshot.Data.(type) {
 	case *collector_proto.CompactSnapshot_ActivitySnapshot:
-		currentMetrics := compactSnapshotMetrics(&compactSnapshot, systemInfo, collectedAt)
-
-		if previousMetrics[systemInfo] == nil {
-			err := initializePreviousMetrics(promClient, systemInfo, CompactActivitySnapshotType)
-			if err != nil {
-				log.Printf("Error in initializing previous metrics: %v", err)
-			}
-		}
-
-		staleMarkers := createStaleMarkers(previousMetrics[systemInfo][CompactActivitySnapshotType], currentMetrics, compactSnapshot.CollectedAt.AsTime().UnixMilli())
-
-		allMetrics = append(currentMetrics, staleMarkers...)
-
-		previousMetrics[systemInfo][CompactActivitySnapshotType] = currentMetrics
+		currentMetrics = compactSnapshotMetrics(&compactSnapshot, systemInfo, collectedAt)
+		snapshotType = CompactActivitySnapshotType
 	case *collector_proto.CompactSnapshot_LogSnapshot:
+		snapshotType = CompactLogSnapshotType
 		log.Printf("Log snapshot processing not yet implemented")
 	case *collector_proto.CompactSnapshot_SystemSnapshot:
+		snapshotType = CompactSystemSnapshotType
 		log.Printf("System snapshot processing not yet implemented")
 	case nil:
 		log.Printf("Warning: Empty compact snapshot received")
 	default:
 		log.Printf("Unknown compact snapshot type: %T", data)
 	}
+
+	if snapshotType != CompactActivitySnapshotType {
+		return currentMetrics, nil
+	}
+
+	if previousMetrics[systemInfo] == nil {
+		err := initializePreviousMetrics(promClient, systemInfo, CompactActivitySnapshotType)
+		if err != nil {
+			log.Printf("Error in initializing previous metrics: %v", err)
+		}
+	}
+
+	staleMarkers := createStaleMarkers(previousMetrics[systemInfo][CompactActivitySnapshotType], currentMetrics, compactSnapshot.CollectedAt.AsTime().UnixMilli())
+
+	allMetrics := append(currentMetrics, staleMarkers...)
+
+	previousMetrics[systemInfo][snapshotType] = currentMetrics
 
 	return allMetrics, nil
 }
