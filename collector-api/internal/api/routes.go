@@ -18,7 +18,6 @@ func SetupRoutes(cfg *config.Config) *mux.Router {
 
 	// Define the routes
 	router.HandleFunc("/v2/snapshots/grant", GrantHandler).Methods("GET")
-	router.HandleFunc("/v2/snapshots/grant_logs", GrantLogsHandler).Methods("GET")
 	router.HandleFunc("/v2/snapshots", SnapshotHandler).Methods("POST")
 	router.HandleFunc("/v2/snapshots/compact", CompactSnapshotHandler).Methods("POST")
 	router.HandleFunc("/v2/upload", UploadHandler).Methods("POST")

@@ -118,8 +118,10 @@ func SnapshotHandler(w http.ResponseWriter, r *http.Request) {
 var previousMetrics = make(map[SystemInfo]map[string][]prompb.TimeSeries)
 
 const (
-	FullSnapshotType    = "full"
-	CompactSnapshotType = "compact"
+	FullSnapshotType            = "full"
+	CompactActivitySnapshotType = "compact_activity"
+	CompactLogSnapshotType      = "compact_log"
+	CompactSystemSnapshotType   = "compact_system"
 )
 
 func init() {
@@ -140,6 +142,13 @@ func handleSnapshot(cfg *config.Config, s3Location string, collectedAt int64, sy
 	allMetrics, err := processFunc(&promClient, s3Location, systemInfo, collectedAt)
 	if err != nil {
 		return fmt.Errorf("process snapshot data: %w", err)
+	}
+
+	if len(allMetrics) == 0 {
+		if cfg.Debug {
+			log.Printf("No metrics to send, skipping remote write")
+		}
+		return nil
 	}
 
 	if err := sendRemoteWrite(promClient, allMetrics); err != nil {
@@ -195,7 +204,7 @@ func initializePreviousMetrics(promClient *prometheusClient, systemInfo SystemIn
 	}
 
 	timeSeriesName := "" // all time-series
-	if snapshotType == CompactSnapshotType {
+	if snapshotType == CompactActivitySnapshotType {
 		timeSeriesName = "cc_pg_stat_activity"
 	}
 
@@ -416,20 +425,42 @@ func processCompactSnapshotData(promClient *prometheusClient, s3Location string,
 		return nil, fmt.Errorf("unmarshal compact snapshot: %w", err)
 	}
 
-	currentMetrics := compactSnapshotMetrics(&compactSnapshot, systemInfo, collectedAt)
+	var currentMetrics []prompb.TimeSeries
+	snapshotType := "n/a"
+
+	// Handle different types of snapshot data
+	switch data := compactSnapshot.Data.(type) {
+	case *collector_proto.CompactSnapshot_ActivitySnapshot:
+		currentMetrics = compactSnapshotMetrics(&compactSnapshot, systemInfo, collectedAt)
+		snapshotType = CompactActivitySnapshotType
+	case *collector_proto.CompactSnapshot_LogSnapshot:
+		snapshotType = CompactLogSnapshotType
+		log.Printf("Log snapshot processing not yet implemented")
+	case *collector_proto.CompactSnapshot_SystemSnapshot:
+		snapshotType = CompactSystemSnapshotType
+		log.Printf("System snapshot processing not yet implemented")
+	case nil:
+		log.Printf("Warning: Empty compact snapshot received")
+	default:
+		log.Printf("Unknown compact snapshot type: %T", data)
+	}
+
+	if snapshotType != CompactActivitySnapshotType {
+		return currentMetrics, nil
+	}
 
 	if previousMetrics[systemInfo] == nil {
-		err := initializePreviousMetrics(promClient, systemInfo, CompactSnapshotType)
+		err := initializePreviousMetrics(promClient, systemInfo, snapshotType)
 		if err != nil {
 			log.Printf("Error in initializing previous metrics: %v", err)
 		}
 	}
 
-	staleMarkers := createStaleMarkers(previousMetrics[systemInfo][CompactSnapshotType], currentMetrics, compactSnapshot.CollectedAt.AsTime().UnixMilli())
+	staleMarkers := createStaleMarkers(previousMetrics[systemInfo][snapshotType], currentMetrics, compactSnapshot.CollectedAt.AsTime().UnixMilli())
 
 	allMetrics := append(currentMetrics, staleMarkers...)
 
-	previousMetrics[systemInfo][CompactSnapshotType] = currentMetrics
+	previousMetrics[systemInfo][snapshotType] = currentMetrics
 
 	return allMetrics, nil
 }
