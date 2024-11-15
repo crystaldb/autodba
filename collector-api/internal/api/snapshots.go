@@ -118,8 +118,8 @@ func SnapshotHandler(w http.ResponseWriter, r *http.Request) {
 var previousMetrics = make(map[SystemInfo]map[string][]prompb.TimeSeries)
 
 const (
-	FullSnapshotType    = "full"
-	CompactSnapshotType = "compact"
+	FullSnapshotType            = "full"
+	CompactActivitySnapshotType = "compact_activity"
 )
 
 func init() {
@@ -140,6 +140,13 @@ func handleSnapshot(cfg *config.Config, s3Location string, collectedAt int64, sy
 	allMetrics, err := processFunc(&promClient, s3Location, systemInfo, collectedAt)
 	if err != nil {
 		return fmt.Errorf("process snapshot data: %w", err)
+	}
+
+	if len(allMetrics) == 0 {
+		if cfg.Debug {
+			log.Printf("No metrics to send, skipping remote write")
+		}
+		return nil
 	}
 
 	if err := sendRemoteWrite(promClient, allMetrics); err != nil {
@@ -195,7 +202,7 @@ func initializePreviousMetrics(promClient *prometheusClient, systemInfo SystemIn
 	}
 
 	timeSeriesName := "" // all time-series
-	if snapshotType == CompactSnapshotType {
+	if snapshotType == CompactActivitySnapshotType {
 		timeSeriesName = "cc_pg_stat_activity"
 	}
 
@@ -416,22 +423,36 @@ func processCompactSnapshotData(promClient *prometheusClient, s3Location string,
 		return nil, fmt.Errorf("unmarshal compact snapshot: %w", err)
 	}
 
-	currentMetrics := compactSnapshotMetrics(&compactSnapshot, systemInfo, collectedAt)
+	var currentMetrics []prompb.TimeSeries
 
-	if previousMetrics[systemInfo] == nil {
-		err := initializePreviousMetrics(promClient, systemInfo, CompactSnapshotType)
-		if err != nil {
-			log.Printf("Error in initializing previous metrics: %v", err)
+	// Handle different types of snapshot data
+	switch data := compactSnapshot.Data.(type) {
+	case *collector_proto.CompactSnapshot_ActivitySnapshot:
+		currentMetrics = compactSnapshotMetrics(&compactSnapshot, systemInfo, collectedAt)
+
+		if previousMetrics[systemInfo] == nil {
+			err := initializePreviousMetrics(promClient, systemInfo, CompactActivitySnapshotType)
+			if err != nil {
+				log.Printf("Error in initializing previous metrics: %v", err)
+			}
 		}
+
+		staleMarkers := createStaleMarkers(previousMetrics[systemInfo][CompactActivitySnapshotType], currentMetrics, compactSnapshot.CollectedAt.AsTime().UnixMilli())
+
+		allMetrics := append(currentMetrics, staleMarkers...)
+
+		previousMetrics[systemInfo][CompactActivitySnapshotType] = currentMetrics
+
+		return allMetrics, nil
+	case *collector_proto.CompactSnapshot_LogSnapshot:
+		log.Printf("Log snapshot processing not yet implemented")
+	case *collector_proto.CompactSnapshot_SystemSnapshot:
+		log.Printf("System snapshot processing not yet implemented")
+	case nil:
+		log.Printf("Warning: Empty compact snapshot received")
+	default:
+		log.Printf("Unknown compact snapshot type: %T", data)
 	}
-
-	staleMarkers := createStaleMarkers(previousMetrics[systemInfo][CompactSnapshotType], currentMetrics, compactSnapshot.CollectedAt.AsTime().UnixMilli())
-
-	allMetrics := append(currentMetrics, staleMarkers...)
-
-	previousMetrics[systemInfo][CompactSnapshotType] = currentMetrics
-
-	return allMetrics, nil
 }
 
 func sendRemoteWrite(client prometheusClient, promPB []prompb.TimeSeries) error {
@@ -534,6 +555,19 @@ func ReprocessSnapshots(cfg *config.Config, reprocessFull, reprocessCompact bool
 	sort.Slice(allSnapshots, func(i, j int) bool {
 		return allSnapshots[i].timestamp < allSnapshots[j].timestamp
 	})
+
+	// Adjust timestamps for entries with the same timestamp
+	var currentTimestamp int64
+	var offset int64
+	for i := range allSnapshots {
+		if allSnapshots[i].timestamp == currentTimestamp {
+			offset++
+			allSnapshots[i].timestamp += offset
+		} else {
+			currentTimestamp = allSnapshots[i].timestamp
+			offset = 0
+		}
+	}
 
 	// Process snapshots in chronological order
 	for _, snapshot := range allSnapshots {
