@@ -423,12 +423,12 @@ func processCompactSnapshotData(promClient *prometheusClient, s3Location string,
 		return nil, fmt.Errorf("unmarshal compact snapshot: %w", err)
 	}
 
-	var currentMetrics []prompb.TimeSeries
+	var allMetrics []prompb.TimeSeries
 
 	// Handle different types of snapshot data
 	switch data := compactSnapshot.Data.(type) {
 	case *collector_proto.CompactSnapshot_ActivitySnapshot:
-		currentMetrics = compactSnapshotMetrics(&compactSnapshot, systemInfo, collectedAt)
+		currentMetrics := compactSnapshotMetrics(&compactSnapshot, systemInfo, collectedAt)
 
 		if previousMetrics[systemInfo] == nil {
 			err := initializePreviousMetrics(promClient, systemInfo, CompactActivitySnapshotType)
@@ -439,11 +439,9 @@ func processCompactSnapshotData(promClient *prometheusClient, s3Location string,
 
 		staleMarkers := createStaleMarkers(previousMetrics[systemInfo][CompactActivitySnapshotType], currentMetrics, compactSnapshot.CollectedAt.AsTime().UnixMilli())
 
-		allMetrics := append(currentMetrics, staleMarkers...)
+		allMetrics = append(currentMetrics, staleMarkers...)
 
 		previousMetrics[systemInfo][CompactActivitySnapshotType] = currentMetrics
-
-		return allMetrics, nil
 	case *collector_proto.CompactSnapshot_LogSnapshot:
 		log.Printf("Log snapshot processing not yet implemented")
 	case *collector_proto.CompactSnapshot_SystemSnapshot:
@@ -453,6 +451,8 @@ func processCompactSnapshotData(promClient *prometheusClient, s3Location string,
 	default:
 		log.Printf("Unknown compact snapshot type: %T", data)
 	}
+
+	return allMetrics, nil
 }
 
 func sendRemoteWrite(client prometheusClient, promPB []prompb.TimeSeries) error {
