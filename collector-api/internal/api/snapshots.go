@@ -556,19 +556,6 @@ func ReprocessSnapshots(cfg *config.Config, reprocessFull, reprocessCompact bool
 		return allSnapshots[i].timestamp < allSnapshots[j].timestamp
 	})
 
-	// Adjust timestamps for entries with the same timestamp
-	var currentTimestamp int64
-	var offset int64
-	for i := range allSnapshots {
-		if allSnapshots[i].timestamp == currentTimestamp {
-			offset++
-			allSnapshots[i].timestamp += offset
-		} else {
-			currentTimestamp = allSnapshots[i].timestamp
-			offset = 0
-		}
-	}
-
 	// Process snapshots in chronological order
 	for _, snapshot := range allSnapshots {
 		if snapshot.isCompact {
