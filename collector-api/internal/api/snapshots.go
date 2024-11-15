@@ -450,13 +450,13 @@ func processCompactSnapshotData(promClient *prometheusClient, s3Location string,
 	}
 
 	if previousMetrics[systemInfo] == nil {
-		err := initializePreviousMetrics(promClient, systemInfo, CompactActivitySnapshotType)
+		err := initializePreviousMetrics(promClient, systemInfo, snapshotType)
 		if err != nil {
 			log.Printf("Error in initializing previous metrics: %v", err)
 		}
 	}
 
-	staleMarkers := createStaleMarkers(previousMetrics[systemInfo][CompactActivitySnapshotType], currentMetrics, compactSnapshot.CollectedAt.AsTime().UnixMilli())
+	staleMarkers := createStaleMarkers(previousMetrics[systemInfo][snapshotType], currentMetrics, compactSnapshot.CollectedAt.AsTime().UnixMilli())
 
 	allMetrics := append(currentMetrics, staleMarkers...)
 
