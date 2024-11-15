@@ -46,10 +46,10 @@ func GrantHandler(w http.ResponseWriter, r *http.Request) {
 		ServerURL:        selfURL,
 		SentryDsn:        "",
 		EnableActivity:   true,
-		EnableLogs:       false,
+		EnableLogs:       true,
 		SchemaTableLimit: 0,
 		Features: models.GrantFeatures{
-			Logs:                        false,
+			Logs:                        true,
 			StatementResetFrequency:     0,
 			StatementTimeoutMs:          0,
 			StatementTimeoutMsQueryText: 0,
