@@ -61,6 +61,7 @@ INSTALL_DIR="$PARENT_DIR/bin"
 WEBAPP_DIR="$PARENT_DIR/share/webapp"
 PROMETHEUS_CONFIG_DIR="$PARENT_DIR/config/prometheus"
 AUTODBA_CONFIG_DIR="$PARENT_DIR/config/autodba"
+AUTODBA_DATA_PATH="$PARENT_DIR/share/collector_api_server/storage"
 PROMETHEUS_STORAGE_DIR="$PARENT_DIR/prometheus_data"
 PROMETHEUS_INSTALL_DIR="$PARENT_DIR/prometheus"
 
@@ -110,6 +111,7 @@ Restart=on-failure
 User=autodba
 Group=autodba
 Environment="PARENT_DIR=${PARENT_DIR}"
+Environment="AUTODBA_DATA_PATH=${AUTODBA_DATA_PATH}"
 
 [Install]
 WantedBy=multi-user.target
@@ -122,7 +124,7 @@ else
     echo "System installation not requested or systemctl is unavailable. Skipping systemd service setup."
     echo "You can run the following command to start the AutoDBA service manually:"
     
-    echo "  cd \"${AUTODBA_CONFIG_DIR}\" && PARENT_DIR=\"${PARENT_DIR}\" ${INSTALL_DIR}/autodba-entrypoint.sh"
+    echo "  cd \"${AUTODBA_CONFIG_DIR}\" && PARENT_DIR=\"${PARENT_DIR}\" AUTODBA_DATA_PATH=\"${AUTODBA_DATA_PATH}\" ${INSTALL_DIR}/autodba-entrypoint.sh"
 fi
 
 echo "Installation complete!"
