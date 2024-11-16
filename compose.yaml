@@ -34,7 +34,8 @@ services:
             - autodba_network
         environment:
             - PROMETHEUS_URL=http://autodba-prometheus:9090
-            - AUTODBA_ACCESS_KEY=DEFAULT-ACCESS-KEY
+            - AUTODBA_ACCESS_KEY=${AUTODBA_ACCESS_KEY:-DEFAULT-ACCESS-KEY}
+            - AUTODBA_FORCE_BYPASS_ACCESS_KEY=${AUTODBA_FORCE_BYPASS_ACCESS_KEY:-false}
             - AUTODBA_DATA_PATH=/usr/local/autodba/share/collector_api_server/storage
         volumes:
             - type: volume

@@ -8,6 +8,7 @@ WEBAPP_PATH="${PARENT_DIR}/share/webapp"
 PROMETHEUS_URL="${PROMETHEUS_URL:-http://localhost:9090}"
 
 export AUTODBA_ACCESS_KEY=${AUTODBA_ACCESS_KEY:-DEFAULT-ACCESS-KEY}
+export AUTODBA_FORCE_BYPASS_ACCESS_KEY=${AUTODBA_FORCE_BYPASS_ACCESS_KEY:-false}
 
 # Wait for Prometheus to be ready
 echo "Waiting for Prometheus to be ready..."
