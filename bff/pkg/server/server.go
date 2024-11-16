@@ -926,7 +926,7 @@ func snapshots_handler(dataPath string) http.HandlerFunc {
 		// For each snapshot, read the file and add its contents to the response
 		var response []interface{}
 		for _, snapshot := range snapshots {
-			file, err := os.Open(snapshot.S3Location)
+			file, err := os.Open(filepath.Join(dataPath, strings.TrimPrefix(snapshot.S3Location, "storage/")))
 			if err != nil {
 				fmt.Printf("Error reading snapshot file: %v\n", err)
 				http.Error(w, "Error reading snapshot file", http.StatusInternalServerError)
