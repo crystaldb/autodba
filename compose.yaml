@@ -17,7 +17,7 @@ services:
         networks:
             - autodba_network
         environment:
-            - PROMETHEUS_HOST=${AUTODBA_PROMETHEUS_HOST:-autodba-prometheus}
+            - PROMETHEUS_HOST=${AUTODBA_PROMETHEUS_HOST:-autodba-prometheus:9090}
             - COLLECTOR_API_URL=${AUTODBA_COLLECTOR_API_URL:-http://autodba-agent:7080}
             - AUTODBA_API_KEY=${AUTODBA_API_KEY:-DEFAULT-API-KEY}
             - AUTODBA_REPROCESS_FULL_SNAPSHOTS=${AUTODBA_REPROCESS_FULL_SNAPSHOTS:-false}
