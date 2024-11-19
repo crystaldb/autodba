@@ -470,8 +470,13 @@ func activity_handler(metrics_service metrics.Service, validate *validator.Valid
 			return
 		}
 
-		if params.Dim != "time" && totalDuration > 24*time.Hour {
-			http.Error(w, "Total duration must be less than 24 hours for non-time dimensions.", http.StatusBadRequest)
+		if params.Dim == "time" && totalDuration > 12*time.Hour {
+			http.Error(w, "Total duration must be less than 12 hours for time dimension.", http.StatusBadRequest)
+			return
+		}
+
+		if params.Dim != "time" && totalDuration > 3*time.Hour {
+			http.Error(w, "Total duration must be less than 3 hours for non-time dimensions.", http.StatusBadRequest)
 			return
 		}
 
