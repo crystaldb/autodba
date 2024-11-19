@@ -5,19 +5,21 @@ import (
 )
 
 type AuthMiddleware struct {
-	accessKey string
+	accessKey            string
+	forceBypassAccessKey bool
 }
 
-func NewAuthMiddleware(accessKey string) *AuthMiddleware {
+func NewAuthMiddleware(accessKey string, forceBypassAccessKey bool) *AuthMiddleware {
 	return &AuthMiddleware{
-		accessKey: accessKey,
+		accessKey:            accessKey,
+		forceBypassAccessKey: forceBypassAccessKey,
 	}
 }
 
 func (a *AuthMiddleware) Authenticate(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Only authenticate requests to /api paths
-		if len(r.URL.Path) >= 4 && r.URL.Path[:4] == "/api" {
+		if !a.forceBypassAccessKey && len(r.URL.Path) >= 4 && r.URL.Path[:4] == "/api" {
 			authHeader := r.Header.Get("Autodba-Access-Key")
 			if authHeader == "" {
 				http.Error(w, "Unauthorized - Missing Autodba-Access-Key header", http.StatusUnauthorized)

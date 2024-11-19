@@ -227,8 +227,8 @@ func TestMultipleSystemsHandling(t *testing.T) {
 			assert.Equal(t, tc.expectedMetrics[system1], len(metrics1), "Unexpected number of metrics for system 1")
 			assert.Equal(t, tc.expectedMetrics[system2], len(metrics2), "Unexpected number of metrics for system 2")
 
-			staleMarkers1 := createStaleMarkers(previousMetrics[system1][CompactSnapshotType], metrics1, now.UnixMilli())
-			staleMarkers2 := createStaleMarkers(previousMetrics[system2][CompactSnapshotType], metrics2, now.UnixMilli())
+			staleMarkers1 := createStaleMarkers(previousMetrics[system1][CompactActivitySnapshotType], metrics1, now.UnixMilli())
+			staleMarkers2 := createStaleMarkers(previousMetrics[system2][CompactActivitySnapshotType], metrics2, now.UnixMilli())
 
 			assert.Equal(t, tc.expectedStale[system1], len(staleMarkers1), "Unexpected number of stale markers for system 1")
 			assert.Equal(t, tc.expectedStale[system2], len(staleMarkers2), "Unexpected number of stale markers for system 2")
@@ -246,8 +246,8 @@ func TestMultipleSystemsHandling(t *testing.T) {
 			if previousMetrics[system2] == nil {
 				previousMetrics[system2] = make(map[string][]prompb.TimeSeries)
 			}
-			previousMetrics[system1][CompactSnapshotType] = metrics1
-			previousMetrics[system2][CompactSnapshotType] = metrics2
+			previousMetrics[system1][CompactActivitySnapshotType] = metrics1
+			previousMetrics[system2][CompactActivitySnapshotType] = metrics2
 		})
 	}
 }

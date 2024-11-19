@@ -36,13 +36,14 @@ type RouteConfig struct {
 }
 
 type server_imp struct {
-	routes_config   map[string]RouteConfig
-	metrics_service metrics.Service
-	port            string
-	webappPath      string
-	accessKey       string
-	inputValidator  *validator.Validate
-	dataPath        string
+	routes_config        map[string]RouteConfig
+	metrics_service      metrics.Service
+	port                 string
+	webappPath           string
+	accessKey            string
+	forceBypassAccessKey bool
+	inputValidator       *validator.Validate
+	dataPath             string
 }
 
 type InstanceInfo struct {
@@ -83,8 +84,8 @@ func CORS(next http.Handler) http.Handler {
 	})
 }
 
-func CreateServer(r map[string]RouteConfig, m metrics.Service, port string, webappPath string, accessKey string, dataPath string) Server {
-	return server_imp{r, m, port, webappPath, accessKey, CreateValidator(), dataPath}
+func CreateServer(r map[string]RouteConfig, m metrics.Service, port string, webappPath string, accessKey string, forceBypassAccessKey bool, dataPath string) Server {
+	return server_imp{r, m, port, webappPath, accessKey, forceBypassAccessKey, CreateValidator(), dataPath}
 }
 
 func CreateValidator() *validator.Validate {
@@ -118,7 +119,7 @@ func fileExists(filePath string) bool {
 func (s server_imp) Run() error {
 	r := chi.NewRouter()
 
-	authMiddleware := middleware.NewAuthMiddleware(s.accessKey)
+	authMiddleware := middleware.NewAuthMiddleware(s.accessKey, s.forceBypassAccessKey)
 	r.Use(authMiddleware.Authenticate)
 	r.Use(CORS)
 
@@ -935,7 +936,7 @@ func snapshots_handler(dataPath string) http.HandlerFunc {
 		// For each snapshot, read the file and add its contents to the response
 		var response []interface{}
 		for _, snapshot := range snapshots {
-			file, err := os.Open(snapshot.S3Location)
+			file, err := os.Open(filepath.Join(dataPath, strings.TrimPrefix(snapshot.S3Location, "storage/")))
 			if err != nil {
 				fmt.Printf("Error reading snapshot file: %v\n", err)
 				http.Error(w, "Error reading snapshot file", http.StatusInternalServerError)

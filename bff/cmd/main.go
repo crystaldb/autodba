@@ -12,12 +12,13 @@ import (
 )
 
 type Config struct {
-	Port             string                        `json:"port"`
-	PrometheusServer string                        `json:"prometheus_server"`
-	RoutesConfig     map[string]server.RouteConfig `json:"routes_config"`
-	WebappPath       string                        `json:"webapp_path"`
-	AccessKey        string                        `json:"access_key"`
-	DataPath         string                        `json:"data_path"`
+	Port                 string                        `json:"port"`
+	PrometheusServer     string                        `json:"prometheus_server"`
+	RoutesConfig         map[string]server.RouteConfig `json:"routes_config"`
+	WebappPath           string                        `json:"webapp_path"`
+	AccessKey            string                        `json:"access_key"`
+	ForceBypassAccessKey bool                          `json:"force_bypass_access_key"`
+	DataPath             string                        `json:"data_path"`
 }
 
 func main() {
@@ -58,15 +59,18 @@ func run(webappPath string) error {
 
 	var config Config
 	config.WebappPath = webappPath
-	var ok bool
+
+	forceBypassAccessKey := os.Getenv("AUTODBA_FORCE_BYPASS_ACCESS_KEY")
+	config.ForceBypassAccessKey = forceBypassAccessKey == "true"
 
 	// Get access key from environment variable with fallback to config file
 	accessKey := os.Getenv("AUTODBA_ACCESS_KEY")
-	if accessKey == "" {
+	if !config.ForceBypassAccessKey && accessKey == "" {
 		return fmt.Errorf("access key must be set via the AUTODBA_ACCESS_KEY environment variable")
 	}
 	config.AccessKey = accessKey
 
+	var ok bool
 	// Get port from environment variable with fallback to config file
 	port := os.Getenv("AUTODBA_BFF_PORT")
 	if port == "" {
@@ -130,7 +134,7 @@ func run(webappPath string) error {
 	metrics_repo := prometheus.New(config.PrometheusServer)
 	metrics_service := metrics.CreateService(metrics_repo)
 
-	server := server.CreateServer(config.RoutesConfig, metrics_service, config.Port, config.WebappPath, config.AccessKey, config.DataPath)
+	server := server.CreateServer(config.RoutesConfig, metrics_service, config.Port, config.WebappPath, config.AccessKey, config.ForceBypassAccessKey, config.DataPath)
 
 	if err = server.Run(); err != nil {
 		return err
