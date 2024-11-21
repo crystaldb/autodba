@@ -46,7 +46,7 @@ However, the following temporary limitations are presently in place:
 ### Prerequisites
 
 1. *Linux server* with network access to your PostgreSQL database.
-We recommend using a machine with at least 2&nbsp;GB of RAM and 10&nbsp;GB of disk space (e.g., `t3.small` on AWS).
+We recommend using a machine with at least 2&nbsp;GB of RAM and 10&nbsp;GB of disk space (e.g., `t3.small` on AWS, `e2-small` on GCP).
 
 2. *Enabling pg_stat_statements*: connect to your database using psql, and run the following SQL commands to enable the pg_stat_statements extension, and make sure it works:
 
@@ -121,7 +121,195 @@ For example:
 ssh -L4000:localhost:4000 <MY_USERNAME>@<MY_HOSTNAME>
 ```
 
+### Cloud Access Setup
+
+We'll set up the roles/policies in your cloud provider, so that the collector can access database metrics and logs.  Jump below to the section for your cloud provider (AWS or GCP).
+
+#### Amazon Web Services (AWS)
+
+##### Create IAM policy
+
+We'll create an IAM policy that allows the collector to view RDS instances, CloudWatch metrics and RDS log files.
+
+First, save this JSON to a file called **autodba_policy.json**
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Action": [
+        "cloudwatch:GetMetricStatistics"
+      ],
+      "Effect": "Allow",
+      "Resource": "*"
+    },
+    {
+      "Action": [
+        "logs:GetLogEvents"
+      ],
+      "Effect": "Allow",
+      "Resource": "arn:aws:logs:*:*:log-group:RDSOSMetrics:log-stream:*"
+    },
+    {
+      "Action": [
+        "rds:DescribeDBParameters"
+      ],
+      "Effect": "Allow",
+      "Resource": "arn:aws:rds:*:*:pg:*"
+    },
+    {
+      "Action": [
+        "rds:DescribeDBInstances",
+        "rds:DownloadDBLogFilePortion",
+        "rds:DescribeDBLogFiles"
+      ],
+      "Effect": "Allow",
+      "Resource": "arn:aws:rds:*:*:db:*"
+    },
+    {
+      "Action": [
+        "rds:DescribeDBClusters"
+      ],
+      "Effect": "Allow",
+      "Resource": "arn:aws:rds:*:*:cluster:*"
+    }
+  ]
+}
+```
+
+Then, run this command from the CLI:
+
+```bash
+aws iam create-policy
+    --policy-name autodba
+    --policy-document file://autodba_policy.json
+    --description "Allow AutoDBA to access RDS"
+```
+
+##### Create IAM role
+
+First, run this command to create the IAM role:
+
+```bash
+aws iam create-role
+    --role-name autodba
+    --description "autodba collector"
+    --assume-role-policy-document '{"Version": "2012-10-17", "Statement": [{"Effect": "Allow", "Principal": {"Service": "ec2.amazonaws.com"}, "Action": "sts:AssumeRole"}]}'
+```
+
+Then, run this command to attach the policy, after replacing `AWS_ACCOUNT_ID`:
+
+```bash
+aws iam attach-role-policy
+    --role-name autodba
+    --policy-arn arn:aws:iam::AWS_ACCOUNT_ID:policy/autodba
+```
+
+##### Attach IAM role to EC2 instance
+
+Either start a new `t3.small` EC2 instance and attach the IAM role during creation or attach the IAM role to an existing instance with the following command:
+
+```bash
+aws ec2 associate-iam-instance-profile
+    --instance-id INSTANCE_ID
+    --iam-instance-profile Name=autodba
+```
+
+Continue to the **Collector Installation** section.
+
+#### Google Cloud Platform (GCP)
+
+##### Create Service Account
+
+Create a new service account for AutoDBA with the following command:
+
+```bash
+gcloud iam service-accounts create autodba --display-name "AutoDBA"
+```
+
+##### Add Roles to the Service Account
+
+We will add the following roles to the service account:
+
+- Cloud SQL Viewer & Client
+- Monitoring Service Agent
+- Pub/Sub Subscriber
+
+To add the roles use the following commands, replacing `PROJECT_ID`:
+
+```bash
+gcloud projects add-iam-policy-binding PROJECT_ID \
+    --member="serviceAccount:autodba@PROJECT_ID.iam.gserviceaccount.com" \
+    --role="roles/cloudsql.viewer"
+
+gcloud projects add-iam-policy-binding PROJECT_ID \
+    --member="serviceAccount:autodba@PROJECT_ID.iam.gserviceaccount.com" \
+    --role="roles/cloudsql.client"
+
+gcloud projects add-iam-policy-binding PROJECT_ID \
+    --member="serviceAccount:autodba@PROJECT_ID.iam.gserviceaccount.com" \
+    --role="roles/monitoring.notificationServiceAgent"
+
+gcloud projects add-iam-policy-binding PROJECT_ID \
+    --member="serviceAccount:autodba@PROJECT_ID.iam.gserviceaccount.com" \
+    --role="roles/pubsub.subscriber"
+```
+
+##### Set up CloudSql logs
+
+We'll use a Pub/Sub topic to collect logs from the CloudSQL instance.
+
+First, create a Pub/Sub topic for the logs:
+
+```bash
+gcloud pubsub topics create autodba-cloudsql-logs
+```
+
+Then, create a subscription to the topic:
+
+```bash
+gcloud pubsub subscriptions create autodba-cloudsql-logs-sub --topic autodba-cloudsql-logs --message-retention-duration=1d
+```
+
+Write down the `SUBSCRIPTION_NAME` that is output from the previous command, as you will need it later for the collector configuration. The output will look something like this:
+
+```
+Created subscription [SUBSCRIPTION_NAME].
+```
+
+
+Then, set up a logging sink to publish logs from the CloudSQL instance to the topic, replacing `PROJECT_ID` and `CLOUDSQL_INSTANCE_ID`:
+
+```bash
+gcloud logging sinks create autodba-cloudsql-logs-sink \
+    pubsub.googleapis.com/projects/PROJECT_ID/topics/autodba-cloudsql-logs \
+    --log-filter='resource.type="cloudsql_database" resource.labels.database_id="CLOUDSQL_INSTANCE_ID"'
+```
+
+##### Attach Service Account to GCE instance
+
+You will need at least a `e2-small` GCE instance and need to attach the service account that we created earlier.
+
+If you're creating a new instance, you can attach the service account with the `service-account` flag. Something like this, replacing `PROJECT_ID`:
+
+```bash
+gcloud compute instances create \
+    --service-account="autodba@PROJECT_ID.iam.gserviceaccount.com"
+```
+
+If you are attaching the service account to an existing instance, run the following command, replacing `INSTANCE_ID`, `INSTANCE_ZONE`, and `PROJECT_ID`:
+
+```bash
+gcloud compute instances set-service-account INSTANCE_ID \
+    --zone=INSTANCE_ZONE \
+    --service-account=autodba@PROJECT_ID.iam.gserviceaccount.com \
+    --scopes=https://www.googleapis.com/auth/cloud-platform
+```
+
+
 ### AutoDBA Collector Installation
+
 
 Follow these instructions to install AutoDBA Collector on Linux.
 
@@ -168,22 +356,25 @@ aws_secret_access_key = <YOUR_AWS_SECRET_ACCESS_KEY>
 # gcp_project_id = <YOUR_GCP_PROJECT_ID>
 # gcp_cloudsql_instance_id = <YOUR_GCP_CLOUDSQL_INSTANCE_ID>
 # gcp_credentials_file = <YOUR_GCP_CREDENTIALS_FILE (default value: ~/.config/gcloud/application_default_credentials.json)>
+# gcp_pubsub_subscription = <YOUR_GCP_PUBSUB_SUBSCRIPTION_NAME>
 EOF
 ```
 
-### Note:
+#### Notes:
   - `api_base_url` should be the URL for `AutoDBA Agent` installed in the previous section.
 
   - If you have a PostgreSQL connection string (i.e., URI) of the form `postgres://<db_username>:<db_password>@<db_host>:<db_port>/<db_name>` you can extract `db_username`, `db_password`, `db_host`, `db_port`, and `db_name`.
 
   - If you're using AWS RDS, then your `<db_host>` is in this format: `<aws_db_instance_id>.<aws_account_id>.<aws_region>.rds.amazonaws.com`
 
-  - For Google Cloud SQL, you need to follow [these instructions](https://cloud.google.com/sql/docs/postgres/connect-auth-proxy) to install gcloud CLI and cloud-sql-proxy (if your database is not directly accessible from this machine). Then, you need to:
-    - init `gcloud`: `gcloud init`
-    - auth to  `gcloud`: `gcloud auth login`
-    - enable default auth on  `gcloud`: `gcloud auth application-default login`
-    - Run the proxy: `./cloud-sql-proxy --port <YOUR_PROXIED_DB_PORT> <YOUR_GCP_PROJECT_ID>:<YOUR_GCP_CLOUDSQL_INSTANCE_ID>`.
+  - For Google Cloud `gcp_pubsub_subscription` use the Pub/Sub subscription that we created in the previous section.
+
+  - For Google Cloud SQL, you need to follow [these instructions](https://cloud.google.com/sql/docs/postgres/connect-auth-proxy#install) to install cloud-sql-proxy on your GCE instance (if your database is not directly accessible from this machine). Then, you need to:
+    - Run the proxy: `./cloud-sql-proxy --port <YOUR_PROXIED_DB_PORT> <YOUR_GCP_PROJECT_ID>:<YOUR_GCP_CLOUDSQL_INSTANCE_ID> &`.
     - Then, in the configuration file (`autodba.conf`), you should set `db_host = localhost`, and `db_port = <YOUR_PROXIED_DB_PORT>`.
+    - You'll want to set up the proxy to run as a service on startup.
+
+#### Install the Collector:
 
 4. Run the `install.sh` script to install AutoDBA Collector.
 
