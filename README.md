@@ -232,7 +232,7 @@ gcloud iam service-accounts create autodba --display-name "AutoDBA"
 
 We will add the following roles to the service account:
 
-- Cloud SQL Viewer
+- Cloud SQL Viewer & Client
 - Monitoring Service Agent
 - Pub/Sub Subscriber
 
@@ -242,6 +242,10 @@ To add the roles use the following commands, replacing `PROJECT_ID`:
 gcloud projects add-iam-policy-binding PROJECT_ID \
     --member="serviceAccount:autodba@PROJECT_ID.iam.gserviceaccount.com" \
     --role="roles/cloudsql.viewer"
+
+gcloud projects add-iam-policy-binding PROJECT_ID \
+    --member="serviceAccount:autodba@PROJECT_ID.iam.gserviceaccount.com" \
+    --role="roles/cloudsql.client"
 
 gcloud projects add-iam-policy-binding PROJECT_ID \
     --member="serviceAccount:autodba@PROJECT_ID.iam.gserviceaccount.com" \
