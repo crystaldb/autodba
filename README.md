@@ -143,21 +143,21 @@ First, save this JSON to a file called **autodba_policy.json**
         "cloudwatch:GetMetricStatistics"
       ],
       "Effect": "Allow",
-      "Resource": "_"
+      "Resource": "*"
     },
     {
       "Action": [
         "logs:GetLogEvents"
       ],
       "Effect": "Allow",
-      "Resource": "arn:aws:logs:_:_:log-group:RDSOSMetrics:log-stream:_"
+      "Resource": "arn:aws:logs:*:*:log-group:RDSOSMetrics:log-stream:*"
     },
     {
       "Action": [
         "rds:DescribeDBParameters"
       ],
       "Effect": "Allow",
-      "Resource": "arn:aws:rds:_:_:pg:_"
+      "Resource": "arn:aws:rds:*:*:pg:*"
     },
     {
       "Action": [
@@ -166,14 +166,14 @@ First, save this JSON to a file called **autodba_policy.json**
         "rds:DescribeDBLogFiles"
       ],
       "Effect": "Allow",
-      "Resource": "arn:aws:rds:_:_:db:_"
+      "Resource": "arn:aws:rds:*:*:db:*"
     },
     {
       "Action": [
         "rds:DescribeDBClusters"
       ],
       "Effect": "Allow",
-      "Resource": "arn:aws:rds:_:_:cluster:\\*"
+      "Resource": "arn:aws:rds:*:*:cluster:*"
     }
   ]
 }
@@ -183,9 +183,9 @@ Then, run this command from the CLI:
 
 ```bash
 aws iam create-policy
-        --policy-name autodba
-        --policy-document file://autodba_policy.json
-        --description "Allow AutoDBA to access RDS"
+    --policy-name autodba
+    --policy-document file://autodba_policy.json
+    --description "Allow AutoDBA to access RDS"
 ```
 
 ##### Create IAM role
@@ -200,14 +200,14 @@ First, run this command from the CLI:
 
 ```bash
 aws iam create-role
---role-name autodba
---description "autodba collector"
---assume-role-policy-document JSON_HERE
+    --role-name autodba
+    --description "autodba collector"
+    --assume-role-policy-document JSON_HERE
 ```
 
-Then, run this command after replacing `AWS_ACCOUNT_ID` with your AWS Account ID:
+Then, run this command after replacing `AWS_ACCOUNT_ID`:
 
-```
+```bash
 aws iam attach-role-policy
         --role-name autodba
         --policy-arn arn:aws:iam::AWS_ACCOUNT_ID:policy/autodba
@@ -219,8 +219,8 @@ Either start a new `t3.small` EC2 instance and attach the IAM role during creati
 
 ```bash
 aws ec2 associate-iam-instance-profile
-        --instance-id INSTANCE_ID
-        --iam-instance-profile Name=autodba
+    --instance-id INSTANCE_ID
+    --iam-instance-profile Name=autodba
 ```
 
 
@@ -297,8 +297,8 @@ If you're creating a new instance, you can attach the service account with the `
 
 ```bash
 gcloud compute instances create \
-        --service-account="autodba@PROJECT_ID.iam.gserviceaccount.com"
- ```
+    --service-account="autodba@PROJECT_ID.iam.gserviceaccount.com"
+```
 
 If you are attaching the service account to an existing instance, run the following command, replacing `INSTANCE_ID`, `INSTANCE_ZONE`, and `PROJECT_ID`:
 
