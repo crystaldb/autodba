@@ -190,22 +190,16 @@ aws iam create-policy
 
 ##### Create IAM role
 
-First, run this command from the CLI:
-
-> **Tip:** replace `JSON_HERE` in the `aws` command below with the following JSON.
-
-```json
-{"Version": "2012-10-17", "Statement": [{"Effect": "Allow", "Principal": {"Service": "ec2.amazonaws.com"}, "Action": "sts:AssumeRole"}]}
-```
+First, run this command to create the IAM role:
 
 ```bash
 aws iam create-role
     --role-name autodba
     --description "autodba collector"
-    --assume-role-policy-document JSON_HERE
+    --assume-role-policy-document '{"Version": "2012-10-17", "Statement": [{"Effect": "Allow", "Principal": {"Service": "ec2.amazonaws.com"}, "Action": "sts:AssumeRole"}]}'
 ```
 
-Then, run this command after replacing `AWS_ACCOUNT_ID`:
+Then, run this command to attach the policy, after replacing `AWS_ACCOUNT_ID`:
 
 ```bash
 aws iam attach-role-policy
