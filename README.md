@@ -226,15 +226,6 @@ aws ec2 associate-iam-instance-profile
 
 #### Google Cloud Platform (GCP)
 
-##### Set up your environment
-
-First, ensure you are authenticated and using the right project. You can run this command, replacing `PROJECT_ID`:
-
-```bash
-gcloud auth login
-gcloud config set project PROJECT_ID
-```
-
 ##### Create Service Account
 
 Create a new service account for AutoDBA with the following command:
