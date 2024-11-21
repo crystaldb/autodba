@@ -3,6 +3,7 @@ package api
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"fmt"
 	"log"
 	"math"
@@ -767,7 +768,7 @@ func createLabelsForBackend(backendKey BackendKey, systemInfo SystemInfo) []prom
 
 	if backendKey.Query != "" {
 		labels = append(labels, prompb.Label{Name: "query", Value: backendKey.Query})
-		// labels = append(labels, prompb.Label{Name: "query_fp", Value: backendKey.QueryFingerPrint})
+		labels = append(labels, prompb.Label{Name: "query_fp", Value: base64.StdEncoding.EncodeToString([]byte(backendKey.QueryFingerPrint))})
 		labels = append(labels, prompb.Label{Name: "query_full", Value: backendKey.QueryFull})
 	} else {
 		labels = append(labels, prompb.Label{Name: "query", Value: backendKey.QueryFull})
