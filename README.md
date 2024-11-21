@@ -373,11 +373,8 @@ EOF
 
   - For Google Cloud `gcp_pubsub_subscription` use the Pub/Sub subscription that we created in the previous section.
 
-  - For Google Cloud SQL, you need to follow [these instructions](https://cloud.google.com/sql/docs/postgres/connect-auth-proxy) to install gcloud CLI and cloud-sql-proxy (if your database is not directly accessible from this machine). Then, you need to:
-    - init `gcloud`: `gcloud init`
-    - auth to  `gcloud`: `gcloud auth login`
-    - enable default auth on  `gcloud`: `gcloud auth application-default login`
-    - Run the proxy: `./cloud-sql-proxy --port <YOUR_PROXIED_DB_PORT> <YOUR_GCP_PROJECT_ID>:<YOUR_GCP_CLOUDSQL_INSTANCE_ID>`.
+  - For Google Cloud SQL, you need to follow [these instructions](https://cloud.google.com/sql/docs/postgres/connect-auth-proxy#install) to install cloud-sql-proxy (if your database is not directly accessible from this machine). Then, you need to:
+    - Run the proxy: `./cloud-sql-proxy --port <YOUR_PROXIED_DB_PORT> <YOUR_GCP_PROJECT_ID>:<YOUR_GCP_CLOUDSQL_INSTANCE_ID> &`.
     - Then, in the configuration file (`autodba.conf`), you should set `db_host = localhost`, and `db_port = <YOUR_PROXIED_DB_PORT>`.
 
 4. Run the `install.sh` script to install AutoDBA Collector.
