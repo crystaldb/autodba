@@ -136,46 +136,46 @@ First, save this JSON to a file called **autodba_policy.json**
 
 ```json
 {
-    "Version": "2012-10-17",
-        "Statement": [
-        {
-            "Action": [
-                "cloudwatch:GetMetricStatistics"
-            ],
-            "Effect": "Allow",
-            "Resource": "_"
-        },
-        {
-            "Action": [
-                "logs:GetLogEvents"
-            ],
-            "Effect": "Allow",
-            "Resource": "arn:aws:logs:_:_:log-group:RDSOSMetrics:log-stream:_"
-        },
-        {
-            "Action": [
-                "rds:DescribeDBParameters"
-            ],
-            "Effect": "Allow",
-            "Resource": "arn:aws:rds:_:_:pg:_"
-        },
-        {
-            "Action": [
-                "rds:DescribeDBInstances",
-            "rds:DownloadDBLogFilePortion",
-            "rds:DescribeDBLogFiles"
-            ],
-            "Effect": "Allow",
-            "Resource": "arn:aws:rds:_:_:db:_"
-        },
-        {
-            "Action": [
-                "rds:DescribeDBClusters"
-            ],
-            "Effect": "Allow",
-            "Resource": "arn:aws:rds:_:_:cluster:\*"
-        }
-    ]
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Action": [
+        "cloudwatch:GetMetricStatistics"
+      ],
+      "Effect": "Allow",
+      "Resource": "_"
+    },
+    {
+      "Action": [
+        "logs:GetLogEvents"
+      ],
+      "Effect": "Allow",
+      "Resource": "arn:aws:logs:_:_:log-group:RDSOSMetrics:log-stream:_"
+    },
+    {
+      "Action": [
+        "rds:DescribeDBParameters"
+      ],
+      "Effect": "Allow",
+      "Resource": "arn:aws:rds:_:_:pg:_"
+    },
+    {
+      "Action": [
+        "rds:DescribeDBInstances",
+        "rds:DownloadDBLogFilePortion",
+        "rds:DescribeDBLogFiles"
+      ],
+      "Effect": "Allow",
+      "Resource": "arn:aws:rds:_:_:db:_"
+    },
+    {
+      "Action": [
+        "rds:DescribeDBClusters"
+      ],
+      "Effect": "Allow",
+      "Resource": "arn:aws:rds:_:_:cluster:\\*"
+    }
+  ]
 }
 ```
 
@@ -183,9 +183,9 @@ Then, run this command from the CLI:
 
 ```bash
 aws iam create-policy
---policy-name autodba
---policy-document file://autodba_policy.json
---description "Allow AutoDBA to access RDS"
+        --policy-name autodba
+        --policy-document file://autodba_policy.json
+        --description "Allow AutoDBA to access RDS"
 ```
 
 ##### Create IAM role
@@ -209,8 +209,8 @@ Then, run this command after replacing `AWS_ACCOUNT_ID` with your AWS Account ID
 
 ```
 aws iam attach-role-policy
---role-name autodba
---policy-arn arn:aws:iam::AWS_ACCOUNT_ID:policy/autodba
+        --role-name autodba
+        --policy-arn arn:aws:iam::AWS_ACCOUNT_ID:policy/autodba
 ```
 
 ##### Attach IAM role to EC2 instance
@@ -219,8 +219,8 @@ Either start a new `t3.small` EC2 instance and attach the IAM role during creati
 
 ```bash
 aws ec2 associate-iam-instance-profile
---instance-id INSTANCE_ID
---iam-instance-profile Name=autodba
+        --instance-id INSTANCE_ID
+        --iam-instance-profile Name=autodba
 ```
 
 
@@ -296,9 +296,8 @@ You will need at least a `e2-small` GCE instance and need to attach the service 
 If you're creating a new instance, you can attach the service account with the `service-account` flag. Something like this, replacing `PROJECT_ID`:
 
 ```bash
- gcloud compute instances create
- ...
- --service-account="autodba@PROJECT_ID.iam.gserviceaccount.com"
+gcloud compute instances create \
+        --service-account="autodba@PROJECT_ID.iam.gserviceaccount.com"
  ```
 
 If you are attaching the service account to an existing instance, run the following command, replacing `INSTANCE_ID`, `INSTANCE_ZONE`, and `PROJECT_ID`:
