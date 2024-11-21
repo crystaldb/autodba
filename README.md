@@ -230,13 +230,13 @@ gcloud iam service-accounts create autodba --display-name "AutoDBA"
 
 ##### Add Roles to the Service Account
 
-Add the following roles to the service account:
+We will add the following roles to the service account:
 
 - Cloud SQL Viewer
 - Monitoring Service Agent
 - Pub/Sub Subscriber
 
-Add the roles with the following commands, replacing `PROJECT_ID`:
+To add the roles use the following commands, replacing `PROJECT_ID`:
 
 ```bash
 gcloud projects add-iam-policy-binding PROJECT_ID \
