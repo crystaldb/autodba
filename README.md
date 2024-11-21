@@ -301,7 +301,7 @@ gcloud compute instances create \
 If you are attaching the service account to an existing instance, run the following command, replacing `INSTANCE_ID`, `INSTANCE_ZONE`, and `PROJECT_ID`:
 
 ```bash
-gcloud compute instances set-service-account my-instance \
+gcloud compute instances set-service-account INSTANCE_ID \
     --zone=INSTANCE_ZONE \
     --service-account=autodba@PROJECT_ID.iam.gserviceaccount.com \
     --scopes=https://www.googleapis.com/auth/cloud-platform
@@ -312,8 +312,6 @@ gcloud compute instances set-service-account my-instance \
 
 
 Follow these instructions to install AutoDBA Collector on Linux.
-
-#### Download and extract AutoDBA Collector
 
 1. Download the latest release of AutoDBA Collector from the [releases page](https://github.com/crystaldb/autodba/releases).
 Choose the version appropriate to your architecture and operating system.
@@ -330,8 +328,6 @@ cd collector-0.6.0-rc1
 ```
 
 3. Run this command to create a configuration file (`autodba.conf`) and populate it with values appropriate to your environment:
-
-#### Create configuration file
 
 ```conf
 cat << EOF > autodba.conf
@@ -364,7 +360,7 @@ aws_secret_access_key = <YOUR_AWS_SECRET_ACCESS_KEY>
 EOF
 ```
 
-### Notes:
+#### Notes:
   - `api_base_url` should be the URL for `AutoDBA Agent` installed in the previous section.
 
   - If you have a PostgreSQL connection string (i.e., URI) of the form `postgres://<db_username>:<db_password>@<db_host>:<db_port>/<db_name>` you can extract `db_username`, `db_password`, `db_host`, `db_port`, and `db_name`.
@@ -373,9 +369,12 @@ EOF
 
   - For Google Cloud `gcp_pubsub_subscription` use the Pub/Sub subscription that we created in the previous section.
 
-  - For Google Cloud SQL, you need to follow [these instructions](https://cloud.google.com/sql/docs/postgres/connect-auth-proxy#install) to install cloud-sql-proxy (if your database is not directly accessible from this machine). Then, you need to:
+  - For Google Cloud SQL, you need to follow [these instructions](https://cloud.google.com/sql/docs/postgres/connect-auth-proxy#install) to install cloud-sql-proxy on your GCE instance (if your database is not directly accessible from this machine). Then, you need to:
     - Run the proxy: `./cloud-sql-proxy --port <YOUR_PROXIED_DB_PORT> <YOUR_GCP_PROJECT_ID>:<YOUR_GCP_CLOUDSQL_INSTANCE_ID> &`.
     - Then, in the configuration file (`autodba.conf`), you should set `db_host = localhost`, and `db_port = <YOUR_PROXIED_DB_PORT>`.
+    - You'll want to set up the proxy to run as a service on startup.
+
+#### Install the Collector:
 
 4. Run the `install.sh` script to install AutoDBA Collector.
 
