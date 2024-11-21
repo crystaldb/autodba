@@ -257,15 +257,11 @@ Add the roles with the following commands, replacing `PROJECT_ID`:
 gcloud projects add-iam-policy-binding PROJECT_ID \
     --member="serviceAccount:autodba@PROJECT_ID.iam.gserviceaccount.com" \
     --role="roles/cloudsql.viewer"
-```
 
-```bash
 gcloud projects add-iam-policy-binding PROJECT_ID \
     --member="serviceAccount:autodba@PROJECT_ID.iam.gserviceaccount.com" \
     --role="roles/monitoring.notificationServiceAgent"
-```
 
-```bash
 gcloud projects add-iam-policy-binding PROJECT_ID \
     --member="serviceAccount:autodba@PROJECT_ID.iam.gserviceaccount.com" \
     --role="roles/pubsub.subscriber"
@@ -294,13 +290,16 @@ Created subscription [SUBSCRIPTION_NAME].
 ```
 
 
-Then, set up a logging sink to publish logs from the CloudSQL instance to the topic, replacing `CLOUDSQL_INSTANCE_ID`:
+Then, set up a logging sink to publish logs from the CloudSQL instance to the topic, replacing `PROJECT_ID` and `CLOUDSQL_INSTANCE_ID`:
 
 ```bash
 gcloud logging sinks create autodba-cloudsql-logs-sink \
-    --topic=autodba-cloudsql-logs \
+    pubsub.googleapis.com/projects/PROJECT_ID/topics/autodba-cloudsql-logs \
     --log-filter='resource.type="cloudsql_database" resource.labels.database_id="CLOUDSQL_INSTANCE_ID"'
 ```
+
+gcloud logging sinks create rc-autodba-cloudsql-logs-sink \
+    pubsub.googleapis.com/projects/[PROJECT_ID]/topics/rc-autodba-cloudsql-logs 
 
 ##### Attach Service Account to GCE instance
 
