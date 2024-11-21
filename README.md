@@ -121,6 +121,105 @@ For example:
 ssh -L4000:localhost:4000 <MY_USERNAME>@<MY_HOSTNAME>
 ```
 
+### Set up access for AutoDBA Collector
+
+Set up the IAM role for the collector to access database metrics and logs.  Jump below to the section for your cloud provider (AWS or GCP).
+
+
+#### Amazon Web Services (AWS)
+
+##### Create IAM policy
+
+First, save this JSON to a file called **autodba_policy.json**
+
+```json
+{
+    "Version": "2012-10-17",
+        "Statement": [
+        {
+            "Action": [
+                "cloudwatch:GetMetricStatistics"
+            ],
+            "Effect": "Allow",
+            "Resource": "_"
+        },
+        {
+            "Action": [
+                "logs:GetLogEvents"
+            ],
+            "Effect": "Allow",
+            "Resource": "arn:aws:logs:_:_:log-group:RDSOSMetrics:log-stream:_"
+        },
+        {
+            "Action": [
+                "rds:DescribeDBParameters"
+            ],
+            "Effect": "Allow",
+            "Resource": "arn:aws:rds:_:_:pg:_"
+        },
+        {
+            "Action": [
+                "rds:DescribeDBInstances",
+            "rds:DownloadDBLogFilePortion",
+            "rds:DescribeDBLogFiles"
+            ],
+            "Effect": "Allow",
+            "Resource": "arn:aws:rds:_:_:db:_"
+        },
+        {
+            "Action": [
+                "rds:DescribeDBClusters"
+            ],
+            "Effect": "Allow",
+            "Resource": "arn:aws:rds:_:_:cluster:\*"
+        }
+    ]
+}
+```
+
+Then, run this command from the CLI:
+
+```bash
+aws iam create-policy
+--policy-name autodba
+--policy-document file://autodba_policy.json
+--description "Allow AutoDBA to access RDS"
+```
+
+##### Create IAM role
+
+First, run this command from the CLI:
+
+> **Tip:** replace `JSON_HERE` in the `aws` command below with the following JSON.
+
+```json
+{"Version": "2012-10-17", "Statement": [{"Effect": "Allow", "Principal": {"Service": "ec2.amazonaws.com"}, "Action": "sts:AssumeRole"}]}
+```
+
+```bash
+aws iam create-role
+--role-name autodba
+--description "autodba collector"
+--assume-role-policy-document JSON_HERE
+```
+
+Then, run this command after replacing `AWS_ACCOUNT_ID` with your AWS Account ID:
+
+```
+aws iam attach-role-policy
+--role-name autodba
+--policy-arn arn:aws:iam::AWS_ACCOUNT_ID:policy/autodba
+```
+
+##### Attach IAM role to EC2 instance
+
+Either start a new `t3.small` EC2 instance and attach the IAM role during creation or attach the IAM role to an existing instance with the following command:
+
+```bash
+aws ec2 associate-iam-instance-profile
+--instance-id INSTANCE_ID
+--iam-instance-profile Name=autodba
+```
 ### AutoDBA Collector Installation
 
 Follow these instructions to install AutoDBA Collector on Linux.
