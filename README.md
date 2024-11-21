@@ -121,7 +121,7 @@ For example:
 ssh -L4000:localhost:4000 <MY_USERNAME>@<MY_HOSTNAME>
 ```
 
-### Set up cloud access policies
+### Cloud Access Setup
 
 We'll set up the cloud roles/policies for the collector to access database metrics and logs.  Jump below to the section for your cloud provider (AWS or GCP).
 
