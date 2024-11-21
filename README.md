@@ -293,7 +293,7 @@ gcloud logging sinks create autodba-cloudsql-logs-sink \
 
 You will need at least a `e2-small` GCE instance and need to attach the service account that we created earlier.
 
-If you're creating a new instance, you can attach the service account with the `service-account` flag, replacing `PROJECT_ID`. Something like:
+If you're creating a new instance, you can attach the service account with the `service-account` flag. Something like this, replacing `PROJECT_ID`:
 
 ```bash
  gcloud compute instances create
