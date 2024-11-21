@@ -123,8 +123,7 @@ ssh -L4000:localhost:4000 <MY_USERNAME>@<MY_HOSTNAME>
 
 ### Cloud Access Setup
 
-We'll set up the cloud roles/policies for the collector to access database metrics and logs.  Jump below to the section for your cloud provider (AWS or GCP).
-
+We'll set up the roles/policies in your cloud provider, so that the collector can access database metrics and logs.  Jump below to the section for your cloud provider (AWS or GCP).
 
 #### Amazon Web Services (AWS)
 
@@ -217,6 +216,7 @@ aws ec2 associate-iam-instance-profile
     --iam-instance-profile Name=autodba
 ```
 
+Continue to the **Collector Installation** section.
 
 #### Google Cloud Platform (GCP)
 
