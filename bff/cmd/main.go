@@ -14,6 +14,8 @@ import (
 type Config struct {
 	Port                 string                        `json:"port"`
 	PrometheusServer     string                        `json:"prometheus_server"`
+	TimeDimGuard         int                           `json:"time_dim_guard"`
+	NonTimeDimGuard      int                           `json:"non_time_dim_guard"`
 	RoutesConfig         map[string]server.RouteConfig `json:"routes_config"`
 	WebappPath           string                        `json:"webapp_path"`
 	AccessKey            string                        `json:"access_key"`
@@ -129,12 +131,28 @@ func run(webappPath string) error {
 		}
 	}
 
+	var timeDimGuard int
+	var nonTimeDimGuard int
+
+	timeDimGuard, ok = rawConfig["time_dim_guard"].(int)
+	if !ok {
+		timeDimGuard = 12
+	}
+
+	nonTimeDimGuard, ok = rawConfig["non_time_dim_guard"].(int)
+	if !ok {
+		nonTimeDimGuard = 3
+	}
+
+	config.TimeDimGuard = timeDimGuard
+	config.NonTimeDimGuard = nonTimeDimGuard
+
 	fmt.Printf("Config:\n%+v\n", config)
 
 	metrics_repo := prometheus.New(config.PrometheusServer)
 	metrics_service := metrics.CreateService(metrics_repo)
 
-	server := server.CreateServer(config.RoutesConfig, metrics_service, config.Port, config.WebappPath, config.AccessKey, config.ForceBypassAccessKey, config.DataPath)
+	server := server.CreateServer(config.RoutesConfig, metrics_service, config.Port, config.WebappPath, config.AccessKey, config.ForceBypassAccessKey, config.DataPath, config.TimeDimGuard, config.NonTimeDimGuard)
 
 	if err = server.Run(); err != nil {
 		return err

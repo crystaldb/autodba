@@ -44,6 +44,8 @@ type server_imp struct {
 	forceBypassAccessKey bool
 	inputValidator       *validator.Validate
 	dataPath             string
+	timeDimGuard         int
+	nonTimeDimGuard      int
 }
 
 type InstanceInfo struct {
@@ -84,8 +86,8 @@ func CORS(next http.Handler) http.Handler {
 	})
 }
 
-func CreateServer(r map[string]RouteConfig, m metrics.Service, port string, webappPath string, accessKey string, forceBypassAccessKey bool, dataPath string) Server {
-	return server_imp{r, m, port, webappPath, accessKey, forceBypassAccessKey, CreateValidator(), dataPath}
+func CreateServer(r map[string]RouteConfig, m metrics.Service, port string, webappPath string, accessKey string, forceBypassAccessKey bool, dataPath string, timeDimGuard int, nonTimeDimGuard int) Server {
+	return server_imp{r, m, port, webappPath, accessKey, forceBypassAccessKey, CreateValidator(), dataPath, timeDimGuard, nonTimeDimGuard}
 }
 
 func CreateValidator() *validator.Validate {
@@ -123,7 +125,7 @@ func (s server_imp) Run() error {
 	r.Use(authMiddleware.Authenticate)
 	r.Use(CORS)
 
-	r.Get("/api/v1/activity", activity_handler(s.metrics_service, s.inputValidator))
+	r.Get("/api/v1/activity", activity_handler(s.metrics_service, s.inputValidator, s.timeDimGuard, s.nonTimeDimGuard))
 	r.Get("/api/v1/instance", info_handler(s.metrics_service, s.inputValidator))
 	r.Get("/api/v1/instance/database", databases_handler(s.metrics_service, s.inputValidator))
 	r.Get("/api/v1/snapshots", snapshots_handler(s.dataPath))
@@ -419,7 +421,7 @@ func extractPromQLInput(params ActivityParams, now time.Time) (PromQLInput, erro
 	}, nil
 }
 
-func activity_handler(metrics_service metrics.Service, validate *validator.Validate) http.HandlerFunc {
+func activity_handler(metrics_service metrics.Service, validate *validator.Validate, timeDimGuard int, nonTimeDimGuard int) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 		params := ActivityParams{
@@ -471,13 +473,13 @@ func activity_handler(metrics_service metrics.Service, validate *validator.Valid
 			return
 		}
 
-		if params.Dim == "time" && totalDuration > 12*time.Hour {
-			http.Error(w, "Total duration must be less than 12 hours for time dimension.", http.StatusBadRequest)
+		if params.Dim == "time" && totalDuration > time.Duration(int64(timeDimGuard))*time.Hour {
+			http.Error(w, fmt.Sprintf("Total duration must be less than %d hours for time dimension.", timeDimGuard), http.StatusBadRequest)
 			return
 		}
 
-		if params.Dim != "time" && totalDuration > 3*time.Hour {
-			http.Error(w, "Total duration must be less than 3 hours for non-time dimensions.", http.StatusBadRequest)
+		if params.Dim != "time" && totalDuration > time.Duration(int64(nonTimeDimGuard))*time.Hour {
+			http.Error(w, fmt.Sprintf("Total duration must be less than %d hours for non-time dimensions.", nonTimeDimGuard), http.StatusBadRequest)
 			return
 		}
 
