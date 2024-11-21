@@ -203,8 +203,8 @@ Then, run this command to attach the policy, after replacing `AWS_ACCOUNT_ID`:
 
 ```bash
 aws iam attach-role-policy
-        --role-name autodba
-        --policy-arn arn:aws:iam::AWS_ACCOUNT_ID:policy/autodba
+    --role-name autodba
+    --policy-arn arn:aws:iam::AWS_ACCOUNT_ID:policy/autodba
 ```
 
 ##### Attach IAM role to EC2 instance
