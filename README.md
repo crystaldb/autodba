@@ -298,9 +298,6 @@ gcloud logging sinks create autodba-cloudsql-logs-sink \
     --log-filter='resource.type="cloudsql_database" resource.labels.database_id="CLOUDSQL_INSTANCE_ID"'
 ```
 
-gcloud logging sinks create rc-autodba-cloudsql-logs-sink \
-    pubsub.googleapis.com/projects/[PROJECT_ID]/topics/rc-autodba-cloudsql-logs 
-
 ##### Attach Service Account to GCE instance
 
 You will need at least a `e2-small` GCE instance and need to attach the service account that we created earlier.
