@@ -621,7 +621,7 @@ func info_handler(metrics_service metrics.Service, _ *validator.Validate) http.H
 			}
 		}
 
-		var instanceInfos []InstanceInfo
+		instanceInfos := []InstanceInfo{}
 		for _, info := range instanceInfoMap {
 			instanceInfos = append(instanceInfos, info)
 		}
