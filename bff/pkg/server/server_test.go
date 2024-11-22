@@ -214,7 +214,7 @@ func TestMissingParameters(t *testing.T) {
 	mockService := new(MockMetricsService)
 
 	validate := CreateValidator()
-	handler := activity_handler(mockService, validate)
+	handler := activity_handler(mockService, validate, 24, 24)
 
 	defaultParams := map[string]string{
 		"dbidentifier":  "test",
@@ -256,7 +256,7 @@ func TestActivityValidationLogic(t *testing.T) {
 	mockService := new(MockMetricsService)
 
 	validate := CreateValidator()
-	handler := activity_handler(mockService, validate)
+	handler := activity_handler(mockService, validate, 24, 24)
 
 	tests := []struct {
 		name           string
@@ -391,7 +391,7 @@ func TestOptions(t *testing.T) {
 	mockService := new(MockMetricsService)
 
 	validate := CreateValidator()
-	handler := activity_handler(mockService, validate)
+	handler := activity_handler(mockService, validate, 24, 24)
 
 	expectedOptions := map[string]string{
 		"start": "10",
