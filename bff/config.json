@@ -1,7 +1,7 @@
 {
   "port": "4000",
   "time_dim_guard": 12,
-  "non_time_dim_guard":3,
+  "non_time_dim_guard": 3,
   "routes_config": {
     "/v1/health": {
       "params": [

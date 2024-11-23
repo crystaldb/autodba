@@ -40,8 +40,9 @@ function Layout(props: {
     | null
     | undefined;
 }): JSX.Element {
-  const [instances] = createResource(() => queryInstances(true));
-  createResource(instances, () => queryDatabases(true));
+  createResource(() => queryInstances(true));
+  // const [instances] = createResource(() => queryInstances(true));
+  // createResource(instances, () => queryDatabases(true));
 
   return <div class="max-w-screen-xl mx-auto">{props.children}</div>;
 }
@@ -57,6 +58,17 @@ function PageWrapper(testid: string, page: () => JSX.Element) {
           <Dynamic component={page} />
           <section class="sticky bottom-0 flex flex-col mt-3 pt-1 z-20 backdrop-blur">
             <TimebarSection />
+            <Show when={state.activityCube.error}>
+              {(error) => (
+                <aside
+                  class={
+                    "bg-red-500 mb-1 px-4 py-3 rounded-lg text-sm text-black"
+                  }
+                >
+                  {error()}
+                </aside>
+              )}
+            </Show>
           </section>
         </Show>
       </section>

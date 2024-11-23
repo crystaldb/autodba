@@ -6,7 +6,7 @@ import pluginRtl from "tailwindcss-rtl";
 import { green, zinc } from "tailwindcss/colors";
 
 const config: Config = {
-  content: ["./src/index.html", "./src/**/*.{js,jsx,ts,tsx}"],
+  content: ["./index.html", "./src/**/*.{js,jsx,ts,tsx}"],
   darkMode: "class",
   theme: {
     extend: {
@@ -16,6 +16,10 @@ const config: Config = {
       colors: {
         backgrounddark: zinc[900],
         backgroundlite: zinc[100],
+        backgrounddarkbg: zinc[800],
+        backgroundlitebg: zinc[200],
+        backgrounddarkhover: zinc[700],
+        backgroundlitehover: zinc[300],
         notificationdark: green,
         notificationlite: green,
       },

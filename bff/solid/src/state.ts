@@ -1,16 +1,8 @@
-import { batch } from "solid-js";
+import { type JSX, batch } from "solid-js";
 import { type SetStoreFunction, createStore, produce } from "solid-js/store";
 import { queryEndpointData } from "./http";
 
 const dateZero = +new Date();
-
-export type Instance = {
-  /** uniquely identifies instance */
-  dbIdentifier: string;
-  systemId: string;
-  systemScope: string;
-  systemType: string;
-};
 
 export type State = {
   apiThrottle: ApiThrottle;
@@ -27,7 +19,15 @@ export type State = {
   instance_list: Instance[];
   activityCube: ActivityCube;
   // biome-ignore lint/suspicious/noExplicitAny: TODO make this explicit
-  metricData: any[];
+  metricData: /*eslint-disable */ any[] /*eslint-enable */;
+};
+
+export type Instance = {
+  /** uniquely identifies instance */
+  dbIdentifier: string;
+  systemId: string;
+  systemScope: string;
+  systemType: string;
 };
 
 export type Anything =
@@ -67,6 +67,7 @@ export type ActivityCube = {
   uiFilter1: DimensionName;
   uiFilter1Value?: string;
   limit: number;
+  error?: string;
 };
 
 export enum ApiEndpoint {
@@ -302,7 +303,7 @@ export function useState(): {
 
 export const datazoomEventHandler = (
   // biome-ignore lint/suspicious/noExplicitAny: not sure what the event is
-  event: any,
+  event: /*eslint-disable */ any /*eslint-enable */,
 ) => {
   console.log("Chart2 Data Zoom", event);
   batch(() => {

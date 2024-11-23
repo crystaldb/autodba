@@ -155,7 +155,7 @@ export function TimebarSection(props: ITimebarSectionProps) {
 function TimeframeSelector() {
   const { setState } = contextState();
   const id = "timeframeSelector";
-  const options = [
+  const optionsTimespan = [
     { ms: 14 * 24 * 60 * 60 * 1000, label: "last 14d", ms2: 60 * 60 * 1000 },
     { ms: 7 * 24 * 60 * 60 * 1000, label: "last 7d", ms2: 30 * 60 * 1000 },
     { ms: 2 * 24 * 60 * 60 * 1000, label: "last 2d", ms2: 30 * 60 * 1000 },
@@ -174,7 +174,7 @@ function TimeframeSelector() {
         name="Timeframe"
         property="timeframe_ms"
         id={id}
-        options={options}
+        options={optionsTimespan}
         onClick={(record) => () =>
           batch(() => {
             setState("timeframe_ms", record.ms);

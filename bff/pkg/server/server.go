@@ -474,12 +474,12 @@ func activity_handler(metrics_service metrics.Service, validate *validator.Valid
 		}
 
 		if params.Dim == "time" && totalDuration > time.Duration(int64(timeDimGuard))*time.Hour {
-			http.Error(w, fmt.Sprintf("Total duration must be less than %d hours for time dimension.", timeDimGuard), http.StatusBadRequest)
+			http.Error(w, fmt.Sprintf("Total timeframe must be less than or equal to %d hours for time dimension.", timeDimGuard), http.StatusBadRequest)
 			return
 		}
 
 		if params.Dim != "time" && totalDuration > time.Duration(int64(nonTimeDimGuard))*time.Hour {
-			http.Error(w, fmt.Sprintf("Total duration must be less than %d hours for non-time dimensions.", nonTimeDimGuard), http.StatusBadRequest)
+			http.Error(w, fmt.Sprintf("Total timeframe must be less than or equal to %d hours for non-time dimensions.", nonTimeDimGuard), http.StatusBadRequest)
 			return
 		}
 
