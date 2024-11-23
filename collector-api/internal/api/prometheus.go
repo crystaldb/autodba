@@ -764,8 +764,10 @@ func getWaitEventName(waitEventType, waitEvent string) string {
 // createLabelsForBackend generates Prometheus labels for a given BackendKey
 // This function is used for both active backends and stale markers
 func createLabelsForBackend(backendKey BackendKey, systemInfo SystemInfo) []prompb.Label {
-	// Skip backends with empty or semicolon-only queries
-	if backendKey.QueryFull == "" || backendKey.QueryFull == ";" {
+	// Skip backends with empty, semicolon-only, or pganalyze-collector queries
+	if backendKey.Query == "" ||
+		backendKey.Query == ";" ||
+		strings.HasPrefix(backendKey.Query, "/* pganalyze-collector */") {
 		return nil
 	}
 
