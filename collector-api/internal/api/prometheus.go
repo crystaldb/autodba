@@ -777,7 +777,6 @@ func createLabelsForBackend(backendKey BackendKey, systemInfo SystemInfo) []prom
 		{Name: "backend_type", Value: defaultString(backendKey.BackendType, PgInternal)},
 		{Name: "client_addr", Value: defaultString(backendKey.ClientAddr, PgInternal)},
 		// {Name: "client_port", Value: fmt.Sprintf("%d", backendKey.ClientPort)},
-		{Name: "datname", Value: defaultString(backendKey.Datname, PgInternal)},
 		{Name: "pid", Value: fmt.Sprintf("%d", backendKey.Pid)},
 		{Name: "query", Value: backendKey.Query},
 		{Name: "query_fp", Value: base64.StdEncoding.EncodeToString([]byte(backendKey.QueryFingerPrint))},
@@ -788,6 +787,12 @@ func createLabelsForBackend(backendKey BackendKey, systemInfo SystemInfo) []prom
 		{Name: "wait_event_type", Value: defaultString(backendKey.WaitEventType, PgInternal)},
 		{Name: "wait_event_name", Value: getWaitEventName(backendKey.WaitEventType, backendKey.WaitEvent)},
 	}...)
+
+	if backendKey.Datname != "" {
+		labels = append(labels, prompb.Label{Name: "datname", Value: backendKey.Datname})
+	}
+
+	labels = filter(labels, nonEmptyValFilter)
 
 	sortLabels(labels)
 	return labels
