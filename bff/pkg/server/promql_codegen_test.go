@@ -85,6 +85,7 @@ func TestGenerateActivityCubePromQLQuery(t *testing.T) {
 				DatabaseList:      rawInput["database_list"].(string),
 				Start:             rawInput["start"].(string),
 				End:               rawInput["end"].(string),
+				Step:              rawInput["step"].(string),
 				Legend:            rawInput["legend"].(string),
 				Dim:               rawInput["dim"].(string),
 				FilterDim:         rawInput["filterdim"].(string),
