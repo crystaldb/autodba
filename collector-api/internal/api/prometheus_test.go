@@ -30,9 +30,22 @@ func createTestBackend(pid int32, appName, state string) *pganalyze_collector.Ba
 		State:           state,
 		ClientAddr:      "127.0.0.1",
 		ClientPort:      5432,
+		HasQueryIdx:     true,
+		QueryIdx:        0,
 		QueryText:       "SELECT * FROM test",
 		WaitEvent:       "ClientRead",
 		WaitEventType:   "Client",
+	}
+}
+
+func getTestBaseRefs() *pganalyze_collector.CompactSnapshot_BaseRefs {
+	return &pganalyze_collector.CompactSnapshot_BaseRefs{
+		QueryInformations: []*pganalyze_collector.QueryInformation{
+			{QueryIdx: 0, NormalizedQuery: "SELECT * FROM test"},
+		},
+		QueryReferences: []*pganalyze_collector.QueryReference{
+			{Fingerprint: []byte("test-fingerprint")},
+		},
 	}
 }
 
@@ -55,6 +68,7 @@ func TestCompactSnapshotMetrics(t *testing.T) {
 						},
 					},
 				},
+				BaseRefs:    getTestBaseRefs(),
 				CollectedAt: timestamppb.New(now),
 			},
 			expected: 1,
@@ -70,6 +84,7 @@ func TestCompactSnapshotMetrics(t *testing.T) {
 						},
 					},
 				},
+				BaseRefs:    getTestBaseRefs(),
 				CollectedAt: timestamppb.New(now),
 			},
 			expected: 2,
@@ -152,6 +167,7 @@ func TestMultipleSystemsHandling(t *testing.T) {
 						},
 					},
 				},
+				BaseRefs:    getTestBaseRefs(),
 				CollectedAt: timestamppb.New(now),
 			},
 			snapshot2: &pganalyze_collector.CompactSnapshot{
@@ -163,6 +179,7 @@ func TestMultipleSystemsHandling(t *testing.T) {
 						},
 					},
 				},
+				BaseRefs:    getTestBaseRefs(),
 				CollectedAt: timestamppb.New(now),
 			},
 			expectedMetrics: map[SystemInfo]int{system1: 2, system2: 2},
@@ -178,6 +195,7 @@ func TestMultipleSystemsHandling(t *testing.T) {
 						},
 					},
 				},
+				BaseRefs:    getTestBaseRefs(),
 				CollectedAt: timestamppb.New(now),
 			},
 			snapshot2: &pganalyze_collector.CompactSnapshot{
@@ -188,6 +206,7 @@ func TestMultipleSystemsHandling(t *testing.T) {
 						},
 					},
 				},
+				BaseRefs:    getTestBaseRefs(),
 				CollectedAt: timestamppb.New(now),
 			},
 			expectedMetrics: map[SystemInfo]int{system1: 1, system2: 1},
@@ -204,6 +223,7 @@ func TestMultipleSystemsHandling(t *testing.T) {
 						},
 					},
 				},
+				BaseRefs:    getTestBaseRefs(),
 				CollectedAt: timestamppb.New(now),
 			},
 			snapshot2: &pganalyze_collector.CompactSnapshot{
@@ -212,6 +232,7 @@ func TestMultipleSystemsHandling(t *testing.T) {
 						Backends: []*pganalyze_collector.Backend{},
 					},
 				},
+				BaseRefs:    getTestBaseRefs(),
 				CollectedAt: timestamppb.New(now),
 			},
 			expectedMetrics: map[SystemInfo]int{system1: 2, system2: 0},
