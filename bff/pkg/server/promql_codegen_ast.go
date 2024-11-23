@@ -52,9 +52,10 @@ func (a *Aggregation) String() string {
 
 // FunctionCall represents a PromQL function call.
 type FunctionCall struct {
-	Func      string
-	Args      []Node
-	TimeRange *LiteralInt
+	Func         string
+	Args         []Node
+	TimeInterval *LiteralInt // Duration of the time range
+	TimeStep     *LiteralInt // Step size for the range query
 }
 
 func (f *FunctionCall) String() string {
@@ -62,11 +63,13 @@ func (f *FunctionCall) String() string {
 	for _, arg := range f.Args {
 		args = append(args, arg.String())
 	}
-	if f.TimeRange != nil {
-		return fmt.Sprintf(`%s(%s[%s:])`, f.Func, strings.Join(args, ", "), f.TimeRange)
-	} else {
-		return fmt.Sprintf(`%s(%s)`, f.Func, strings.Join(args, ", "))
+	if f.TimeInterval != nil {
+		if f.TimeStep != nil {
+			return fmt.Sprintf(`%s(%s[%s:%s])`, f.Func, strings.Join(args, ", "), f.TimeInterval, f.TimeStep)
+		}
+		return fmt.Sprintf(`%s(%s[%s:])`, f.Func, strings.Join(args, ", "), f.TimeInterval)
 	}
+	return fmt.Sprintf(`%s(%s)`, f.Func, strings.Join(args, ", "))
 }
 
 // LabelReplace represents the label_replace function in PromQL.

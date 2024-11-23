@@ -10,17 +10,18 @@ import (
 
 // PromQLInput represents the inputs required to generate a PromQL query.
 type PromQLInput struct {
-	DatabaseList      string    `json:"database_list"`
-	Start             time.Time `json:"start"`
-	End               time.Time `json:"end"`
-	Legend            string    `json:"legend"`
-	Dim               string    `json:"dim"`
-	FilterDim         string    `json:"filterdim"`
-	FilterDimSelected string    `json:"filterdimselected"`
-	Limit             int       `json:"limit"`
-	LimitLegend       int       `json:"limit_legend"`
-	Offset            int       `json:"offset"`
-	DbIdentifier      string    `json:"dbidentifier"`
+	DatabaseList      string        `json:"database_list"`
+	Start             time.Time     `json:"start"`
+	End               time.Time     `json:"end"`
+	Step              time.Duration `json:"step"`
+	Legend            string        `json:"legend"`
+	Dim               string        `json:"dim"`
+	FilterDim         string        `json:"filterdim"`
+	FilterDimSelected string        `json:"filterdimselected"`
+	Limit             int           `json:"limit"`
+	LimitLegend       int           `json:"limit_legend"`
+	Offset            int           `json:"offset"`
+	DbIdentifier      string        `json:"dbidentifier"`
 }
 
 // Utility function to validate dimensions
@@ -68,34 +69,12 @@ func GenerateActivityCubePromQLQuery(input PromQLInput) (string, error) {
 		"sys_type":  systemType,
 	}
 
-	if dim == "query" {
-		// filter out internal queries
-		labels["query"] = "^.*"
-	}
-
 	if filterDim != "" {
-		if filterDim == "wait_event_name" {
-			// Handle wait_event_name special case
-			filterExpr := handleWaitEventNameFilter(filterDimSelected)
-			labelMap, err := parseLabelSelector(filterExpr)
-			if err != nil {
-				return "", fmt.Errorf("error parsing label selector: %w", err)
-			}
-			for k, v := range labelMap {
-				labels[k] = v
-			}
-		} else {
-			filteredValues := strings.Split(filterDimSelected, ",")
-			for i, v := range filteredValues {
-				if v == "/*pg internal*/" {
-					// Special case: filter where the column value is empty
-					filteredValues[i] = ""
-				} else {
-					filteredValues[i] = escapePromQLLabelValue(v)
-				}
-			}
-			labels[filterDim] = strings.Join(filteredValues, "|")
+		filteredValues := strings.Split(filterDimSelected, ",")
+		for i, v := range filteredValues {
+			filteredValues[i] = escapePromQLLabelValue(v)
 		}
+		labels[filterDim] = strings.Join(filteredValues, "|")
 	}
 
 	selector := &Selector{
@@ -105,12 +84,6 @@ func GenerateActivityCubePromQLQuery(input PromQLInput) (string, error) {
 
 	// Apply label_replace to dim and legend if they are different and dim is not "time"
 	var expr Node = selector
-	if dim != "time" {
-		expr = applyLabelReplaceAST(expr, dim)
-	}
-	if legend != dim {
-		expr = applyLabelReplaceAST(expr, legend)
-	}
 
 	// Construct the aggregation node
 	var query Node
@@ -123,7 +96,7 @@ func GenerateActivityCubePromQLQuery(input PromQLInput) (string, error) {
 	} else {
 		avgOverTimeWindow := fmt.Sprintf("%ds", int(timeRange))
 		if dim == legend {
-			query = genAvgOverDimQuery(dim, expr, avgOverTimeWindow, limitValue, offsetValue)
+			query = genAvgOverDimQuery(dim, expr, avgOverTimeWindow, limitValue, offsetValue, input.Step)
 		} else if limitValue == 0 {
 			query = &FunctionCall{
 				Func: "avg_over_time",
@@ -134,11 +107,12 @@ func GenerateActivityCubePromQLQuery(input PromQLInput) (string, error) {
 						Expr: expr,
 					},
 				},
-				TimeRange: &LiteralInt{Value: avgOverTimeWindow}, // Add the time range window
+				TimeInterval: &LiteralInt{Value: avgOverTimeWindow},
+				TimeStep:     &LiteralInt{Value: strconv.FormatInt(int64(input.Step.Seconds()), 10)},
 			}
 		} else { // dim != legend and limit != ""
 			// Step 1: Generate `limitOffsetAgg` with limit and offset
-			limitOffsetAgg := genAvgOverDimQuery(dim, expr, avgOverTimeWindow, limitValue, offsetValue)
+			limitOffsetAgg := genAvgOverDimQuery(dim, expr, avgOverTimeWindow, limitValue, offsetValue, input.Step)
 
 			// Step 2: Convert all values in `limitOffsetAgg` to `1`
 			scaledLimitOffsetAgg := &BinaryExpr{
@@ -170,7 +144,8 @@ func GenerateActivityCubePromQLQuery(input PromQLInput) (string, error) {
 						Expr: filteredData,
 					},
 				},
-				TimeRange: &LiteralInt{Value: avgOverTimeWindow}, // Add the time range window
+				TimeInterval: &LiteralInt{Value: avgOverTimeWindow},
+				TimeStep:     &LiteralInt{Value: strconv.FormatInt(int64(input.Step.Seconds()), 10)},
 			}
 		}
 	}
@@ -184,7 +159,7 @@ func GenerateActivityCubePromQLQuery(input PromQLInput) (string, error) {
 	return query.String(), nil
 }
 
-func genAvgOverDimQuery(dim string, expr Node, avgOverTimeWindow string, limitValue int, offsetValue int) Node {
+func genAvgOverDimQuery(dim string, expr Node, avgOverTimeWindow string, limitValue int, offsetValue int, step time.Duration) Node {
 	avgByDim := &FunctionCall{
 		Func: "avg_over_time",
 		Args: []Node{
@@ -194,7 +169,8 @@ func genAvgOverDimQuery(dim string, expr Node, avgOverTimeWindow string, limitVa
 				Expr: expr,
 			},
 		},
-		TimeRange: &LiteralInt{Value: avgOverTimeWindow},
+		TimeInterval: &LiteralInt{Value: avgOverTimeWindow},
+		TimeStep:     &LiteralInt{Value: strconv.FormatInt(int64(step.Seconds()), 10)},
 	}
 
 	var limitOffsetAgg Node
@@ -245,70 +221,6 @@ func parseLabelSelector(selector string) (map[string]string, error) {
 func escapePromQLLabelValue(value string) string {
 	replacer := strings.NewReplacer(`\`, `\\`, `"`, `\"`, "\n", "")
 	return replacer.Replace(value)
-}
-
-// Function to apply label_replace in an AST
-func applyLabelReplaceAST(expr Node, label string) Node {
-	if label == "wait_event_name" {
-		return &LabelReplace{
-			Expr: &FunctionCall{
-				Func: "label_join",
-				Args: []Node{
-					expr,
-					&LiteralString{Value: "wait_event_name"},
-					&LiteralString{Value: ":"},
-					&LiteralString{Value: "wait_event_type"},
-					&LiteralString{Value: "wait_event"},
-				},
-			},
-			DstLabel:    "wait_event_name",
-			Replacement: "CPU",
-			SrcLabel:    "wait_event_name",
-			Regex:       ":",
-		}
-	}
-	return &LabelReplace{
-		Expr:        expr,
-		DstLabel:    label,
-		Replacement: "/*pg internal*/",
-		SrcLabel:    label,
-		Regex:       "",
-	}
-}
-
-// Function to handle special filtering for wait_event_name
-func handleWaitEventNameFilter(filterDimSelected string) string {
-	filteredValues := strings.Split(filterDimSelected, ",")
-	var waitEventTypes []string
-	var waitEvents []string
-	var conditions []string
-
-	for _, v := range filteredValues {
-		v = escapePromQLLabelValue(v)
-		if v == "CPU" || v == "/*pg internal*/" || v == "" {
-			// Special case for CPU: filter where wait_event is empty
-			waitEventTypes = append(waitEventTypes, "")
-			waitEvents = append(waitEvents, "")
-		} else {
-			// Handle wait_event_type:wait_event pair
-			parts := strings.Split(v, ":")
-			if len(parts) == 2 {
-				waitEventTypes = append(waitEventTypes, parts[0])
-				waitEvents = append(waitEvents, parts[1])
-			}
-		}
-	}
-
-	// Create condition strings if we have wait_event_types or wait_events
-	if len(waitEventTypes) > 0 {
-		conditions = append(conditions, fmt.Sprintf(`wait_event_type=~"%s"`, strings.Join(waitEventTypes, "|")))
-	}
-	if len(waitEvents) > 0 {
-		conditions = append(conditions, fmt.Sprintf(`wait_event=~"%s"`, strings.Join(waitEvents, "|")))
-	}
-
-	// Combine all conditions with a logical AND (join them with commas)
-	return strings.Join(conditions, ",")
 }
 
 // Utility function to parse start and finish times
