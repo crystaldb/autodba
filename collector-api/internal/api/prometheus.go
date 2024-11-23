@@ -33,7 +33,10 @@ var (
 	}
 )
 
-const Unknown = "_unknown_"
+const (
+	Unknown    = "_unknown_"
+	PgInternal = "/*pg internal*/"
+)
 
 type SystemInfo struct {
 	SystemID            string
@@ -751,42 +754,49 @@ type BackendKey struct {
 	WaitEventType    string
 }
 
+func getWaitEventName(waitEventType, waitEvent string) string {
+	if waitEventType == "" && waitEvent == "" {
+		return "CPU"
+	}
+	return waitEventType + ":" + waitEvent
+}
+
 // createLabelsForBackend generates Prometheus labels for a given BackendKey
 // This function is used for both active backends and stale markers
 func createLabelsForBackend(backendKey BackendKey, systemInfo SystemInfo) []prompb.Label {
+	// Skip backends with empty or semicolon-only queries
+	if backendKey.QueryFull == "" || backendKey.QueryFull == ";" {
+		return nil
+	}
+
 	labels := append(systemLabels(systemInfo), []prompb.Label{
 		{Name: "__name__", Value: "cc_pg_stat_activity"},
-		{Name: "application_name", Value: backendKey.ApplicationName},
-		{Name: "backend_type", Value: backendKey.BackendType},
-		{Name: "client_addr", Value: backendKey.ClientAddr},
-		{Name: "client_port", Value: fmt.Sprintf("%d", backendKey.ClientPort)},
+		{Name: "application_name", Value: defaultString(backendKey.ApplicationName, PgInternal)},
+		{Name: "backend_type", Value: defaultString(backendKey.BackendType, PgInternal)},
+		{Name: "client_addr", Value: defaultString(backendKey.ClientAddr, PgInternal)},
+		// {Name: "client_port", Value: fmt.Sprintf("%d", backendKey.ClientPort)},
+		{Name: "datname", Value: defaultString(backendKey.Datname, PgInternal)},
 		{Name: "pid", Value: fmt.Sprintf("%d", backendKey.Pid)},
+		{Name: "query", Value: backendKey.Query},
+		{Name: "query_fp", Value: base64.StdEncoding.EncodeToString([]byte(backendKey.QueryFingerPrint))},
+		{Name: "query_full", Value: backendKey.QueryFull},
 		{Name: "state", Value: backendKey.State},
-		{Name: "wait_event", Value: backendKey.WaitEvent},
-		{Name: "wait_event_type", Value: backendKey.WaitEventType},
+		{Name: "usename", Value: defaultString(backendKey.Role, PgInternal)},
+		{Name: "wait_event", Value: defaultString(backendKey.WaitEvent, PgInternal)},
+		{Name: "wait_event_type", Value: defaultString(backendKey.WaitEventType, PgInternal)},
+		{Name: "wait_event_name", Value: getWaitEventName(backendKey.WaitEventType, backendKey.WaitEvent)},
 	}...)
 
-	if backendKey.Query != "" {
-		labels = append(labels, prompb.Label{Name: "query", Value: backendKey.Query})
-		labels = append(labels, prompb.Label{Name: "query_fp", Value: base64.StdEncoding.EncodeToString([]byte(backendKey.QueryFingerPrint))})
-		labels = append(labels, prompb.Label{Name: "query_full", Value: backendKey.QueryFull})
-	} else {
-		labels = append(labels, prompb.Label{Name: "query", Value: backendKey.QueryFull})
-	}
-
-	if backendKey.Role != "" {
-		labels = append(labels, prompb.Label{Name: "usename", Value: backendKey.Role})
-	}
-	if backendKey.Datname != "" {
-		labels = append(labels, prompb.Label{Name: "datname", Value: backendKey.Datname})
-	}
-
-	labels = filter(labels, nonEmptyValFilter)
-
-	// Sort labels by name
 	sortLabels(labels)
-
 	return labels
+}
+
+// Helper function to return default value if string is empty
+func defaultString(s, defaultVal string) string {
+	if s == "" {
+		return defaultVal
+	}
+	return s
 }
 
 // compactSnapshotMetrics processes a compact snapshot and returns time series for each backend
@@ -822,9 +832,16 @@ func compactSnapshotMetrics(snapshot *collector_proto.CompactSnapshot, systemInf
 				backendKey.QueryFingerPrint = string(baseRef.GetQueryReferences()[backend.GetQueryIdx()].GetFingerprint())
 			}
 		}
+
+		// Create labels for the backend
+		labels := createLabelsForBackend(backendKey, systemInfo)
+		if labels == nil {
+			continue // Skip this backend if labels is nil (empty query)
+		}
+
 		// Create a time series for the backend
 		backendTS := prompb.TimeSeries{
-			Labels: createLabelsForBackend(backendKey, systemInfo),
+			Labels: labels,
 			Samples: []prompb.Sample{
 				{
 					Timestamp: snapshotTimestamp,
