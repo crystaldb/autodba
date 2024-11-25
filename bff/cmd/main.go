@@ -134,14 +134,17 @@ func run(webappPath string) error {
 	var timeDimGuard int
 	var nonTimeDimGuard int
 
-	timeDimGuard, ok = rawConfig["time_dim_guard"].(int)
-	if !ok {
-		timeDimGuard = 12
+	// Convert float64 to int for time dimension guards
+	if timeDimGuardFloat, ok := rawConfig["time_dim_guard"].(float64); ok {
+		timeDimGuard = int(timeDimGuardFloat)
+	} else {
+		timeDimGuard = 12 // default value
 	}
 
-	nonTimeDimGuard, ok = rawConfig["non_time_dim_guard"].(int)
-	if !ok {
-		nonTimeDimGuard = 3
+	if nonTimeDimGuardFloat, ok := rawConfig["non_time_dim_guard"].(float64); ok {
+		nonTimeDimGuard = int(nonTimeDimGuardFloat)
+	} else {
+		nonTimeDimGuard = 3 // default value
 	}
 
 	config.TimeDimGuard = timeDimGuard
