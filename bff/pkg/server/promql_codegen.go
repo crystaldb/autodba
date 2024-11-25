@@ -89,7 +89,7 @@ func GenerateActivityCubePromQLQuery(input PromQLInput) (string, error) {
 	var query Node
 	if dim == "time" {
 		query = &Aggregation{
-			Func: "count",
+			Func: "sum",
 			By:   []string{legend},
 			Expr: expr,
 		}
@@ -102,7 +102,7 @@ func GenerateActivityCubePromQLQuery(input PromQLInput) (string, error) {
 				Func: "avg_over_time",
 				Args: []Node{
 					&Aggregation{
-						Func: "count",
+						Func: "sum",
 						By:   []string{dim, legend},
 						Expr: expr,
 					},
@@ -139,7 +139,7 @@ func GenerateActivityCubePromQLQuery(input PromQLInput) (string, error) {
 				Func: "avg_over_time",
 				Args: []Node{
 					&Aggregation{
-						Func: "count",
+						Func: "sum",
 						By:   []string{dim, legend},
 						Expr: filteredData,
 					},
@@ -164,7 +164,7 @@ func genAvgOverDimQuery(dim string, expr Node, avgOverTimeWindow string, limitVa
 		Func: "avg_over_time",
 		Args: []Node{
 			&Aggregation{
-				Func: "count",
+				Func: "sum",
 				By:   []string{dim},
 				Expr: expr,
 			},

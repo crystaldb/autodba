@@ -742,9 +742,7 @@ type BackendKey struct {
 	ApplicationName  string
 	BackendType      string
 	ClientAddr       string
-	ClientPort       int32
 	Datname          string
-	Pid              int32
 	Query            string
 	QueryFingerPrint string
 	QueryFull        string
@@ -752,6 +750,34 @@ type BackendKey struct {
 	State            string
 	WaitEvent        string
 	WaitEventType    string
+}
+
+// Hash generates a consistent string representation of the BackendKey
+func (bk BackendKey) Hash() string {
+	// Using strings.Builder for efficient string concatenation
+	var b strings.Builder
+	b.WriteString(bk.ApplicationName)
+	b.WriteByte(0)
+	b.WriteString(bk.BackendType)
+	b.WriteByte(0)
+	b.WriteString(bk.ClientAddr)
+	b.WriteByte(0)
+	b.WriteString(bk.Query)
+	b.WriteByte(0)
+	b.WriteString(bk.QueryFingerPrint)
+	b.WriteByte(0)
+	b.WriteString(bk.QueryFull)
+	b.WriteByte(0)
+	b.WriteString(bk.Role)
+	b.WriteByte(0)
+	b.WriteString(bk.State)
+	b.WriteByte(0)
+	b.WriteString(bk.WaitEvent)
+	b.WriteByte(0)
+	b.WriteString(bk.WaitEventType)
+	b.WriteByte(0)
+	b.WriteString(bk.Datname)
+	return b.String()
 }
 
 func getWaitEventName(waitEventType, waitEvent string) string {
@@ -776,15 +802,11 @@ func createLabelsForBackend(backendKey BackendKey, systemInfo SystemInfo) []prom
 		{Name: "application_name", Value: defaultString(backendKey.ApplicationName, PgInternal)},
 		{Name: "backend_type", Value: defaultString(backendKey.BackendType, PgInternal)},
 		{Name: "client_addr", Value: defaultString(backendKey.ClientAddr, PgInternal)},
-		// {Name: "client_port", Value: fmt.Sprintf("%d", backendKey.ClientPort)},
-		{Name: "pid", Value: fmt.Sprintf("%d", backendKey.Pid)},
 		{Name: "query", Value: backendKey.Query},
 		{Name: "query_fp", Value: base64.StdEncoding.EncodeToString([]byte(backendKey.QueryFingerPrint))},
 		{Name: "query_full", Value: backendKey.QueryFull},
 		{Name: "state", Value: backendKey.State},
 		{Name: "usename", Value: defaultString(backendKey.Role, PgInternal)},
-		{Name: "wait_event", Value: defaultString(backendKey.WaitEvent, PgInternal)},
-		{Name: "wait_event_type", Value: defaultString(backendKey.WaitEventType, PgInternal)},
 		{Name: "wait_event_name", Value: getWaitEventName(backendKey.WaitEventType, backendKey.WaitEvent)},
 	}...)
 
@@ -809,9 +831,10 @@ func defaultString(s, defaultVal string) string {
 // compactSnapshotMetrics processes a compact snapshot and returns time series for each backend
 // It also returns a map of seen backends for stale marker generation
 func compactSnapshotMetrics(snapshot *collector_proto.CompactSnapshot, systemInfo SystemInfo, collectedAt int64) []prompb.TimeSeries {
-	var ts []prompb.TimeSeries
 	snapshotTimestamp := collectedAt * 1000 // in milliseconds
 	baseRef := snapshot.GetBaseRefs()
+	backendCounts := make(map[string]float64)
+	var firstBackendOfType = make(map[string]*BackendKey)
 
 	for _, backend := range snapshot.GetActivitySnapshot().GetBackends() {
 		// Create a unique BackendKey for each backend
@@ -819,8 +842,6 @@ func compactSnapshotMetrics(snapshot *collector_proto.CompactSnapshot, systemInf
 			ApplicationName: backend.GetApplicationName(),
 			BackendType:     backend.GetBackendType(),
 			ClientAddr:      backend.GetClientAddr(),
-			ClientPort:      backend.GetClientPort(),
-			Pid:             backend.GetPid(),
 			QueryFull:       backend.GetQueryText(),
 			State:           backend.GetState(),
 			WaitEvent:       backend.GetWaitEvent(),
@@ -840,23 +861,31 @@ func compactSnapshotMetrics(snapshot *collector_proto.CompactSnapshot, systemInf
 			}
 		}
 
-		// Create labels for the backend
-		labels := createLabelsForBackend(backendKey, systemInfo)
+		hash := backendKey.Hash()
+		backendCounts[hash]++
+
+		// Store first backend of each type for label creation
+		if _, exists := firstBackendOfType[hash]; !exists {
+			firstBackendOfType[hash] = &backendKey
+		}
+	}
+
+	// Convert counts to time series
+	var ts []prompb.TimeSeries
+	for hash, count := range backendCounts {
+		backendKey := firstBackendOfType[hash]
+		labels := createLabelsForBackend(*backendKey, systemInfo)
 		if labels == nil {
 			continue // Skip this backend if labels is nil (empty query)
 		}
 
-		// Create a time series for the backend
-		backendTS := prompb.TimeSeries{
+		ts = append(ts, prompb.TimeSeries{
 			Labels: labels,
-			Samples: []prompb.Sample{
-				{
-					Timestamp: snapshotTimestamp,
-					Value:     1.0,
-				},
-			},
-		}
-		ts = append(ts, backendTS)
+			Samples: []prompb.Sample{{
+				Timestamp: snapshotTimestamp,
+				Value:     count,
+			}},
+		})
 	}
 
 	return ts
