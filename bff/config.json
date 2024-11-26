@@ -44,8 +44,8 @@
       "metrics": {
         "sessions": "count(cc_pg_stat_activity{datname=~\"$datname\",sys_id=~\"$sys_id\",sys_scope=~\"$sys_scope\",sys_type=~\"$sys_type\"}) by (state)",
         "connection_utilization": "sum(cc_backend_count{datname=~\"$datname\",sys_id=~\"$sys_id\",sys_scope=~\"$sys_scope\",sys_type=~\"$sys_type\"})",
-        "transactions_in_progress_active_transactions": "count(cc_pg_stat_activity{datname=~\"$datname\",sys_id=~\"$sys_id\",sys_scope=~\"$sys_scope\",sys_type=~\"$sys_type\",state=\"active\", wait_event=\"\"})",
-        "transactions_in_progress_blocked_transactions": "count(cc_pg_stat_activity{datname=~\"$datname\",sys_id=~\"$sys_id\",sys_scope=~\"$sys_scope\",sys_type=~\"$sys_type\",state=\"active\", wait_event=~\".+\"})",
+        "transactions_in_progress_active_transactions": "count(cc_pg_stat_activity{datname=~\"$datname\",sys_id=~\"$sys_id\",sys_scope=~\"$sys_scope\",sys_type=~\"$sys_type\",state=\"active\", wait_event_name=\"CPU\"})",
+        "transactions_in_progress_blocked_transactions": "count(cc_pg_stat_activity{datname=~\"$datname\",sys_id=~\"$sys_id\",sys_scope=~\"$sys_scope\",sys_type=~\"$sys_type\",state=\"active\", wait_event_name=~\".+\"})",
         "tuples_dml_inserted": "sum(rate(cc_relation_n_tup_ins{datname=~\"$datname\",sys_id=~\"$sys_id\",sys_scope=~\"$sys_scope\",sys_type=~\"$sys_type\"}[65m]))",
         "tuples_dml_updated": "sum(rate(cc_relation_n_tup_upd{datname=~\"$datname\",sys_id=~\"$sys_id\",sys_scope=~\"$sys_scope\",sys_type=~\"$sys_type\"}[65m]))",
         "tuples_dml_deleted": "sum(rate(cc_relation_n_tup_del{datname=~\"$datname\",sys_id=~\"$sys_id\",sys_scope=~\"$sys_scope\",sys_type=~\"$sys_type\"}[65m]))",

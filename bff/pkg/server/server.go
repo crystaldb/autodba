@@ -364,6 +364,11 @@ func extractPromQLInput(params ActivityParams, now time.Time) (PromQLInput, erro
 		return PromQLInput{}, err
 	}
 
+	stepDuration, err := time.ParseDuration(params.Step)
+	if err != nil {
+		return PromQLInput{}, err
+	}
+
 	limitValue := 0
 	limitLegendValue := 0
 	if params.Limit != "" {
@@ -410,6 +415,7 @@ func extractPromQLInput(params ActivityParams, now time.Time) (PromQLInput, erro
 		DatabaseList:      dbListEscaped,
 		Start:             startTime,
 		End:               endTime,
+		Step:              stepDuration,
 		Limit:             limitValue,
 		LimitLegend:       limitLegendValue,
 		Offset:            offsetValue,

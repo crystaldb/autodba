@@ -33,7 +33,10 @@ var (
 	}
 )
 
-const Unknown = "_unknown_"
+const (
+	Unknown    = "_unknown_"
+	PgInternal = "/*pg internal*/"
+)
 
 type SystemInfo struct {
 	SystemID            string
@@ -739,9 +742,7 @@ type BackendKey struct {
 	ApplicationName  string
 	BackendType      string
 	ClientAddr       string
-	ClientPort       int32
 	Datname          string
-	Pid              int32
 	Query            string
 	QueryFingerPrint string
 	QueryFull        string
@@ -751,50 +752,89 @@ type BackendKey struct {
 	WaitEventType    string
 }
 
+// Hash generates a consistent string representation of the BackendKey
+func (bk BackendKey) Hash() string {
+	// Using strings.Builder for efficient string concatenation
+	var b strings.Builder
+	b.WriteString(bk.ApplicationName)
+	b.WriteByte(0)
+	b.WriteString(bk.BackendType)
+	b.WriteByte(0)
+	b.WriteString(bk.ClientAddr)
+	b.WriteByte(0)
+	b.WriteString(bk.Query)
+	b.WriteByte(0)
+	b.WriteString(bk.QueryFingerPrint)
+	b.WriteByte(0)
+	b.WriteString(bk.QueryFull)
+	b.WriteByte(0)
+	b.WriteString(bk.Role)
+	b.WriteByte(0)
+	b.WriteString(bk.State)
+	b.WriteByte(0)
+	b.WriteString(bk.WaitEvent)
+	b.WriteByte(0)
+	b.WriteString(bk.WaitEventType)
+	b.WriteByte(0)
+	b.WriteString(bk.Datname)
+	return b.String()
+}
+
+func getWaitEventName(waitEventType, waitEvent string) string {
+	if waitEventType == "" && waitEvent == "" {
+		return "CPU"
+	}
+	return waitEventType + ":" + waitEvent
+}
+
 // createLabelsForBackend generates Prometheus labels for a given BackendKey
 // This function is used for both active backends and stale markers
 func createLabelsForBackend(backendKey BackendKey, systemInfo SystemInfo) []prompb.Label {
+	// Skip backends with empty, semicolon-only, or pganalyze-collector queries
+	if backendKey.Query == "" ||
+		backendKey.Query == ";" ||
+		strings.HasPrefix(backendKey.Query, "/* pganalyze-collector */") {
+		return nil
+	}
+
 	labels := append(systemLabels(systemInfo), []prompb.Label{
 		{Name: "__name__", Value: "cc_pg_stat_activity"},
-		{Name: "application_name", Value: backendKey.ApplicationName},
-		{Name: "backend_type", Value: backendKey.BackendType},
-		{Name: "client_addr", Value: backendKey.ClientAddr},
-		{Name: "client_port", Value: fmt.Sprintf("%d", backendKey.ClientPort)},
-		{Name: "pid", Value: fmt.Sprintf("%d", backendKey.Pid)},
+		{Name: "application_name", Value: defaultString(backendKey.ApplicationName, PgInternal)},
+		{Name: "backend_type", Value: defaultString(backendKey.BackendType, PgInternal)},
+		{Name: "client_addr", Value: defaultString(backendKey.ClientAddr, PgInternal)},
+		{Name: "query", Value: backendKey.Query},
+		{Name: "query_fp", Value: base64.StdEncoding.EncodeToString([]byte(backendKey.QueryFingerPrint))},
+		{Name: "query_full", Value: backendKey.QueryFull},
 		{Name: "state", Value: backendKey.State},
-		{Name: "wait_event", Value: backendKey.WaitEvent},
-		{Name: "wait_event_type", Value: backendKey.WaitEventType},
+		{Name: "usename", Value: defaultString(backendKey.Role, PgInternal)},
+		{Name: "wait_event_name", Value: getWaitEventName(backendKey.WaitEventType, backendKey.WaitEvent)},
 	}...)
 
-	if backendKey.Query != "" {
-		labels = append(labels, prompb.Label{Name: "query", Value: backendKey.Query})
-		labels = append(labels, prompb.Label{Name: "query_fp", Value: base64.StdEncoding.EncodeToString([]byte(backendKey.QueryFingerPrint))})
-		labels = append(labels, prompb.Label{Name: "query_full", Value: backendKey.QueryFull})
-	} else {
-		labels = append(labels, prompb.Label{Name: "query", Value: backendKey.QueryFull})
-	}
-
-	if backendKey.Role != "" {
-		labels = append(labels, prompb.Label{Name: "usename", Value: backendKey.Role})
-	}
 	if backendKey.Datname != "" {
 		labels = append(labels, prompb.Label{Name: "datname", Value: backendKey.Datname})
 	}
 
 	labels = filter(labels, nonEmptyValFilter)
 
-	// Sort labels by name
 	sortLabels(labels)
-
 	return labels
+}
+
+// Helper function to return default value if string is empty
+func defaultString(s, defaultVal string) string {
+	if s == "" {
+		return defaultVal
+	}
+	return s
 }
 
 // compactSnapshotMetrics processes a compact snapshot and returns time series for each backend
 // It also returns a map of seen backends for stale marker generation
 func compactSnapshotMetrics(snapshot *collector_proto.CompactSnapshot, systemInfo SystemInfo, collectedAt int64) []prompb.TimeSeries {
-	var ts []prompb.TimeSeries
 	snapshotTimestamp := collectedAt * 1000 // in milliseconds
 	baseRef := snapshot.GetBaseRefs()
+	backendCounts := make(map[string]float64)
+	var firstBackendOfType = make(map[string]*BackendKey)
 
 	for _, backend := range snapshot.GetActivitySnapshot().GetBackends() {
 		// Create a unique BackendKey for each backend
@@ -802,8 +842,6 @@ func compactSnapshotMetrics(snapshot *collector_proto.CompactSnapshot, systemInf
 			ApplicationName: backend.GetApplicationName(),
 			BackendType:     backend.GetBackendType(),
 			ClientAddr:      backend.GetClientAddr(),
-			ClientPort:      backend.GetClientPort(),
-			Pid:             backend.GetPid(),
 			QueryFull:       backend.GetQueryText(),
 			State:           backend.GetState(),
 			WaitEvent:       backend.GetWaitEvent(),
@@ -822,17 +860,32 @@ func compactSnapshotMetrics(snapshot *collector_proto.CompactSnapshot, systemInf
 				backendKey.QueryFingerPrint = string(baseRef.GetQueryReferences()[backend.GetQueryIdx()].GetFingerprint())
 			}
 		}
-		// Create a time series for the backend
-		backendTS := prompb.TimeSeries{
-			Labels: createLabelsForBackend(backendKey, systemInfo),
-			Samples: []prompb.Sample{
-				{
-					Timestamp: snapshotTimestamp,
-					Value:     1.0,
-				},
-			},
+
+		hash := backendKey.Hash()
+		backendCounts[hash]++
+
+		// Store first backend of each type for label creation
+		if _, exists := firstBackendOfType[hash]; !exists {
+			firstBackendOfType[hash] = &backendKey
 		}
-		ts = append(ts, backendTS)
+	}
+
+	// Convert counts to time series
+	var ts []prompb.TimeSeries
+	for hash, count := range backendCounts {
+		backendKey := firstBackendOfType[hash]
+		labels := createLabelsForBackend(*backendKey, systemInfo)
+		if labels == nil {
+			continue // Skip this backend if labels is nil (empty query)
+		}
+
+		ts = append(ts, prompb.TimeSeries{
+			Labels: labels,
+			Samples: []prompb.Sample{{
+				Timestamp: snapshotTimestamp,
+				Value:     count,
+			}},
+		})
 	}
 
 	return ts
