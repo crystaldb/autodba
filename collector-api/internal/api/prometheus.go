@@ -743,9 +743,7 @@ type BackendKey struct {
 	BackendType     string
 	ClientAddr      string
 	Datname         string
-	//Query            string
 	QueryFingerPrint string
-	//QueryFull        string
 	Role          string
 	State         string
 	WaitEvent     string
@@ -762,12 +760,8 @@ func (bk BackendKey) Hash() string {
 	b.WriteByte(0)
 	b.WriteString(bk.ClientAddr)
 	b.WriteByte(0)
-	//b.WriteString(bk.Query)
-	//b.WriteByte(0)
 	b.WriteString(bk.QueryFingerPrint)
 	b.WriteByte(0)
-	//b.WriteString(bk.QueryFull)
-	//b.WriteByte(0)
 	b.WriteString(bk.Role)
 	b.WriteByte(0)
 	b.WriteString(bk.State)
@@ -802,9 +796,7 @@ func createLabelsForBackend(backendKey BackendKey, systemInfo SystemInfo) []prom
 		{Name: "application_name", Value: defaultString(backendKey.ApplicationName, PgInternal)},
 		{Name: "backend_type", Value: defaultString(backendKey.BackendType, PgInternal)},
 		{Name: "client_addr", Value: defaultString(backendKey.ClientAddr, PgInternal)},
-		//{Name: "query", Value: backendKey.Query},
 		{Name: "query_fp", Value: base64.StdEncoding.EncodeToString([]byte(backendKey.QueryFingerPrint))},
-		//{Name: "query_full", Value: backendKey.QueryFull},
 		{Name: "state", Value: backendKey.State},
 		{Name: "usename", Value: defaultString(backendKey.Role, PgInternal)},
 		{Name: "wait_event_name", Value: getWaitEventName(backendKey.WaitEventType, backendKey.WaitEvent)},

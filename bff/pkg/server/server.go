@@ -7,6 +7,7 @@ import (
 	"io"
 	"local/bff/pkg/metrics"
 	"local/bff/pkg/middleware"
+	"local/bff/pkg/query_storage"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -29,6 +30,18 @@ type Server interface {
 	Run() error
 }
 
+type Config struct {
+	Port                 string                 `json:"port"`
+	PrometheusServer     string                 `json:"prometheus_server"`
+	TimeDimGuard         int                    `json:"time_dim_guard"`
+	NonTimeDimGuard      int                    `json:"non_time_dim_guard"`
+	RoutesConfig         map[string]RouteConfig `json:"routes_config"`
+	WebappPath           string                 `json:"webapp_path"`
+	AccessKey            string                 `json:"access_key"`
+	ForceBypassAccessKey bool                   `json:"force_bypass_access_key"`
+	DataPath             string                 `json:"data_path"`
+}
+
 type RouteConfig struct {
 	Params  []string          `json:"params"`
 	Options map[string]string `json:"options"`
@@ -36,16 +49,10 @@ type RouteConfig struct {
 }
 
 type server_imp struct {
-	routes_config        map[string]RouteConfig
-	metrics_service      metrics.Service
-	port                 string
-	webappPath           string
-	accessKey            string
-	forceBypassAccessKey bool
-	inputValidator       *validator.Validate
-	dataPath             string
-	timeDimGuard         int
-	nonTimeDimGuard      int
+	metrics_service metrics.Service
+	query_storage   query_storage.QueryStorage
+	config          Config
+	inputValidator  *validator.Validate
 }
 
 type InstanceInfo struct {
@@ -86,8 +93,9 @@ func CORS(next http.Handler) http.Handler {
 	})
 }
 
-func CreateServer(r map[string]RouteConfig, m metrics.Service, port string, webappPath string, accessKey string, forceBypassAccessKey bool, dataPath string, timeDimGuard int, nonTimeDimGuard int) Server {
-	return server_imp{r, m, port, webappPath, accessKey, forceBypassAccessKey, CreateValidator(), dataPath, timeDimGuard, nonTimeDimGuard}
+func CreateServer(r map[string]RouteConfig, m metrics.Service, q query_storage.QueryStorage, config Config) Server {
+
+	return server_imp{m, q, config, CreateValidator()}
 }
 
 func CreateValidator() *validator.Validate {
@@ -121,31 +129,31 @@ func fileExists(filePath string) bool {
 func (s server_imp) Run() error {
 	r := chi.NewRouter()
 
-	authMiddleware := middleware.NewAuthMiddleware(s.accessKey, s.forceBypassAccessKey)
+	authMiddleware := middleware.NewAuthMiddleware(s.config.AccessKey, s.config.ForceBypassAccessKey)
 	r.Use(authMiddleware.Authenticate)
 	r.Use(CORS)
 
-	r.Get("/api/v1/activity", activity_handler(s.metrics_service, s.inputValidator, s.timeDimGuard, s.nonTimeDimGuard))
+	r.Get("/api/v1/activity", activity_handler(s.metrics_service, s.query_storage, s.inputValidator, s.config.TimeDimGuard, s.config.NonTimeDimGuard))
 	r.Get("/api/v1/instance", info_handler(s.metrics_service, s.inputValidator))
 	r.Get("/api/v1/instance/database", databases_handler(s.metrics_service, s.inputValidator))
-	r.Get("/api/v1/snapshots", snapshots_handler(s.dataPath))
+	r.Get("/api/v1/snapshots", snapshots_handler(s.config.DataPath))
 
 	r.Route(api_prefix, func(r chi.Router) {
-		r.Mount("/", metrics_handler(s.routes_config, s.metrics_service))
+		r.Mount("/", metrics_handler(s.config.RoutesConfig, s.metrics_service))
 	})
 
-	fs := http.FileServer(http.Dir(s.webappPath))
+	fs := http.FileServer(http.Dir(s.config.WebappPath))
 
 	r.Handle("/*", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		filePath := filepath.Join(s.webappPath, r.URL.Path[1:])
+		filePath := filepath.Join(s.config.WebappPath, r.URL.Path[1:])
 		if fileExists(filePath) {
 			fs.ServeHTTP(w, r)
 		} else {
-			http.ServeFile(w, r, filepath.Join(s.webappPath, "index.html"))
+			http.ServeFile(w, r, filepath.Join(s.config.WebappPath, "index.html"))
 		}
 	}))
 
-	return http.ListenAndServe(":"+s.port, r)
+	return http.ListenAndServe(":"+s.config.Port, r)
 }
 
 func convertDbIdentifiersToPromQLParam(identifiers []string) string {
@@ -427,7 +435,7 @@ func extractPromQLInput(params ActivityParams, now time.Time) (PromQLInput, erro
 	}, nil
 }
 
-func activity_handler(metrics_service metrics.Service, validate *validator.Validate, timeDimGuard int, nonTimeDimGuard int) http.HandlerFunc {
+func activity_handler(metrics_service metrics.Service, query_storage query_storage.QueryStorage, validate *validator.Validate, timeDimGuard int, nonTimeDimGuard int) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 		params := ActivityParams{
@@ -511,6 +519,21 @@ func activity_handler(metrics_service metrics.Service, validate *validator.Valid
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
+		}
+
+		// populate query text for each query_fp
+		for _, result := range results {
+			if metric, ok := result["metric"].(map[string]string); ok {
+				if queryFP, ok := metric["query_fp"]; ok {
+					queryText, err := query_storage.GetQuery(queryFP)
+					if err != nil {
+						http.Error(w, "Error fetching query text: "+err.Error(), http.StatusInternalServerError)
+						return
+					}
+					metric["query"] = queryText
+					result["metric"] = metric
+				}
+			}
 		}
 
 		js, err := json.Marshal(results)

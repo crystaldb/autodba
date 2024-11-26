@@ -5,23 +5,13 @@ import (
 	"fmt"
 	"local/bff/pkg/metrics"
 	"local/bff/pkg/prometheus"
+	"local/bff/pkg/query_storage"
 	"local/bff/pkg/server"
 	"os"
+	"path/filepath"
 
 	"github.com/spf13/viper"
 )
-
-type Config struct {
-	Port                 string                        `json:"port"`
-	PrometheusServer     string                        `json:"prometheus_server"`
-	TimeDimGuard         int                           `json:"time_dim_guard"`
-	NonTimeDimGuard      int                           `json:"non_time_dim_guard"`
-	RoutesConfig         map[string]server.RouteConfig `json:"routes_config"`
-	WebappPath           string                        `json:"webapp_path"`
-	AccessKey            string                        `json:"access_key"`
-	ForceBypassAccessKey bool                          `json:"force_bypass_access_key"`
-	DataPath             string                        `json:"data_path"`
-}
 
 func main() {
 	fmt.Println("Starting metrics server")
@@ -59,7 +49,7 @@ func run(webappPath string) error {
 		return fmt.Errorf("error unmarshaling config file: %s", err)
 	}
 
-	var config Config
+	var config server.Config
 	config.WebappPath = webappPath
 
 	forceBypassAccessKey := os.Getenv("AUTODBA_FORCE_BYPASS_ACCESS_KEY")
@@ -155,7 +145,13 @@ func run(webappPath string) error {
 	metrics_repo := prometheus.New(config.PrometheusServer)
 	metrics_service := metrics.CreateService(metrics_repo)
 
-	server := server.CreateServer(config.RoutesConfig, metrics_service, config.Port, config.WebappPath, config.AccessKey, config.ForceBypassAccessKey, config.DataPath, config.TimeDimGuard, config.NonTimeDimGuard)
+	dbPath := filepath.Join(dataPath, "crystaldb-collector.db")
+	queryRepo, err := query_storage.NewSQLiteQueryStorage(dbPath)
+	if err != nil {
+
+	}
+
+	server := server.CreateServer(config.RoutesConfig, metrics_service, queryRepo, config)
 
 	if err = server.Run(); err != nil {
 		return err

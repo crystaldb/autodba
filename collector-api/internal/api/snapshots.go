@@ -7,6 +7,7 @@ import (
 	"collector-api/internal/storage"
 	"collector-api/pkg/models"
 	"compress/zlib"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"log"
@@ -430,7 +431,9 @@ func processCompactSnapshotData(promClient *prometheusClient, s3Location string,
 		baseRef := compactSnapshot.GetBaseRefs()
 		if baseRef != nil {
 			if backend.GetHasQueryIdx() {
-				fingerprint := string(baseRef.GetQueryReferences()[backend.GetQueryIdx()].GetFingerprint())
+				fp := string(baseRef.GetQueryReferences()[backend.GetQueryIdx()].GetFingerprint())
+
+				fingerprint := base64.StdEncoding.EncodeToString([]byte(fp))
 				query := string(baseRef.GetQueryInformations()[backend.GetQueryIdx()].GetNormalizedQuery())
 				queryFull := backend.GetQueryText()
 				err = storage.QueryStore.StoreQuery(fingerprint, query, queryFull)
