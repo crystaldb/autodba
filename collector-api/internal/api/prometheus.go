@@ -739,15 +739,15 @@ func parseSettingValue(value string) float64 {
 
 // BackendKey uniquely identifies a backend session
 type BackendKey struct {
-	ApplicationName string
-	BackendType     string
-	ClientAddr      string
-	Datname         string
+	ApplicationName  string
+	BackendType      string
+	ClientAddr       string
+	Datname          string
 	QueryFingerPrint string
-	Role          string
-	State         string
-	WaitEvent     string
-	WaitEventType string
+	Role             string
+	State            string
+	WaitEvent        string
+	WaitEventType    string
 }
 
 // Hash generates a consistent string representation of the BackendKey
@@ -784,12 +784,6 @@ func getWaitEventName(waitEventType, waitEvent string) string {
 // createLabelsForBackend generates Prometheus labels for a given BackendKey
 // This function is used for both active backends and stale markers
 func createLabelsForBackend(backendKey BackendKey, systemInfo SystemInfo) []prompb.Label {
-	// Skip backends with empty, semicolon-only, or pganalyze-collector queries
-	//if backendKey.Query == "" ||
-	//	backendKey.Query == ";" ||
-	//	strings.HasPrefix(backendKey.Query, "/* pganalyze-collector */") {
-	//	return nil
-	//}
 
 	labels := append(systemLabels(systemInfo), []prompb.Label{
 		{Name: "__name__", Value: "cc_pg_stat_activity"},
@@ -834,10 +828,9 @@ func compactSnapshotMetrics(snapshot *collector_proto.CompactSnapshot, systemInf
 			ApplicationName: backend.GetApplicationName(),
 			BackendType:     backend.GetBackendType(),
 			ClientAddr:      backend.GetClientAddr(),
-			//QueryFull:       backend.GetQueryText(),
-			State:         backend.GetState(),
-			WaitEvent:     backend.GetWaitEvent(),
-			WaitEventType: backend.GetWaitEventType(),
+			State:           backend.GetState(),
+			WaitEvent:       backend.GetWaitEvent(),
+			WaitEventType:   backend.GetWaitEventType(),
 		}
 
 		if baseRef != nil {
@@ -848,7 +841,6 @@ func compactSnapshotMetrics(snapshot *collector_proto.CompactSnapshot, systemInf
 				backendKey.Datname = baseRef.GetDatabaseReferences()[backend.GetDatabaseIdx()].GetName()
 			}
 			if backend.GetHasQueryIdx() {
-				//backendKey.Query = string(baseRef.GetQueryInformations()[backend.GetQueryIdx()].GetNormalizedQuery())
 				backendKey.QueryFingerPrint = string(baseRef.GetQueryReferences()[backend.GetQueryIdx()].GetFingerprint())
 			}
 		}

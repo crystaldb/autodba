@@ -589,8 +589,6 @@ func ReprocessSnapshots(cfg *config.Config, reprocessFull, reprocessCompact bool
 	// Process snapshots in chronological order
 	for _, snapshot := range allSnapshots {
 		if snapshot.isCompact {
-			// if compact snapshot, store query text by fingerprint in db, then process compact snapshot
-
 			log.Printf("Processing compact snapshot: %s (system_id: %s)", snapshot.s3Location, snapshot.systemInfo.SystemID)
 			if err := handleCompactSnapshot(cfg, snapshot.s3Location, snapshot.timestamp, snapshot.systemInfo); err != nil {
 				log.Printf("Error processing compact snapshot %s (system_id: %s): %v", snapshot.s3Location, snapshot.systemInfo.SystemID, err)
