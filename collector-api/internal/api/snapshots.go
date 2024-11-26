@@ -4,6 +4,7 @@ import (
 	"collector-api/internal/auth"
 	"collector-api/internal/config"
 	"collector-api/internal/db"
+	"collector-api/internal/storage"
 	"collector-api/pkg/models"
 	"compress/zlib"
 	"fmt"
@@ -424,6 +425,22 @@ func processCompactSnapshotData(promClient *prometheusClient, s3Location string,
 	if err := proto.Unmarshal(pbBytes, &compactSnapshot); err != nil {
 		return nil, fmt.Errorf("unmarshal compact snapshot: %w", err)
 	}
+	// store query text by fingerprint in db
+	for _, backend := range compactSnapshot.GetActivitySnapshot().GetBackends() {
+		baseRef := compactSnapshot.GetBaseRefs()
+		if baseRef != nil {
+			if backend.GetHasQueryIdx() {
+				fingerprint := string(baseRef.GetQueryReferences()[backend.GetQueryIdx()].GetFingerprint())
+				query := string(baseRef.GetQueryInformations()[backend.GetQueryIdx()].GetNormalizedQuery())
+				queryFull := backend.GetQueryText()
+				err = storage.QueryStore.StoreQuery(fingerprint, query, queryFull)
+				if err != nil {
+					return nil, fmt.Errorf("store query: %w", err)
+				}
+			}
+		}
+
+	}
 
 	var currentMetrics []prompb.TimeSeries
 	snapshotType := "n/a"
@@ -569,6 +586,8 @@ func ReprocessSnapshots(cfg *config.Config, reprocessFull, reprocessCompact bool
 	// Process snapshots in chronological order
 	for _, snapshot := range allSnapshots {
 		if snapshot.isCompact {
+			// if compact snapshot, store query text by fingerprint in db, then process compact snapshot
+
 			log.Printf("Processing compact snapshot: %s (system_id: %s)", snapshot.s3Location, snapshot.systemInfo.SystemID)
 			if err := handleCompactSnapshot(cfg, snapshot.s3Location, snapshot.timestamp, snapshot.systemInfo); err != nil {
 				log.Printf("Error processing compact snapshot %s (system_id: %s): %v", snapshot.s3Location, snapshot.systemInfo.SystemID, err)

@@ -739,17 +739,17 @@ func parseSettingValue(value string) float64 {
 
 // BackendKey uniquely identifies a backend session
 type BackendKey struct {
-	ApplicationName  string
-	BackendType      string
-	ClientAddr       string
-	Datname          string
-	Query            string
+	ApplicationName string
+	BackendType     string
+	ClientAddr      string
+	Datname         string
+	//Query            string
 	QueryFingerPrint string
-	QueryFull        string
-	Role             string
-	State            string
-	WaitEvent        string
-	WaitEventType    string
+	//QueryFull        string
+	Role          string
+	State         string
+	WaitEvent     string
+	WaitEventType string
 }
 
 // Hash generates a consistent string representation of the BackendKey
@@ -762,12 +762,12 @@ func (bk BackendKey) Hash() string {
 	b.WriteByte(0)
 	b.WriteString(bk.ClientAddr)
 	b.WriteByte(0)
-	b.WriteString(bk.Query)
-	b.WriteByte(0)
+	//b.WriteString(bk.Query)
+	//b.WriteByte(0)
 	b.WriteString(bk.QueryFingerPrint)
 	b.WriteByte(0)
-	b.WriteString(bk.QueryFull)
-	b.WriteByte(0)
+	//b.WriteString(bk.QueryFull)
+	//b.WriteByte(0)
 	b.WriteString(bk.Role)
 	b.WriteByte(0)
 	b.WriteString(bk.State)
@@ -791,20 +791,20 @@ func getWaitEventName(waitEventType, waitEvent string) string {
 // This function is used for both active backends and stale markers
 func createLabelsForBackend(backendKey BackendKey, systemInfo SystemInfo) []prompb.Label {
 	// Skip backends with empty, semicolon-only, or pganalyze-collector queries
-	if backendKey.Query == "" ||
-		backendKey.Query == ";" ||
-		strings.HasPrefix(backendKey.Query, "/* pganalyze-collector */") {
-		return nil
-	}
+	//if backendKey.Query == "" ||
+	//	backendKey.Query == ";" ||
+	//	strings.HasPrefix(backendKey.Query, "/* pganalyze-collector */") {
+	//	return nil
+	//}
 
 	labels := append(systemLabels(systemInfo), []prompb.Label{
 		{Name: "__name__", Value: "cc_pg_stat_activity"},
 		{Name: "application_name", Value: defaultString(backendKey.ApplicationName, PgInternal)},
 		{Name: "backend_type", Value: defaultString(backendKey.BackendType, PgInternal)},
 		{Name: "client_addr", Value: defaultString(backendKey.ClientAddr, PgInternal)},
-		{Name: "query", Value: backendKey.Query},
+		//{Name: "query", Value: backendKey.Query},
 		{Name: "query_fp", Value: base64.StdEncoding.EncodeToString([]byte(backendKey.QueryFingerPrint))},
-		{Name: "query_full", Value: backendKey.QueryFull},
+		//{Name: "query_full", Value: backendKey.QueryFull},
 		{Name: "state", Value: backendKey.State},
 		{Name: "usename", Value: defaultString(backendKey.Role, PgInternal)},
 		{Name: "wait_event_name", Value: getWaitEventName(backendKey.WaitEventType, backendKey.WaitEvent)},
@@ -842,10 +842,10 @@ func compactSnapshotMetrics(snapshot *collector_proto.CompactSnapshot, systemInf
 			ApplicationName: backend.GetApplicationName(),
 			BackendType:     backend.GetBackendType(),
 			ClientAddr:      backend.GetClientAddr(),
-			QueryFull:       backend.GetQueryText(),
-			State:           backend.GetState(),
-			WaitEvent:       backend.GetWaitEvent(),
-			WaitEventType:   backend.GetWaitEventType(),
+			//QueryFull:       backend.GetQueryText(),
+			State:         backend.GetState(),
+			WaitEvent:     backend.GetWaitEvent(),
+			WaitEventType: backend.GetWaitEventType(),
 		}
 
 		if baseRef != nil {
@@ -856,7 +856,7 @@ func compactSnapshotMetrics(snapshot *collector_proto.CompactSnapshot, systemInf
 				backendKey.Datname = baseRef.GetDatabaseReferences()[backend.GetDatabaseIdx()].GetName()
 			}
 			if backend.GetHasQueryIdx() {
-				backendKey.Query = string(baseRef.GetQueryInformations()[backend.GetQueryIdx()].GetNormalizedQuery())
+				//backendKey.Query = string(baseRef.GetQueryInformations()[backend.GetQueryIdx()].GetNormalizedQuery())
 				backendKey.QueryFingerPrint = string(baseRef.GetQueryReferences()[backend.GetQueryIdx()].GetFingerprint())
 			}
 		}
