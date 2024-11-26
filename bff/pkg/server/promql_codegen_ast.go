@@ -65,7 +65,7 @@ func (f *FunctionCall) String() string {
 	}
 	if f.TimeInterval != nil {
 		if f.TimeStep != nil {
-			return fmt.Sprintf(`%s(%s[%s:%s])`, f.Func, strings.Join(args, ", "), f.TimeInterval, f.TimeStep)
+			return fmt.Sprintf(`%s(%s[%s:%ss])`, f.Func, strings.Join(args, ", "), f.TimeInterval, f.TimeStep)
 		}
 		return fmt.Sprintf(`%s(%s[%s:])`, f.Func, strings.Join(args, ", "), f.TimeInterval)
 	}
