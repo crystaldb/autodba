@@ -841,6 +841,13 @@ func compactSnapshotMetrics(snapshot *collector_proto.CompactSnapshot, systemInf
 				backendKey.Datname = baseRef.GetDatabaseReferences()[backend.GetDatabaseIdx()].GetName()
 			}
 			if backend.GetHasQueryIdx() {
+				query := string(baseRef.GetQueryInformations()[backend.GetQueryIdx()].GetNormalizedQuery())
+				// // Skip backends with empty, semicolon-only, or pganalyze-collector queries
+				if query == "" ||
+					query == ";" ||
+					strings.HasPrefix(query, "/* pganalyze-collector */") {
+					continue
+				}
 				backendKey.QueryFingerPrint = string(baseRef.GetQueryReferences()[backend.GetQueryIdx()].GetFingerprint())
 			}
 		}
@@ -858,6 +865,7 @@ func compactSnapshotMetrics(snapshot *collector_proto.CompactSnapshot, systemInf
 	var ts []prompb.TimeSeries
 	for hash, count := range backendCounts {
 		backendKey := firstBackendOfType[hash]
+
 		labels := createLabelsForBackend(*backendKey, systemInfo)
 		if labels == nil {
 			continue // Skip this backend if labels is nil (empty query)

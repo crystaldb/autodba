@@ -33,7 +33,6 @@ func isValidDimension(dim string) bool {
 		"application_name": true, // application
 		"backend_type":     true, // session_type
 		"query_fp":         true, // sql
-		"query":            true, // sql
 		"usename":          true, // user
 		"wait_event_name":  true, // wait_event
 	}
@@ -53,14 +52,6 @@ func GenerateActivityCubePromQLQuery(input PromQLInput) (string, error) {
 	limitValue := input.Limit
 	offsetValue := input.Offset
 	dbIdentifier := input.DbIdentifier
-
-	if input.Legend == "query" {
-		legend = "query_fp"
-	}
-
-	if input.Dim == "query" {
-		dim = "query_fp"
-	}
 
 	// Calculate time range in seconds for avg_over_time
 	timeRange := endTime.Sub(startTime).Seconds()

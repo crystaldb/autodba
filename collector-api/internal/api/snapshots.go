@@ -433,9 +433,17 @@ func processCompactSnapshotData(promClient *prometheusClient, s3Location string,
 			if backend.GetHasQueryIdx() {
 				fp := string(baseRef.GetQueryReferences()[backend.GetQueryIdx()].GetFingerprint())
 
-				fingerprint := base64.StdEncoding.EncodeToString([]byte(fp))
 				query := string(baseRef.GetQueryInformations()[backend.GetQueryIdx()].GetNormalizedQuery())
+
+				if query == "" ||
+					query == ";" ||
+					strings.HasPrefix(query, "/* pganalyze-collector */") {
+					continue
+				}
+
+				fingerprint := base64.StdEncoding.EncodeToString([]byte(fp))
 				queryFull := backend.GetQueryText()
+
 				err = storage.QueryStore.StoreQuery(fingerprint, query, queryFull)
 				if err != nil {
 					return nil, fmt.Errorf("store query: %w", err)
