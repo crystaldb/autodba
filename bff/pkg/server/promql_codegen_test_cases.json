@@ -206,13 +206,13 @@
       "step": "10s",
       "legend": "client_addr",
       "dim": "datname",
-      "filterdim": "query",
+      "filterdim": "query_fp",
       "filterdimselected": "",
       "limit": "",
       "offset": "",
       "dbidentifier": "a/b/c"
     },
-    "expected": "sort_desc(avg_over_time(sum by(datname, client_addr) (cc_pg_stat_activity{datname=~\"db1\",query=~\"\",sys_id=~\"b\",sys_scope=~\"c\",sys_type=~\"a\"})[3600s:10]))",
+    "expected": "sort_desc(avg_over_time(sum by(datname, client_addr) (cc_pg_stat_activity{datname=~\"db1\",query_fp=~\"\",sys_id=~\"b\",sys_scope=~\"c\",sys_type=~\"a\"})[3600s:10]))",
     "has_error": false
   },
   {
@@ -223,7 +223,7 @@
       "end": "now",
       "step": "10s",
       "legend": "usename",
-      "dim": "query",
+      "dim": "query_fp",
       "filterdim": "",
       "filterdimselected": "",
       "limit": "",
