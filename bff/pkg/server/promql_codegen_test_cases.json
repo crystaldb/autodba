@@ -14,7 +14,7 @@
       "offset": "",
       "dbidentifier": "a/b/c"
     },
-    "expected": "sort_desc(avg_over_time(sum by(datname, usename) (cc_pg_stat_activity{datname=~\"db1\",sys_id=~\"b\",sys_scope=~\"c\",sys_type=~\"a\"})[3600s:10]))",
+    "expected": "sort_desc(avg_over_time(sum by(datname, usename) (cc_pg_stat_activity{datname=~\"db1\",sys_id=~\"b\",sys_scope=~\"c\",sys_type=~\"a\"})[3600s:10s]))",
     "has_error": false
   },
   {
@@ -32,7 +32,7 @@
       "offset": "",
       "dbidentifier": "a/b/c"
     },
-    "expected": "sort_desc(avg_over_time(sum by(datname, usename) (cc_pg_stat_activity{datname=~\"db1\",sys_id=~\"b\",sys_scope=~\"c\",sys_type=~\"a\",wait_event_name=~\"Lock:transactionid\"})[3600s:10]))",
+    "expected": "sort_desc(avg_over_time(sum by(datname, usename) (cc_pg_stat_activity{datname=~\"db1\",sys_id=~\"b\",sys_scope=~\"c\",sys_type=~\"a\",wait_event_name=~\"Lock:transactionid\"})[3600s:10s]))",
     "has_error": false
   },
   {
@@ -50,7 +50,7 @@
       "offset": "",
       "dbidentifier": "a/b/c"
     },
-    "expected": "sort_desc(avg_over_time(sum by(datname, usename) (cc_pg_stat_activity{datname=~\"db1\",sys_id=~\"b\",sys_scope=~\"c\",sys_type=~\"a\",wait_event_name=~\"CPU\"})[3600s:10]))",
+    "expected": "sort_desc(avg_over_time(sum by(datname, usename) (cc_pg_stat_activity{datname=~\"db1\",sys_id=~\"b\",sys_scope=~\"c\",sys_type=~\"a\",wait_event_name=~\"CPU\"})[3600s:10s]))",
     "has_error": false
   },
   {
@@ -68,7 +68,7 @@
       "offset": "2",
       "dbidentifier": "a/b/c"
     },
-    "expected": "sort_desc(avg_over_time(sum by(usename, client_addr) (cc_pg_stat_activity{datname=~\"db1\",sys_id=~\"b\",sys_scope=~\"c\",sys_type=~\"a\"} * on(usename) group_left() bottomk(3, topk(5, avg_over_time(sum by(usename) (cc_pg_stat_activity{datname=~\"db1\",sys_id=~\"b\",sys_scope=~\"c\",sys_type=~\"a\"})[3600s:10]))) \u003e bool 0)[3600s:10]))",
+    "expected": "sort_desc(avg_over_time(sum by(usename, client_addr) (cc_pg_stat_activity{datname=~\"db1\",sys_id=~\"b\",sys_scope=~\"c\",sys_type=~\"a\"} * on(usename) group_left() bottomk(3, topk(5, avg_over_time(sum by(usename) (cc_pg_stat_activity{datname=~\"db1\",sys_id=~\"b\",sys_scope=~\"c\",sys_type=~\"a\"})[3600s:10s]))) \u003e bool 0)[3600s:10s]))",
     "has_error": false
   },
   {
@@ -86,7 +86,7 @@
       "offset": "",
       "dbidentifier": "a/b/c"
     },
-    "expected": "sort_desc(avg_over_time(sum by(datname, usename) (cc_pg_stat_activity{datname=~\"db1\",sys_id=~\"b\",sys_scope=~\"c\",sys_type=~\"a\",wait_event_name=~\"Lock:transactionid|BufferPin:buffer_content\"})[3600s:10]))",
+    "expected": "sort_desc(avg_over_time(sum by(datname, usename) (cc_pg_stat_activity{datname=~\"db1\",sys_id=~\"b\",sys_scope=~\"c\",sys_type=~\"a\",wait_event_name=~\"Lock:transactionid|BufferPin:buffer_content\"})[3600s:10s]))",
     "has_error": false
   },
   {
@@ -122,7 +122,7 @@
       "offset": "",
       "dbidentifier": "a/b/c"
     },
-    "expected": "sort_desc(avg_over_time(sum by(usename, client_addr) (cc_pg_stat_activity{datname=~\"db1\",sys_id=~\"b\",sys_scope=~\"c\",sys_type=~\"a\"} * on(usename) group_left() topk(100, avg_over_time(sum by(usename) (cc_pg_stat_activity{datname=~\"db1\",sys_id=~\"b\",sys_scope=~\"c\",sys_type=~\"a\"})[3600s:10])) \u003e bool 0)[3600s:10]))",
+    "expected": "sort_desc(avg_over_time(sum by(usename, client_addr) (cc_pg_stat_activity{datname=~\"db1\",sys_id=~\"b\",sys_scope=~\"c\",sys_type=~\"a\"} * on(usename) group_left() topk(100, avg_over_time(sum by(usename) (cc_pg_stat_activity{datname=~\"db1\",sys_id=~\"b\",sys_scope=~\"c\",sys_type=~\"a\"})[3600s:10s])) \u003e bool 0)[3600s:10s]))",
     "has_error": false
   },
   {
@@ -140,7 +140,7 @@
       "offset": "5",
       "dbidentifier": "a/b/c"
     },
-    "expected": "sort_desc(avg_over_time(sum by(usename, client_addr) (cc_pg_stat_activity{datname=~\"db1\",sys_id=~\"b\",sys_scope=~\"c\",sys_type=~\"a\"})[3600s:10]))",
+    "expected": "sort_desc(avg_over_time(sum by(usename, client_addr) (cc_pg_stat_activity{datname=~\"db1\",sys_id=~\"b\",sys_scope=~\"c\",sys_type=~\"a\"})[3600s:10s]))",
     "has_error": false
   },
   {
@@ -194,7 +194,7 @@
       "offset": "",
       "dbidentifier": "a/b/c"
     },
-    "expected": "sort_desc(avg_over_time(sum by(datname, usename) (cc_pg_stat_activity{datname=~\"db1\",sys_id=~\"b\",sys_scope=~\"c\",sys_type=~\"a\",wait_event_name=~\"\"})[3600s:10]))",
+    "expected": "sort_desc(avg_over_time(sum by(datname, usename) (cc_pg_stat_activity{datname=~\"db1\",sys_id=~\"b\",sys_scope=~\"c\",sys_type=~\"a\",wait_event_name=~\"\"})[3600s:10s]))",
     "has_error": false
   },
   {
@@ -212,7 +212,7 @@
       "offset": "",
       "dbidentifier": "a/b/c"
     },
-    "expected": "sort_desc(avg_over_time(sum by(datname, client_addr) (cc_pg_stat_activity{datname=~\"db1\",query=~\"\",sys_id=~\"b\",sys_scope=~\"c\",sys_type=~\"a\"})[3600s:10]))",
+    "expected": "sort_desc(avg_over_time(sum by(datname, client_addr) (cc_pg_stat_activity{datname=~\"db1\",query=~\"\",sys_id=~\"b\",sys_scope=~\"c\",sys_type=~\"a\"})[3600s:10s]))",
     "has_error": false
   },
   {
@@ -230,7 +230,7 @@
       "offset": "",
       "dbidentifier": "a/b/c"
     },
-    "expected": "sort_desc(avg_over_time(sum by(query, usename) (cc_pg_stat_activity{datname=~\"db1\",sys_id=~\"b\",sys_scope=~\"c\",sys_type=~\"a\"})[3600s:10]))",
+    "expected": "sort_desc(avg_over_time(sum by(query, usename) (cc_pg_stat_activity{datname=~\"db1\",sys_id=~\"b\",sys_scope=~\"c\",sys_type=~\"a\"})[3600s:10s]))",
     "has_error": false
   }
 ]
