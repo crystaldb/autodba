@@ -230,7 +230,7 @@
       "offset": "",
       "dbidentifier": "a/b/c"
     },
-    "expected": "sort_desc(avg_over_time(sum by(query, usename) (cc_pg_stat_activity{datname=~\"db1\",sys_id=~\"b\",sys_scope=~\"c\",sys_type=~\"a\"})[3600s:10]))",
+    "expected": "sort_desc(avg_over_time(sum by(query_fp, usename) (cc_pg_stat_activity{datname=~\"db1\",sys_id=~\"b\",sys_scope=~\"c\",sys_type=~\"a\"})[3600s:10]))",
     "has_error": false
   }
 ]

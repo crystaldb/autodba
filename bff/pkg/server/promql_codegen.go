@@ -59,7 +59,7 @@ func GenerateActivityCubePromQLQuery(input PromQLInput) (string, error) {
 	}
 
 	if input.Dim == "query" {
-		legend = "query_fp"
+		dim = "query_fp"
 	}
 
 	// Calculate time range in seconds for avg_over_time
