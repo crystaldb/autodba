@@ -39,8 +39,79 @@ func isValidDimension(dim string) bool {
 	return validDimensions[dim]
 }
 
-// Function to generate a PromQL query with sorting and pagination (New AST-based version)
+func shouldUseRecordingRules(timeRange time.Duration) bool {
+	return timeRange >= 6*time.Hour
+}
+
+func getRecordingRuleInterval(timeRange time.Duration) string {
+	// For now we only have 10m recording rules
+	return "10m"
+}
+
 func GenerateActivityCubePromQLQuery(input PromQLInput) (string, error) {
+	timeRange := input.End.Sub(input.Start)
+
+	if shouldUseRecordingRules(timeRange) {
+		// Use recording rules version
+		return generateRecordingRuleQuery(input)
+	}
+
+	// Existing query generation logic for shorter time ranges
+	return GenerateStandardQuery(input)
+}
+
+func generateRecordingRuleQuery(input PromQLInput) (string, error) {
+	// Extract and validate parameters
+	databaseList := input.DatabaseList
+	dbIdentifier := input.DbIdentifier
+
+	systemType, systemID, systemScope, err := splitDbIdentifier(dbIdentifier)
+	if err != nil {
+		return "", fmt.Errorf("error in splitting dbIdentifier: %w", err)
+	}
+
+	// Construct the base selector
+	labels := map[string]string{
+		"datname":   escapePromQLLabelValue(databaseList),
+		"sys_id":    systemID,
+		"sys_scope": systemScope,
+		"sys_type":  systemType,
+	}
+
+	interval := getRecordingRuleInterval(input.End.Sub(input.Start))
+	metricName := fmt.Sprintf("cc_pg_stat_activity:sum_by_%s__%s_%s",
+		input.Dim,
+		input.Legend,
+		strings.ReplaceAll(interval, ".", "_"))
+
+	// Create base selector with required labels
+	selector := &Selector{
+		Metric: metricName,
+		Labels: labels,
+	}
+
+	// For time dimension, return the selector directly
+	if input.Dim == "time" {
+		return selector.String(), nil
+	}
+
+	// For other dimensions, wrap with sort_desc and avg_over_time
+	// to match the behavior of the original queries
+	timeRange := fmt.Sprintf("%ds", int(input.End.Sub(input.Start).Seconds()))
+	stepSize := fmt.Sprintf("%d", int(input.Step.Seconds()))
+
+	return (&SortDesc{
+		Expr: &FunctionCall{
+			Func:         "avg_over_time",
+			Args:         []Node{selector},
+			TimeInterval: &LiteralInt{Value: timeRange},
+			TimeStep:     &LiteralInt{Value: stepSize},
+		},
+	}).String(), nil
+}
+
+// Function to generate a PromQL query with sorting and pagination (New AST-based version)
+func GenerateStandardQuery(input PromQLInput) (string, error) {
 	// Extract and validate parameters
 	databaseList := input.DatabaseList
 	startTime := input.Start
