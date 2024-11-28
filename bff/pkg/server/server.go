@@ -7,6 +7,7 @@ import (
 	"io"
 	"local/bff/pkg/metrics"
 	"local/bff/pkg/middleware"
+	"math"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -303,7 +304,13 @@ func metrics_handler(route_configs map[string]RouteConfig, metrics_service metri
 				metric_record := make(map[string]interface{})
 				metric_record["time_ms"] = time
 				for metric, value := range record {
-					metric_record[metric] = value
+					// Check for NaN values
+					if math.IsNaN(value) {
+						// Replace NaN with 0.0 for JSON compatibility
+						metric_record[metric] = 0.0
+					} else {
+						metric_record[metric] = value
+					}
 				}
 				metrics = append(metrics, metric_record)
 			}
@@ -314,7 +321,7 @@ func metrics_handler(route_configs map[string]RouteConfig, metrics_service metri
 
 			js, err := json.Marshal(metrics)
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				http.Error(w, fmt.Sprintf("JSON marshaling error: %v", err), http.StatusInternalServerError)
 				return
 			}
 
