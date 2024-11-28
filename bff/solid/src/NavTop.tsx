@@ -34,6 +34,9 @@ export function NavTop(props: {
   );
 }
 
+// Check the environment variable at build time
+const showPrometheus = import.meta.env.VITE_DEV_MODE === "true";
+
 export function NavTopConfig1() {
   return (
     <NavTop class="mb-8">
@@ -53,7 +56,8 @@ export function NavTopConfig1() {
       >
         Metrics
       </A>
-      <A
+
+      {showPrometheus && (<A
         activeClass="activeTopNav"
         href="/prometheus"
         class="flex items-center justify-center h-16 px-4"
@@ -61,6 +65,7 @@ export function NavTopConfig1() {
       >
         Prometheus
       </A>
+      )}
       {/*
       <div class="h-5 border-s w-1 border-neutral-200 dark:border-neutral-700"></div>
       <A

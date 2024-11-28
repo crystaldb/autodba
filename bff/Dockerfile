@@ -28,6 +28,8 @@ WORKDIR /home/autodba/solid
 COPY solid/package.json solid/package-lock.json ./
 RUN npm install
 COPY solid ./
+ARG VITE_DEV_MODE=false
+ENV VITE_DEV_MODE=${VITE_DEV_MODE}
 RUN npm run build
 
 FROM base AS go_builder
