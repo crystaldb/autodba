@@ -55,6 +55,9 @@ services:
             - prometheus_data:/usr/local/autodba/prometheus_data
         networks:
             - autodba_network
+        environment:
+            - AUTODBA_REPROCESS_FULL_SNAPSHOTS=${AUTODBA_REPROCESS_FULL_SNAPSHOTS:-false}
+            - AUTODBA_REPROCESS_COMPACT_SNAPSHOTS=${AUTODBA_REPROCESS_COMPACT_SNAPSHOTS:-false}
 
 networks:
     autodba_network:

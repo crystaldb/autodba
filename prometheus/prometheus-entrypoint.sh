@@ -5,6 +5,16 @@
 # Set the base directory based on installation
 PARENT_DIR="${PARENT_DIR:-/usr/local/autodba}"
 
+# Choose config file based on reprocessing status
+if [ "${AUTODBA_REPROCESS_FULL_SNAPSHOTS}" = "true" ] || [ "${AUTODBA_REPROCESS_COMPACT_SNAPSHOTS}" = "true" ]; then
+    CONFIG_SOURCE="$PARENT_DIR/config/prometheus/prometheus.reprocess.yml"
+else
+    CONFIG_SOURCE="$PARENT_DIR/config/prometheus/prometheus.normal.yml"
+fi
+
+# Copy the selected config to the final location
+cp "$CONFIG_SOURCE" "$PARENT_DIR/config/prometheus/prometheus.yml"
+
 # Start up Prometheus for initialization
 "$PARENT_DIR/prometheus/prometheus" \
     --config.file="$PARENT_DIR/config/prometheus/prometheus.yml" \

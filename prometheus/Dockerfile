@@ -18,7 +18,8 @@ RUN wget -qO- https://github.com/prometheus/prometheus/releases/download/v2.55.1
     && rm -rf /tmp/prometheus-2.55.1.linux-amd64
 
 # Prometheus config
-COPY prometheus.yml ./config/prometheus/prometheus.yml
+COPY prometheus.normal.yml ./config/prometheus/prometheus.normal.yml
+COPY prometheus.reprocess.yml ./config/prometheus/prometheus.reprocess.yml
 COPY recording_rules.yml ./config/prometheus/recording_rules.yml
 
 COPY prometheus-entrypoint.sh /usr/local/autodba/bin/prometheus-entrypoint.sh
