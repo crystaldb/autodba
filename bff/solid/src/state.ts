@@ -20,6 +20,8 @@ export type State = {
   activityCube: ActivityCube;
   // biome-ignore lint/suspicious/noExplicitAny: TODO make this explicit
   metricData: /*eslint-disable */ any[] /*eslint-enable */;
+  // biome-ignore lint/suspicious/noExplicitAny: TODO make this explicit
+  prometheusMetricsData: /*eslint-disable */ any[] /*eslint-enable */;
 };
 
 export type Instance = {
@@ -73,6 +75,7 @@ export type ActivityCube = {
 export enum ApiEndpoint {
   activity = "activity",
   metric = "metric",
+  prometheus_metrics = "prometheus_metrics",
 }
 
 export enum DimensionName {
@@ -292,6 +295,7 @@ const [state, setState]: [State, SetStoreFunction<State>] = createStore({
   range_begin: 0.0,
   range_end: 100.0,
   force_refresh_by_incrementing: 0,
+  prometheusMetricsData: [],
 } as State);
 
 export function useState(): {

@@ -4,12 +4,14 @@ import { type JSX, Show, createResource } from "solid-js";
 import { Dynamic } from "solid-js/web";
 import { NavTopConfig1 } from "./NavTop";
 import { ContextState, contextState } from "./context_state";
-import { queryDatabases, queryInstances } from "./http";
+import { queryInstances } from "./http";
 import { PageActivity } from "./page/activity";
 import { PageMetric } from "./page/metric";
 import { DarkmodeSelector } from "./view/darkmode";
 import { InstanceHeader } from "./view/instance_header";
 import { TimebarSection } from "./view/timebar_section";
+import { PagePrometheus } from "./page/prometheus";
+
 
 export default function App(): JSX.Element {
   return (
@@ -23,6 +25,10 @@ export default function App(): JSX.Element {
         <Route
           path="/metrics"
           component={() => PageWrapper("pageMetric", PageMetric)}
+        />
+        <Route
+          path="/prometheus"
+          component={() => PageWrapper("pagePrometheus", PagePrometheus)}
         />
         <Route path={"**"} component={() => <h1>404. Page not found.</h1>} />
       </Router>
