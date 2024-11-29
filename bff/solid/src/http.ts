@@ -124,11 +124,15 @@ export async function fetchPrometheusMetrics(apiEndpoint: ApiEndpoint) {
     return false;
   }
 
-  const url = `/api/v1/${apiEndpoint //
-    }?start=${`now-${state.timeframe_ms}ms` //
-    }&end=${"now" //
-    }&step=${state.interval_ms //
-    }ms`;
+  const url = `/api/v1/${
+    apiEndpoint //
+  }?start=${
+    `now-${state.timeframe_ms}ms` //
+  }&end=${
+    "now" //
+  }&step=${
+    state.interval_ms //
+  }ms`;
   setInFlight(ApiEndpoint.prometheus_metrics, url);
   const response = await fetchWithAuth(url, { method: "GET" });
 

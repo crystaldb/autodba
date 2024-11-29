@@ -7,11 +7,10 @@ import { ContextState, contextState } from "./context_state";
 import { queryInstances } from "./http";
 import { PageActivity } from "./page/activity";
 import { PageMetric } from "./page/metric";
+import { PagePrometheus } from "./page/prometheus";
 import { DarkmodeSelector } from "./view/darkmode";
 import { InstanceHeader } from "./view/instance_header";
 import { TimebarSection } from "./view/timebar_section";
-import { PagePrometheus } from "./page/prometheus";
-
 
 export default function App(): JSX.Element {
   return (
