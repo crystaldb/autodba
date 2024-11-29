@@ -57,14 +57,15 @@ export function NavTopConfig1() {
         Metrics
       </A>
 
-      {showPrometheus && (<A
-        activeClass="activeTopNav"
-        href="/prometheus"
-        class="flex items-center justify-center h-16 px-4"
-        end
-      >
-        Prometheus
-      </A>
+      {showPrometheus && (
+        <A
+          activeClass="activeTopNav"
+          href="/prometheus"
+          class="flex items-center justify-center h-16 px-4"
+          end
+        >
+          Prometheus
+        </A>
       )}
       {/*
       <div class="h-5 border-s w-1 border-neutral-200 dark:border-neutral-700"></div>

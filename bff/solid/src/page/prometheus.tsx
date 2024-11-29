@@ -1,8 +1,8 @@
 import { Title } from "@solidjs/meta";
+import { For } from "solid-js";
 import { contextState } from "../context_state";
 import { ApiEndpoint } from "../state";
 import { EchartsLinechart } from "../view/echarts_linechart";
-import { For } from "solid-js";
 
 export function PagePrometheus(title = "Prometheus Metrics | AutoDBA") {
   const { state, setState } = contextState();
