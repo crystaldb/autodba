@@ -37,12 +37,25 @@ If the input is provided via stdin, it will be validated as valid JSON before us
 4. **run.sh**: This script is used to run AutoDBA in a Docker container. It sets up a Docker environment, runs the AutoDBA image, and exposes Prometheus and BFF ports.
 
 ### Usage:
+4. **run.sh**: This script is used to run AutoDBA in a Docker container. It sets up a Docker environment, runs the AutoDBA image, and exposes Prometheus, BFF, and Collector API ports.
+
+### Usage:
 ```
-./run.sh --config <CONFIG_FILE> [--instance-id <INSTANCE_ID>]
+./run.sh [--config <CONFIG_FILE>] [--instance-id <INSTANCE_ID>] [--keep-containers] [--no-collector] [--reprocess-full-snapshots] [--reprocess-compact-snapshots]
 ```
-- `--config`: Required parameter specifying the path to the configuration file.
-- `--instance-id`: Specify a unique instance ID if running multiple instances of the agent.
-```
+- `--config`: Path to the configuration file (required unless --no-collector is set)
+- `--instance-id`: Specify a unique instance ID when running multiple instances of the agent
+- `--keep-containers`: Keep containers running after the script exits
+- `--no-collector`: Run without the collector component
+- `--reprocess-full-snapshots`: Reprocess all full snapshots from storage
+- `--reprocess-compact-snapshots`: Reprocess all compact snapshots from storage
+
+**Note**: When running with either reprocessing flag enabled, Prometheus self-monitoring and recording rules updates for newly ingested data are disabled to prevent errors during old data reprocessing. To resume normal operations, restart the server without the reprocessing flags.
+
+The script will automatically assign ports based on your user ID and instance ID:
+- Prometheus port: UID + 6000 + instance_id
+- BFF WebApp port: UID + 4000 + instance_id
+- Collector API port: UID + 7000 + instance_id
 
 ### Notes
 - Use `sudo` for running system-wide `install.sh` and `uninstall.sh` scripts.
