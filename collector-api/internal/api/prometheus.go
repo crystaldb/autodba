@@ -843,9 +843,7 @@ func compactSnapshotMetrics(snapshot *collector_proto.CompactSnapshot, systemInf
 			if backend.GetHasQueryIdx() {
 				query := string(baseRef.GetQueryInformations()[backend.GetQueryIdx()].GetNormalizedQuery())
 				// // Skip backends with empty, semicolon-only, or pganalyze-collector queries
-				if query == "" ||
-					query == ";" ||
-					strings.HasPrefix(query, "/* pganalyze-collector */") {
+				if isQueryEmpty(query) {
 					continue
 				}
 				backendKey.QueryFingerPrint = string(baseRef.GetQueryReferences()[backend.GetQueryIdx()].GetFingerprint())
@@ -940,4 +938,13 @@ func filter[T any](ss []T, test func(T) bool) (ret []T) {
 
 func nonEmptyValFilter(l prompb.Label) bool {
 	return len(l.Value) != 0
+}
+
+func isQueryEmpty(query string) bool {
+	if query == "" ||
+		query == ";" ||
+		strings.HasPrefix(query, "/* pganalyze-collector */") {
+		return true
+	}
+	return false
 }

@@ -435,9 +435,7 @@ func processCompactSnapshotData(promClient *prometheusClient, s3Location string,
 
 				query := string(baseRef.GetQueryInformations()[backend.GetQueryIdx()].GetNormalizedQuery())
 
-				if query == "" ||
-					query == ";" ||
-					strings.HasPrefix(query, "/* pganalyze-collector */") {
+				if isQueryEmpty(query) {
 					continue
 				}
 

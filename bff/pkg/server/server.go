@@ -521,18 +521,31 @@ func activity_handler(metrics_service metrics.Service, query_storage query_stora
 			return
 		}
 
-		// populate query text for each query_fp
+		// populate query_fp with query text
 		for _, result := range results {
-			if metric, ok := result["metric"].(map[string]string); ok {
+			switch metric := result["metric"].(type) {
+			case map[string]interface{}:
+				if queryFP, ok := metric["query_fp"].(string); ok {
+					queryText, err := query_storage.GetQuery(queryFP)
+					if err != nil {
+						http.Error(w, "Error fetching query text: "+err.Error(), http.StatusInternalServerError)
+						return
+					}
+					metric["query_fp"] = queryText
+					result["metric"] = metric
+				}
+			case map[string]string:
 				if queryFP, ok := metric["query_fp"]; ok {
 					queryText, err := query_storage.GetQuery(queryFP)
 					if err != nil {
 						http.Error(w, "Error fetching query text: "+err.Error(), http.StatusInternalServerError)
 						return
 					}
-					metric["query"] = queryText
+					metric["query_fp"] = queryText
 					result["metric"] = metric
 				}
+			default:
+				fmt.Println("Metric not found or unsupported type")
 			}
 		}
 

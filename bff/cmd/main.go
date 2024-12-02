@@ -148,7 +148,7 @@ func run(webappPath string) error {
 	dbPath := filepath.Join(dataPath, "crystaldb-collector.db")
 	queryRepo, err := query_storage.NewSQLiteQueryStorage(dbPath)
 	if err != nil {
-			return fmt.Errorf("Failed to create query storage: %s", err)
+		return fmt.Errorf("Failed to create query storage: %s", err)
 	}
 
 	server := server.CreateServer(config.RoutesConfig, metrics_service, queryRepo, config)
