@@ -19,6 +19,7 @@ RUN wget -qO- https://github.com/prometheus/prometheus/releases/download/v2.55.1
 
 # Prometheus config
 COPY prometheus.yml ./config/prometheus/prometheus.yml
+COPY recording_rules.yml ./config/prometheus/recording_rules.yml
 
 COPY prometheus-entrypoint.sh /usr/local/autodba/bin/prometheus-entrypoint.sh
 RUN chmod +x /usr/local/autodba/bin/prometheus-entrypoint.sh
