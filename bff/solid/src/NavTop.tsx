@@ -1,6 +1,6 @@
 import { A } from "@solidjs/router";
 import { Show } from "solid-js";
-import { Anything } from "./state";
+import type { Anything } from "./state";
 
 export function NavTop(props: { class?: string; children: Anything }) {
   return (
