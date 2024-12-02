@@ -590,7 +590,7 @@ func ReprocessSnapshots(cfg *config.Config, reprocessFull, reprocessCompact bool
 		targetStart = time.Unix(0, earliestTimestamp*int64(time.Second))
 		targetEnd = time.Unix(0, latestTimestamp*int64(time.Second))
 		// Limit reprocessing to 2 weeks
-		twoWeeksAgo := targetEnd.Add(-1 * 24 * time.Hour)
+		twoWeeksAgo := targetEnd.Add(-14 * 24 * time.Hour)
 		if targetStart.Before(twoWeeksAgo) {
 			if cfg.Debug {
 				log.Printf("Limiting reprocessing start time from %v to %v", targetStart, twoWeeksAgo)
