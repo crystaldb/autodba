@@ -8,6 +8,7 @@ import (
 	"local/bff/pkg/metrics"
 	"local/bff/pkg/middleware"
 	"local/bff/pkg/query_storage"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -525,23 +526,23 @@ func activity_handler(metrics_service metrics.Service, query_storage query_stora
 		for _, result := range results {
 			switch metric := result["metric"].(type) {
 			case map[string]interface{}:
-				if queryFP, ok := metric["query_fp"].(string); ok {
+				if queryFP, ok := metric[query_fp_label].(string); ok {
 					queryText, err := query_storage.GetQuery(queryFP)
 					if err != nil {
-						http.Error(w, "Error fetching query text: "+err.Error(), http.StatusInternalServerError)
-						return
+						queryText = "<not found>"
+						log.Printf("Error fetching query text: %s", err)
 					}
-					metric["query_fp"] = queryText
+					metric[query_fp_label] = queryText
 					result["metric"] = metric
 				}
 			case map[string]string:
-				if queryFP, ok := metric["query_fp"]; ok {
+				if queryFP, ok := metric[query_fp_label]; ok {
 					queryText, err := query_storage.GetQuery(queryFP)
 					if err != nil {
 						http.Error(w, "Error fetching query text: "+err.Error(), http.StatusInternalServerError)
 						return
 					}
-					metric["query_fp"] = queryText
+					metric[query_fp_label] = queryText
 					result["metric"] = metric
 				}
 			default:
