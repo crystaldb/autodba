@@ -34,19 +34,39 @@ func main() {
 	// Initialize the SQLite database
 	db.InitDB(cfg.DBPath)
 
-	if err := api.ReprocessSnapshots(cfg, *reprocessFull, *reprocessCompact); err != nil {
-		log.Printf("Error reprocessing snapshots: %v", err)
-		os.Exit(-1)
+	// Create error channel for goroutines
+	errChan := make(chan error, 2)
+
+	// Start reprocessing in a goroutine if needed
+	if *reprocessFull || *reprocessCompact {
+		queue := api.GetQueueInstance()
+		// Lock the queue before creating the goroutine to avoid race conditions
+		queue.Lock()
+		go func() {
+			if err := api.ReprocessSnapshots(cfg, *reprocessFull, *reprocessCompact); err != nil {
+				errChan <- fmt.Errorf("reprocessing snapshots: %w", err)
+				return
+			}
+			errChan <- nil
+		}()
 	}
 
-	// Setup routes and handlers, passing the configuration
-	router := api.SetupRoutes(cfg)
+	// Start HTTP server in a goroutine
+	go func() {
+		router := api.SetupRoutes(cfg)
+		address := fmt.Sprintf("%s:%d", cfg.ServerHost, cfg.ServerPort)
+		log.Printf("Server starting on %s", address)
+		if err := http.ListenAndServe(address, router); err != nil {
+			errChan <- fmt.Errorf("HTTP server: %w", err)
+			return
+		}
+	}()
 
-	// Start the HTTP server
-	address := fmt.Sprintf("%s:%d", cfg.ServerHost, cfg.ServerPort)
-	log.Printf("Server starting on %s", address)
-	if err := http.ListenAndServe(address, router); err != nil {
-		log.Fatalf("Error starting server: %v", err)
-		os.Exit(-1)
+	// Wait for errors from either goroutine
+	for err := range errChan {
+		if err != nil {
+			log.Printf("Error: %v", err)
+			os.Exit(-1)
+		}
 	}
 }
