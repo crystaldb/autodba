@@ -11,6 +11,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
 	"path"
 	"sort"
 	"strconv"
@@ -494,6 +495,9 @@ func ReprocessSnapshots(cfg *config.Config, reprocessFull, reprocessCompact bool
 		isCompact  bool
 	}
 
+	var earliestTimestamp int64
+	var latestTimestamp int64
+
 	// Collect full snapshots if requested
 	if reprocessFull {
 		fullSnapshots, err := db.GetAllFullSnapshots()
@@ -502,6 +506,12 @@ func ReprocessSnapshots(cfg *config.Config, reprocessFull, reprocessCompact bool
 		}
 
 		for _, snapshot := range fullSnapshots {
+			if earliestTimestamp == 0 || snapshot.CollectedAt < earliestTimestamp {
+				earliestTimestamp = snapshot.CollectedAt
+			}
+			if snapshot.CollectedAt > latestTimestamp {
+				latestTimestamp = snapshot.CollectedAt
+			}
 
 			systemInfo := SystemInfo{
 				SystemID:    snapshot.SystemID,
@@ -541,6 +551,13 @@ func ReprocessSnapshots(cfg *config.Config, reprocessFull, reprocessCompact bool
 		}
 
 		for _, snapshot := range compactSnapshots {
+			if earliestTimestamp == 0 || snapshot.CollectedAt < earliestTimestamp {
+				earliestTimestamp = snapshot.CollectedAt
+			}
+			if snapshot.CollectedAt > latestTimestamp {
+				latestTimestamp = snapshot.CollectedAt
+			}
+
 			systemInfo := SystemInfo{
 				SystemID:    snapshot.SystemID,
 				SystemScope: snapshot.SystemScope,
@@ -566,8 +583,28 @@ func ReprocessSnapshots(cfg *config.Config, reprocessFull, reprocessCompact bool
 		return allSnapshots[i].timestamp < allSnapshots[j].timestamp
 	})
 
+	var targetStart time.Time
+	var targetEnd time.Time
+
+	if earliestTimestamp > 0 && latestTimestamp > 0 {
+		targetStart = time.Unix(0, earliestTimestamp*int64(time.Second))
+		targetEnd = time.Unix(0, latestTimestamp*int64(time.Second))
+		// Limit reprocessing to 2 weeks
+		twoWeeksAgo := targetEnd.Add(-1 * 24 * time.Hour)
+		if targetStart.Before(twoWeeksAgo) {
+			if cfg.Debug {
+				log.Printf("Limiting reprocessing start time from %v to %v", targetStart, twoWeeksAgo)
+			}
+			targetStart = twoWeeksAgo
+		}
+	}
+
 	// Process snapshots in chronological order
 	for _, snapshot := range allSnapshots {
+		if time.Unix(0, snapshot.timestamp*int64(time.Second)).Before(targetStart) {
+			log.Printf("Skipping snapshot %s (system_id: %s) before start time %v", snapshot.s3Location, snapshot.systemInfo.SystemID, targetStart)
+			continue
+		}
 		if snapshot.isCompact {
 			log.Printf("Processing compact snapshot: %s (system_id: %s)", snapshot.s3Location, snapshot.systemInfo.SystemID)
 			if err := handleCompactSnapshot(cfg, snapshot.s3Location, snapshot.timestamp, snapshot.systemInfo); err != nil {
@@ -581,7 +618,134 @@ func ReprocessSnapshots(cfg *config.Config, reprocessFull, reprocessCompact bool
 		}
 	}
 
+	// Evaluate recording rules for the entire time range
+	if earliestTimestamp > 0 && latestTimestamp > 0 {
+
+		if err := EvaluateRecordingRules(cfg, targetStart, targetEnd); err != nil {
+			return fmt.Errorf("Failed to evaluate recording rules: %v", err)
+		}
+
+		// return fmt.Errorf("Successfully evaluated recording rules. Now, restart the prometheus service with the right configuration to enable.")
+	}
+
 	return nil
+}
+
+func EvaluateRecordingRules(cfg *config.Config, start, end time.Time) error {
+	// Create temporary directory for rules evaluation output
+	dataDir, err := os.MkdirTemp("", "prometheus-rules-*")
+	if err != nil {
+		return fmt.Errorf("create temp dir: %w", err)
+	}
+	defer os.RemoveAll(dataDir)
+
+	// Create blocks from rules
+	cmd := exec.Command("../../prometheus/promtool",
+		"tsdb", "create-blocks-from", "rules",
+		"--start", fmt.Sprintf("%s", start.Format(time.RFC3339)),
+		"--end", fmt.Sprintf("%s", end.Format(time.RFC3339)),
+		"--url", fmt.Sprintf("http://%s", prometheusURL.Host),
+		"--output-dir", dataDir,
+		"../../config/prometheus/recording_rules.yml")
+
+	log.Printf("Running promtool command: %v", cmd.Args)
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("create blocks from rules: %v\nOutput: %s", err, output)
+	}
+
+	if cfg.Debug {
+		log.Printf("Successfully created blocks. Output: %s", output)
+	}
+
+	// Move the generated blocks from the data subdirectory to prometheus data directory
+	entries, err := os.ReadDir(dataDir)
+	if err != nil {
+		return fmt.Errorf("read data directory: %w", err)
+	}
+
+	// Replace the existing move block code with:
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+
+		source := path.Join(dataDir, entry.Name())
+		dest := path.Join("../../prometheus_data", entry.Name())
+
+		if err := copyDir(source, dest); err != nil {
+			return fmt.Errorf("copy block %s: %w", entry.Name(), err)
+		}
+
+		// Clean up source directory after successful copy
+		if err := os.RemoveAll(source); err != nil {
+			log.Printf("Warning: Failed to clean up source directory %s: %v", source, err)
+		}
+
+		if cfg.Debug {
+			log.Printf("Copied block %s to Prometheus data directory", entry.Name())
+		}
+	}
+
+	return nil
+}
+
+func copyDir(src, dst string) error {
+	// Create the destination directory
+	if err := os.MkdirAll(dst, 0755); err != nil {
+		return fmt.Errorf("create destination directory: %w", err)
+	}
+
+	// Read source directory
+	entries, err := os.ReadDir(src)
+	if err != nil {
+		return fmt.Errorf("read source directory: %w", err)
+	}
+
+	for _, entry := range entries {
+		srcPath := path.Join(src, entry.Name())
+		dstPath := path.Join(dst, entry.Name())
+
+		if entry.IsDir() {
+			if err := copyDir(srcPath, dstPath); err != nil {
+				return fmt.Errorf("copy directory %s: %w", entry.Name(), err)
+			}
+		} else {
+			// Copy file
+			if err := copyFile(srcPath, dstPath); err != nil {
+				return fmt.Errorf("copy file %s: %w", entry.Name(), err)
+			}
+		}
+	}
+
+	return nil
+}
+
+func copyFile(src, dst string) error {
+	sourceFile, err := os.Open(src)
+	if err != nil {
+		return fmt.Errorf("open source file: %w", err)
+	}
+	defer sourceFile.Close()
+
+	destFile, err := os.Create(dst)
+	if err != nil {
+		return fmt.Errorf("create destination file: %w", err)
+	}
+	defer destFile.Close()
+
+	if _, err := io.Copy(destFile, sourceFile); err != nil {
+		return fmt.Errorf("copy file contents: %w", err)
+	}
+
+	// Copy file permissions
+	sourceInfo, err := os.Stat(src)
+	if err != nil {
+		return fmt.Errorf("get source file info: %w", err)
+	}
+
+	return os.Chmod(dst, sourceInfo.Mode())
 }
 
 var validSystemTypes = []string{

@@ -19,6 +19,7 @@ cp "$CONFIG_SOURCE" "$PARENT_DIR/config/prometheus/prometheus.yml"
 "$PARENT_DIR/prometheus/prometheus" \
     --config.file="$PARENT_DIR/config/prometheus/prometheus.yml" \
     --storage.tsdb.path="$PARENT_DIR/prometheus_data" \
+    --storage.tsdb.allow-overlapping-blocks \
     --query.lookback-delta="15m" \
     --web.console.templates="$PARENT_DIR/config/prometheus/consoles" \
     --web.console.libraries="$PARENT_DIR/config/prometheus/console_libraries" \

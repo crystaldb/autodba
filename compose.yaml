@@ -12,6 +12,7 @@ services:
               source: collector_api_storage
               target: /usr/local/autodba/share/collector_api_server/storage
               read_only: false
+            - prometheus_data:/usr/local/autodba/prometheus_data
         depends_on:
             - autodba-prometheus
         networks:
@@ -44,6 +45,7 @@ services:
               source: collector_api_storage
               target: /usr/local/autodba/share/collector_api_server/storage
               read_only: true
+            - prometheus_data:/usr/local/autodba/prometheus_data
 
     autodba-prometheus:
         build:
