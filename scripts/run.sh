@@ -87,7 +87,11 @@ function clean_up {
     if [ "$KEEP_CONTAINERS" = false ]; then
         # Perform program exit housekeeping
         echo "Stopping all containers: ${INSTANCE_NAME}*"
-        docker ps --filter name="${INSTANCE_NAME}*" --filter status=running -aq | xargs docker stop
+        if [ "$COMPOSE_BIN" = "docker-compose" ]; then
+            docker ps --filter name="${INSTANCE_NAME}*" --filter status=running -aq | xargs -r docker stop
+        else
+            podman ps --filter name="${INSTANCE_NAME}*" --filter status=running -aq | xargs -r podman stop
+        fi
         echo "Killing child processes"
         kill $(jobs -p)
         wait # wait for all children to exit -- this lets their logs make it out of the container environment
@@ -97,17 +101,32 @@ function clean_up {
 
 trap clean_up SIGHUP SIGINT SIGTERM
 
-# Set environment variables for docker-compose
+# Detect which compose command to use
+detect_compose_cmd() {
+    if command -v docker-compose >/dev/null 2>&1; then
+        echo "docker-compose"
+    elif command -v podman-compose >/dev/null 2>&1; then
+        echo "podman-compose"
+    else
+        echo "Error: Neither docker-compose nor podman-compose found" >&2
+        exit 1
+    fi
+}
+
+# Set environment variables for compose
 export COLLECTOR_API_PORT=$((UID + 7000 + INSTANCE_ID))
 export BFF_WEBAPP_PORT=$((UID + 4000 + INSTANCE_ID))
 export PROMETHEUS_PORT=$((UID + 6000 + INSTANCE_ID))
 export CONFIG_FILE="/usr/local/autodba/config/autodba/collector.conf"
 
-# Prepare docker-compose command
+# Detect compose command
+COMPOSE_BIN=$(detect_compose_cmd)
+
+# Prepare compose command
 if [ "$USE_COLLECTOR" = true ]; then
-    COMPOSE_CMD="docker-compose -p ${INSTANCE_NAME} -f compose.yaml -f compose.collector.yaml"
+    COMPOSE_CMD="$COMPOSE_BIN -p ${INSTANCE_NAME} -f compose.yaml -f compose.collector.yaml"
 else
-    COMPOSE_CMD="docker-compose -p ${INSTANCE_NAME} -f compose.yaml"
+    COMPOSE_CMD="$COMPOSE_BIN -p ${INSTANCE_NAME} -f compose.yaml"
 fi
 
 # Stop and remove existing containers
