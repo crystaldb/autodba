@@ -537,7 +537,7 @@ func activity_handler(metrics_service metrics.Service, query_storage query_stora
 			case map[string]string:
 				result["metric"] = handleQueryFP(metric, query_storage)
 			default:
-				fmt.Println("Metric not found or unsupported type")
+				log.Printf("Metric not found or unsupported type: %T", metric)
 			}
 		}
 
