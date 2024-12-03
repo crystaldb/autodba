@@ -40,11 +40,13 @@ func (s *SQLiteQueryStorage) initTables() error {
 	_, err := s.db.Exec(`
         CREATE TABLE IF NOT EXISTS queries (
             fingerprint TEXT PRIMARY KEY,
-            query TEXT
+            query TEXT,
+            last_update INTEGER
         );
         CREATE TABLE IF NOT EXISTS full_queries (
             fingerprint TEXT PRIMARY KEY,
-            full_query TEXT
+            full_query TEXT,
+            last_update INTEGER
         );
     `)
 	return err
