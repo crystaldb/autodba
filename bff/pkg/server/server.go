@@ -526,25 +526,9 @@ func activity_handler(metrics_service metrics.Service, query_storage query_stora
 		for _, result := range results {
 			switch metric := result["metric"].(type) {
 			case map[string]interface{}:
-				if queryFP, ok := metric[query_fp_label].(string); ok {
-					queryText, err := query_storage.GetQuery(queryFP)
-					if err != nil {
-						queryText = "<not found>"
-						log.Printf("Error fetching query text: %s", err)
-					}
-					metric[query_fp_label] = queryText
-					result["metric"] = metric
-				}
+				result["metric"] = handleQueryFP(metric, query_storage)
 			case map[string]string:
-				if queryFP, ok := metric[query_fp_label]; ok {
-					queryText, err := query_storage.GetQuery(queryFP)
-					if err != nil {
-						queryText = "<not found>"
-						log.Printf("Error fetching query text: %s", err)
-					}
-					metric[query_fp_label] = queryText
-					result["metric"] = metric
-				}
+				result["metric"] = handleQueryFP(metric, query_storage)
 			default:
 				fmt.Println("Metric not found or unsupported type")
 			}
@@ -567,6 +551,39 @@ func activity_handler(metrics_service metrics.Service, query_storage query_stora
 		w.Write(wrappedJSON)
 
 	})
+}
+
+func handleQueryFP(metric interface{}, query_storage query_storage.QueryStorage) interface{} {
+	var queryFP string
+	var ok bool
+
+	switch m := metric.(type) {
+	case map[string]interface{}:
+		queryFP, ok = m[query_fp_label].(string)
+	case map[string]string:
+		queryFP, ok = m[query_fp_label]
+	default:
+		return metric
+	}
+
+	if !ok {
+		return metric
+	}
+
+	queryText, err := query_storage.GetQuery(queryFP)
+	if err != nil {
+		queryText = "<not found>"
+		log.Printf("Error fetching query text: %s", err)
+	}
+
+	switch m := metric.(type) {
+	case map[string]interface{}:
+		m[query_fp_label] = queryText
+	case map[string]string:
+		m[query_fp_label] = queryText
+	}
+
+	return metric
 }
 
 func databases_handler(metrics_service metrics.Service, validate *validator.Validate) http.HandlerFunc {

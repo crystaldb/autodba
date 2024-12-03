@@ -52,19 +52,19 @@ func (s *SQLiteQueryStorage) initTables() error {
 	return err
 }
 
-func (s *SQLiteQueryStorage) StoreQuery(fingerprint, query, fullQuery string) error {
+func (s *SQLiteQueryStorage) StoreQuery(fingerprint, query, fullQuery string, collectedAt int64) error {
 	tx, err := s.db.Begin()
 	if err != nil {
 		return err
 	}
 
-	_, err = tx.Exec("INSERT OR REPLACE INTO queries (fingerprint, query) VALUES (?, ?)", fingerprint, query)
+	_, err = tx.Exec("INSERT OR REPLACE INTO queries (fingerprint, query, last_update) VALUES (?, ?, ?)", fingerprint, query, collectedAt)
 	if err != nil {
 		tx.Rollback()
 		return err
 	}
 
-	_, err = tx.Exec("INSERT OR REPLACE INTO full_queries (fingerprint, full_query) VALUES (?, ?)", fingerprint, fullQuery)
+	_, err = tx.Exec("INSERT OR REPLACE INTO full_queries (fingerprint, full_query, last_update) VALUES (?, ?, ?)", fingerprint, fullQuery, collectedAt)
 	if err != nil {
 		tx.Rollback()
 		return err

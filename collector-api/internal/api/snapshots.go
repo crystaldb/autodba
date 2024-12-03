@@ -442,7 +442,7 @@ func processCompactSnapshotData(promClient *prometheusClient, s3Location string,
 				fingerprint := base64.StdEncoding.EncodeToString([]byte(fp))
 				queryFull := backend.GetQueryText()
 
-				err = storage.QueryStore.StoreQuery(fingerprint, query, queryFull)
+				err = storage.QueryStore.StoreQuery(fingerprint, query, queryFull,collectedAt)
 				if err != nil {
 					return nil, fmt.Errorf("store query: %w", err)
 				}
