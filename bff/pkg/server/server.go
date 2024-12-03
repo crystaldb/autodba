@@ -539,8 +539,8 @@ func activity_handler(metrics_service metrics.Service, query_storage query_stora
 				if queryFP, ok := metric[query_fp_label]; ok {
 					queryText, err := query_storage.GetQuery(queryFP)
 					if err != nil {
-						http.Error(w, "Error fetching query text: "+err.Error(), http.StatusInternalServerError)
-						return
+						queryText = "<not found>"
+						log.Printf("Error fetching query text: %s", err)
 					}
 					metric[query_fp_label] = queryText
 					result["metric"] = metric
