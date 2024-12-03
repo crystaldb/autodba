@@ -30,6 +30,16 @@ func (m *MockMetricsService) ExecuteRaw(query string, options map[string]string)
 	return args.Get(0).([]map[string]interface{}), args.Error(1)
 }
 
+type MockQueryStorage struct{}
+
+func (m *MockQueryStorage) GetQuery(queryFP string) (string, error) {
+	return "SELECT * FROM table WHERE id = 1", nil
+}
+
+func (m *MockQueryStorage) GetFullQuery(queryFP string) (string, error) {
+	return "SELECT * FROM table WHERE id = 1", nil
+}
+
 func TestEndpointsGeneration(t *testing.T) {
 	mockMetricsService := new(MockMetricsService)
 	mockMetricsService.On("Execute", mock.Anything, mock.Anything).Return(
@@ -214,7 +224,8 @@ func TestMissingParameters(t *testing.T) {
 	mockService := new(MockMetricsService)
 
 	validate := CreateValidator()
-	handler := activity_handler(mockService, validate, 24, 24)
+	mockQueryStorage := &MockQueryStorage{}
+	handler := activity_handler(mockService, mockQueryStorage, validate, 24, 24)
 
 	defaultParams := map[string]string{
 		"dbidentifier":  "test",
@@ -255,8 +266,9 @@ func TestMissingParameters(t *testing.T) {
 func TestActivityValidationLogic(t *testing.T) {
 	mockService := new(MockMetricsService)
 
+	mockQueryStorage := &MockQueryStorage{}
 	validate := CreateValidator()
-	handler := activity_handler(mockService, validate, 24, 24)
+	handler := activity_handler(mockService, mockQueryStorage, validate, 24, 24)
 
 	tests := []struct {
 		name           string
@@ -389,9 +401,11 @@ func TestActivityValidationLogic(t *testing.T) {
 }
 func TestOptions(t *testing.T) {
 	mockService := new(MockMetricsService)
+	mockQueryStorage := &MockQueryStorage{}
 
 	validate := CreateValidator()
-	handler := activity_handler(mockService, validate, 24, 24)
+
+	handler := activity_handler(mockService, mockQueryStorage, validate, 24, 24)
 
 	expectedOptions := map[string]string{
 		"start": "10",

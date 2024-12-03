@@ -32,12 +32,14 @@ func isValidDimension(dim string) bool {
 		"client_addr":      true, // host
 		"application_name": true, // application
 		"backend_type":     true, // session_type
-		"query":            true, // sql
+		"query_fp":         true, // sql
 		"usename":          true, // user
 		"wait_event_name":  true, // wait_event
 	}
 	return validDimensions[dim]
 }
+
+const query_fp_label = "query_fp"
 
 func shouldUseRecordingRules(timeRange time.Duration) bool {
 	return timeRange >= 6*time.Hour

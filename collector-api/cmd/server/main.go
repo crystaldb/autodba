@@ -34,6 +34,12 @@ func main() {
 	// Initialize the SQLite database
 	db.InitDB(cfg.DBPath)
 
+	err = storage.InitQueryStorage(cfg.DBPath)
+	if err != nil {
+		log.Printf("Failed to initialize query storage: %v", err)
+		os.Exit(-1)
+	}
+
 	if err := api.ReprocessSnapshots(cfg, *reprocessFull, *reprocessCompact); err != nil {
 		log.Printf("Error reprocessing snapshots: %v", err)
 		os.Exit(-1)
