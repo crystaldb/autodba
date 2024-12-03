@@ -11,6 +11,7 @@ import { PagePrometheus } from "./page/prometheus";
 import { DarkmodeSelector } from "./view/darkmode";
 import { InstanceHeader } from "./view/instance_header";
 import { TimebarSection } from "./view/timebar_section";
+import { TimebarSimple } from "./view/timebar_simple";
 
 export default function App(): JSX.Element {
   return (
@@ -62,7 +63,13 @@ function PageWrapper(testid: string, page: () => JSX.Element) {
         <Show when={state.database_list.length}>
           <Dynamic component={page} />
           <section class="sticky bottom-0 flex flex-col mt-3 pt-1 z-20 backdrop-blur">
-            <TimebarSection />
+            <Show
+              when={import.meta.env.VITE_DEV_MODE === "true"}
+              fallback={<TimebarSection />}
+            >
+              <TimebarSimple />
+            </Show>
+
             <Show when={state.activityCube.error}>
               {(error) => (
                 <aside

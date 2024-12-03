@@ -7,6 +7,7 @@ export default [
   { languageOptions: { globals: globals.browser } },
   pluginJs.configs.recommended,
   ...tseslint.configs.recommended,
+  { ignores: [".vinxi/*", ".output", "dist"] },
   {
     rules: {
       "no-unused-vars": "off",

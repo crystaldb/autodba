@@ -14,8 +14,8 @@ import {
   untrack,
 } from "solid-js";
 import { Popover } from "solid-simple-popover";
+import { isLive, queryEndpointData, queryEndpointDataIfLive } from "~/http";
 import { contextState } from "../context_state";
-import { isLive, queryEndpointData, queryEndpointDataIfLive } from "../http";
 import { cssSelectorGeneral } from "./cube_activity";
 import { EchartsTimebar } from "./echarts_timebar";
 
@@ -155,7 +155,7 @@ export function TimebarSection(props: ITimebarSectionProps) {
 function TimeframeSelector() {
   const { setState } = contextState();
   const id = "timeframeSelector";
-  const optionsTimespan = [
+  const optionsTimeframe = [
     { ms: 14 * 24 * 60 * 60 * 1000, label: "last 14d", ms2: 60 * 60 * 1000 },
     { ms: 7 * 24 * 60 * 60 * 1000, label: "last 7d", ms2: 30 * 60 * 1000 },
     { ms: 2 * 24 * 60 * 60 * 1000, label: "last 2d", ms2: 30 * 60 * 1000 },
@@ -174,7 +174,7 @@ function TimeframeSelector() {
         name="Timeframe"
         property="timeframe_ms"
         id={id}
-        options={optionsTimespan}
+        options={optionsTimeframe}
         onClick={(record) => () =>
           batch(() => {
             setState("timeframe_ms", record.ms);

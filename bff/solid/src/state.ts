@@ -8,8 +8,14 @@ export type State = {
   apiThrottle: ApiThrottle;
   server_now?: number;
 
-  timeframe_ms: number;
+  isLive: boolean;
+  time_begin: number; // simple
+  timespan_ms: number;
+  chronoRaw: string;
+  chronoInterpreted: Date | null;
   interval_ms: number;
+
+  timeframe_ms: number;
   range_begin: number;
   range_end: number;
   force_refresh_by_incrementing: number;
@@ -290,12 +296,19 @@ const [state, setState]: [State, SetStoreFunction<State>] = createStore({
   metricData: [],
   database_list: [],
   instance_list: [],
+  isLive: true,
+  time_begin: 0,
+  timespan_ms: initial_timeframe_ms,
   timeframe_ms: initial_timeframe_ms,
   interval_ms: initial_interval_ms,
   range_begin: 0.0,
-  range_end: 100.0,
+  range_end: import.meta.env.VITE_DEV_MODE === "true" ? 99.5 : 100.0,
   force_refresh_by_incrementing: 0,
   prometheusMetricsData: [],
+  chronoRaw: "",
+  chronoInterpreted: null,
+  // chronoRaw: "15 minutes ago",
+  // chronoInterpreted: chrono.parseDate("15 minutes ago"),
 } as State);
 
 export function useState(): {
@@ -356,8 +369,14 @@ export function clearBusyWaiting() {
     }),
   );
   if (requestWaiting) {
-    console.log("requestWaiting now", requestWaitingCount || 0, requestWaiting);
-    queryEndpointData(requestWaiting);
+    if (import.meta.env.VITE_DEV_MODE !== "true") {
+      console.log(
+        "requestWaiting now",
+        requestWaitingCount || 0,
+        requestWaiting,
+      );
+      queryEndpointData(requestWaiting);
+    }
   }
 }
 
