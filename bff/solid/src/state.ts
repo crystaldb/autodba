@@ -80,7 +80,7 @@ export enum ApiEndpoint {
 
 export enum DimensionName {
   none = "none",
-  query = "query",
+  query = "query_fp",
   wait_event_name = "wait_event_name",
   time = "time",
   client_addr = "client_addr",

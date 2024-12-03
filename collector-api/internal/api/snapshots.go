@@ -4,8 +4,10 @@ import (
 	"collector-api/internal/auth"
 	"collector-api/internal/config"
 	"collector-api/internal/db"
+	"collector-api/internal/storage"
 	"collector-api/pkg/models"
 	"compress/zlib"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"log"
@@ -453,6 +455,30 @@ func processCompactSnapshotData(promClient *prometheusClient, s3Location string,
 	var compactSnapshot collector_proto.CompactSnapshot
 	if err := proto.Unmarshal(pbBytes, &compactSnapshot); err != nil {
 		return nil, fmt.Errorf("unmarshal compact snapshot: %w", err)
+	}
+	// store query text by fingerprint in db
+	for _, backend := range compactSnapshot.GetActivitySnapshot().GetBackends() {
+		baseRef := compactSnapshot.GetBaseRefs()
+		if baseRef != nil {
+			if backend.GetHasQueryIdx() {
+				fp := string(baseRef.GetQueryReferences()[backend.GetQueryIdx()].GetFingerprint())
+
+				query := string(baseRef.GetQueryInformations()[backend.GetQueryIdx()].GetNormalizedQuery())
+
+				if isQueryEmpty(query) {
+					continue
+				}
+
+				fingerprint := base64.StdEncoding.EncodeToString([]byte(fp))
+				queryFull := backend.GetQueryText()
+
+				err = storage.QueryStore.StoreQuery(fingerprint, query, queryFull,collectedAt)
+				if err != nil {
+					return nil, fmt.Errorf("store query: %w", err)
+				}
+			}
+		}
+
 	}
 
 	var currentMetrics []prompb.TimeSeries

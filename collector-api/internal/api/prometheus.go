@@ -743,9 +743,7 @@ type BackendKey struct {
 	BackendType      string
 	ClientAddr       string
 	Datname          string
-	Query            string
 	QueryFingerPrint string
-	QueryFull        string
 	Role             string
 	State            string
 	WaitEvent        string
@@ -762,11 +760,7 @@ func (bk BackendKey) Hash() string {
 	b.WriteByte(0)
 	b.WriteString(bk.ClientAddr)
 	b.WriteByte(0)
-	b.WriteString(bk.Query)
-	b.WriteByte(0)
 	b.WriteString(bk.QueryFingerPrint)
-	b.WriteByte(0)
-	b.WriteString(bk.QueryFull)
 	b.WriteByte(0)
 	b.WriteString(bk.Role)
 	b.WriteByte(0)
@@ -790,21 +784,13 @@ func getWaitEventName(waitEventType, waitEvent string) string {
 // createLabelsForBackend generates Prometheus labels for a given BackendKey
 // This function is used for both active backends and stale markers
 func createLabelsForBackend(backendKey BackendKey, systemInfo SystemInfo) []prompb.Label {
-	// Skip backends with empty, semicolon-only, or pganalyze-collector queries
-	if backendKey.Query == "" ||
-		backendKey.Query == ";" ||
-		strings.HasPrefix(backendKey.Query, "/* pganalyze-collector */") {
-		return nil
-	}
 
 	labels := append(systemLabels(systemInfo), []prompb.Label{
 		{Name: "__name__", Value: "cc_pg_stat_activity"},
 		{Name: "application_name", Value: defaultString(backendKey.ApplicationName, PgInternal)},
 		{Name: "backend_type", Value: defaultString(backendKey.BackendType, PgInternal)},
 		{Name: "client_addr", Value: defaultString(backendKey.ClientAddr, PgInternal)},
-		{Name: "query", Value: backendKey.Query},
 		{Name: "query_fp", Value: base64.StdEncoding.EncodeToString([]byte(backendKey.QueryFingerPrint))},
-		{Name: "query_full", Value: backendKey.QueryFull},
 		{Name: "state", Value: backendKey.State},
 		{Name: "usename", Value: defaultString(backendKey.Role, PgInternal)},
 		{Name: "wait_event_name", Value: getWaitEventName(backendKey.WaitEventType, backendKey.WaitEvent)},
@@ -842,7 +828,6 @@ func compactSnapshotMetrics(snapshot *collector_proto.CompactSnapshot, systemInf
 			ApplicationName: backend.GetApplicationName(),
 			BackendType:     backend.GetBackendType(),
 			ClientAddr:      backend.GetClientAddr(),
-			QueryFull:       backend.GetQueryText(),
 			State:           backend.GetState(),
 			WaitEvent:       backend.GetWaitEvent(),
 			WaitEventType:   backend.GetWaitEventType(),
@@ -856,7 +841,11 @@ func compactSnapshotMetrics(snapshot *collector_proto.CompactSnapshot, systemInf
 				backendKey.Datname = baseRef.GetDatabaseReferences()[backend.GetDatabaseIdx()].GetName()
 			}
 			if backend.GetHasQueryIdx() {
-				backendKey.Query = string(baseRef.GetQueryInformations()[backend.GetQueryIdx()].GetNormalizedQuery())
+				query := string(baseRef.GetQueryInformations()[backend.GetQueryIdx()].GetNormalizedQuery())
+				// // Skip backends with empty, semicolon-only, or pganalyze-collector queries
+				if isQueryEmpty(query) {
+					continue
+				}
 				backendKey.QueryFingerPrint = string(baseRef.GetQueryReferences()[backend.GetQueryIdx()].GetFingerprint())
 			}
 		}
@@ -874,6 +863,7 @@ func compactSnapshotMetrics(snapshot *collector_proto.CompactSnapshot, systemInf
 	var ts []prompb.TimeSeries
 	for hash, count := range backendCounts {
 		backendKey := firstBackendOfType[hash]
+
 		labels := createLabelsForBackend(*backendKey, systemInfo)
 		if labels == nil {
 			continue // Skip this backend if labels is nil (empty query)
@@ -948,4 +938,13 @@ func filter[T any](ss []T, test func(T) bool) (ret []T) {
 
 func nonEmptyValFilter(l prompb.Label) bool {
 	return len(l.Value) != 0
+}
+
+func isQueryEmpty(query string) bool {
+	if query == "" ||
+		query == ";" ||
+		strings.HasPrefix(query, "/* pganalyze-collector */") {
+		return true
+	}
+	return false
 }

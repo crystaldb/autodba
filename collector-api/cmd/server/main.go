@@ -3,7 +3,6 @@ package main
 import (
 	"collector-api/internal/api"
 	"collector-api/internal/config"
-	"collector-api/internal/db"
 	"collector-api/internal/storage"
 	"flag"
 	"fmt"
@@ -31,8 +30,11 @@ func main() {
 		os.Exit(-1)
 	}
 
-	// Initialize the SQLite database
-	db.InitDB(cfg.DBPath)
+	err = storage.InitQueryStorage(cfg.DBPath)
+	if err != nil {
+		log.Printf("Failed to initialize query storage: %v", err)
+		os.Exit(-1)
+	}
 
 	// Create error channel for goroutines
 	errChan := make(chan error, 2)
