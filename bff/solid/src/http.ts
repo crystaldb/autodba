@@ -105,6 +105,56 @@ export function isLive(): boolean {
   return true;
 }
 
+export async function fetchPrometheusMetrics(apiEndpoint: ApiEndpoint) {
+  const { state, setState } = contextState();
+  if (apiEndpoint !== ApiEndpoint.prometheus_metrics) return false;
+  if (!allowInFlight(ApiEndpoint.prometheus_metrics)) return false;
+
+  if (
+    state.timeframe_ms / state.interval_ms >=
+    magicPrometheusMaxSamplesLimit
+  ) {
+    console.log(
+      "Timeframe too large for Prometheus query (11k samples limit)",
+      state.interval_ms,
+      state.timeframe_ms,
+      (state.timeframe_ms / state.interval_ms).toFixed(1),
+    );
+    clearBusyWaiting();
+    return false;
+  }
+
+  const url = `/api/v1/${
+    apiEndpoint //
+  }?start=${
+    `now-${state.timeframe_ms}ms` //
+  }&end=${
+    "now" //
+  }&step=${
+    state.interval_ms //
+  }ms`;
+  setInFlight(ApiEndpoint.prometheus_metrics, url);
+  const response = await fetchWithAuth(url, { method: "GET" });
+
+  clearInFlight(ApiEndpoint.prometheus_metrics);
+  if (!response.ok) {
+    console.log("Response not ok", response);
+    clearBusyWaiting();
+    return false;
+  }
+
+  const { data, server_now } = await response.json();
+
+  batch(() => {
+    setState("server_now", server_now);
+    const dataBucketName = "prometheusMetricsData" as Part<State, keyof State>;
+    setState(dataBucketName, data);
+
+    clearBusyWaiting();
+  });
+  return true;
+}
+
 export async function queryEndpointDataIfLive(
   apiEndpoint: ApiEndpoint,
 ): Promise<boolean> {
@@ -117,7 +167,9 @@ export async function queryEndpointData(
 ): Promise<boolean> {
   return apiEndpoint === ApiEndpoint.activity
     ? queryActivityCube()
-    : queryStandardEndpointFullTimeframe(apiEndpoint);
+    : apiEndpoint === ApiEndpoint.prometheus_metrics
+      ? fetchPrometheusMetrics(apiEndpoint)
+      : queryStandardEndpointFullTimeframe(apiEndpoint);
 }
 
 async function queryActivityCube(): Promise<boolean> {
