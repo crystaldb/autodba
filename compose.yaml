@@ -26,6 +26,8 @@ services:
         build:
             context: bff
             dockerfile: Dockerfile
+            args:
+                - VITE_DEV_MODE=${VITE_DEV_MODE:-false}
         ports:
             - "${BFF_WEBAPP_PORT:-4000}:4000"
         depends_on:

@@ -49,7 +49,7 @@ echo "Building the UI..."
 (
     cd bff/solid
     npm install
-    npm run build
+    VITE_DEV_MODE=${VITE_DEV_MODE:-false} npm run build
 )
 
 TMP_DIR="/tmp"

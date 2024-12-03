@@ -68,6 +68,31 @@
         "io_write_throughput": "sum(cc_system_disk_write_bytes_per_second{sys_id=~\"$sys_id\",sys_scope=~\"$sys_scope\",sys_type=~\"$sys_type\"})",
         "free_storage_space": "sum(cc_system_diskpartition_free_bytes{sys_id=~\"$sys_id\",sys_scope=~\"$sys_scope\",sys_type=~\"$sys_type\"})"
       }
+    },
+    "/v1/prometheus_metrics": {
+      "params": [
+        "start",
+        "end",
+        "step"
+      ],
+      "options": {
+        "start": "$start",
+        "end": "$end",
+        "step": "$step"
+      },
+      "metrics": {
+        "memory_usage": "process_resident_memory_bytes{job='prometheus'}",
+        "memory_alloc": "go_memstats_alloc_bytes{job='prometheus'}",
+        "cpu_usage": "rate(process_cpu_seconds_total{job='prometheus'}[5m]) * 100",
+        "goroutines": "go_goroutines{job='prometheus'}",
+        "http_requests": "rate(prometheus_http_requests_total{job='prometheus'}[5m])",
+        "query_duration_avg": "rate(prometheus_engine_query_duration_seconds_sum{job='prometheus'}[5m]) / rate(prometheus_engine_query_duration_seconds_count{job='prometheus'}[5m])",
+        "active_time_series": "prometheus_tsdb_head_series{job='prometheus'}",
+        "samples_appended": "rate(prometheus_tsdb_head_samples_appended_total{job='prometheus'}[5m])",
+        "storage_size": "prometheus_tsdb_storage_blocks_bytes{job='prometheus'}",
+        "wal_size": "prometheus_tsdb_wal_segment_current{job='prometheus'}",
+        "remote_write_timestamp": "prometheus_remote_storage_highest_timestamp_in_seconds{job='prometheus'}"
+      }
     }
   }
 }

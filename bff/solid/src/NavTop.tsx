@@ -1,22 +1,8 @@
-/** @import {JSX} from 'solid-js' */
-
-// import { contextState } from "../context_state";
-
 import { A } from "@solidjs/router";
-import type { JSX } from "solid-js";
+import { Show } from "solid-js";
+import type { Anything } from "./state";
 
-export function NavTop(props: {
-  class?: string;
-  children:
-    | number
-    | boolean
-    | Node
-    | JSX.ArrayElement
-    | (string & {})
-    | null
-    | undefined;
-}) {
-  // const { state } = contextState();
+export function NavTop(props: { class?: string; children: Anything }) {
   return (
     <>
       <nav
@@ -33,6 +19,8 @@ export function NavTop(props: {
     </>
   );
 }
+
+const showPrometheus = import.meta.env.VITE_DEV_MODE === "true";
 
 export function NavTopConfig1() {
   return (
@@ -53,25 +41,17 @@ export function NavTopConfig1() {
       >
         Metrics
       </A>
-      {/*
-      <div class="h-5 border-s w-1 border-neutral-200 dark:border-neutral-700"></div>
-      <A
-        activeClass="activeTopNav"
-        href="/health"
-        class="flex items-center justify-center h-16 px-4"
-        end
-      >
-        Health
-      </A>
-      <A
-        activeClass="activeTopNav"
-        href="/explorer"
-        class="flex items-center justify-center h-16 px-4"
-        end
-      >
-        Explorer
-      </A>
-      */}
+
+      <Show when={showPrometheus}>
+        <A
+          activeClass="activeTopNav"
+          href="/prometheus"
+          class="flex items-center justify-center h-16 px-4"
+          end
+        >
+          Prometheus
+        </A>
+      </Show>
     </NavTop>
   );
 }
