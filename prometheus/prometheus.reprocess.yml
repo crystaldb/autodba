@@ -1,0 +1,8 @@
+global:
+  scrape_interval:      1m
+  evaluation_interval:  1m
+  # scrape_timeout is set to the global default (10s).
+
+storage:
+  tsdb:
+    out_of_order_time_window: 5m

@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"collector-api/internal/db"
 	"database/sql"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -23,12 +24,13 @@ func InitQueryStorage(dbPath string) error {
 }
 
 func NewSQLiteQueryStorage(dbPath string) (*SQLiteQueryStorage, error) {
-	db, err := sql.Open("sqlite3", dbPath)
+	// Initialize the SQLite database
+	database, err := db.InitDB(dbPath)
 	if err != nil {
 		return nil, err
 	}
 
-	storage := &SQLiteQueryStorage{db: db}
+	storage := &SQLiteQueryStorage{db: database}
 	if err := storage.initTables(); err != nil {
 		return nil, err
 	}

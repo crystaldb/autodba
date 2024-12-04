@@ -12,26 +12,28 @@ import (
 
 var db *sql.DB
 
-func InitDB(dbPath string) {
+func InitDB(dbPath string) (*sql.DB, error) {
 	var err error
 
 	// Create the SQLite database file if it doesn't exist
 	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
 		file, err := os.Create(dbPath)
+		defer file.Close()
 		if err != nil {
-			log.Fatalf("Failed to create database file: %v", err)
+			return nil, fmt.Errorf("failed to create database file: %w", err)
 		}
-		file.Close()
 	}
 
 	// Open the SQLite database
 	db, err = sql.Open("sqlite3", dbPath)
 	if err != nil {
-		log.Fatalf("Failed to connect to SQLite database: %v", err)
+		return nil, fmt.Errorf("failed to connect to SQLite database: %w", err)
 	}
 
 	// Initialize database schema
 	initSchema()
+
+	return db, nil
 }
 
 func initSchema() {
