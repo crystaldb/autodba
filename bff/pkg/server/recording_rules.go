@@ -2,10 +2,8 @@ package server
 
 import (
 	"fmt"
-	"regexp"
 	"sort"
 	"strings"
-	"time"
 )
 
 // RecordingRule represents a single Prometheus recording rule with a name and PromQL expression
@@ -55,25 +53,16 @@ type RecordingRuleGroup struct {
 
 // ExtractRecordingRules generates all necessary recording rules for PostgreSQL activity metrics
 // It creates two-dimensional aggregations for all valid dimension combinations
+// ExtractRecordingRules generates all necessary recording rules for PostgreSQL activity metrics
+// It creates two-dimensional aggregations for all valid dimension combinations
 func ExtractRecordingRules() []RecordingRuleGroup {
 	rulesByInterval := make(map[string][]RecordingRule)
-	seenQueries := make(map[string]bool) // Track unique queries to avoid duplicates
-	now := time.Now()
+	seenQueries := make(map[string]bool)
 
-	// Generate two-dimension aggregations for each time scenario
+	// Generate rules for each time scenario
 	for _, scenario := range timeScenarios {
-		fmt.Printf(">>> scenario: %+v\n", scenario)
 		// Create interval suffix for rule naming (e.g., "_10m")
 		intervalSuffix := "_" + strings.ReplaceAll(scenario.Step, ".", "_")
-
-		// Base parameters for activity queries
-		baseParams := ActivityParams{
-			DbIdentifier: "a/b/c",
-			DatabaseList: "db1", // Dummy value for recording rules
-			Start:        "now-" + scenario.Duration,
-			End:          "now",
-			Step:         scenario.Step,
-		}
 
 		// Generate rules for each dimension combination
 		for _, dim := range ValidDimensions() {
@@ -82,31 +71,92 @@ func ExtractRecordingRules() []RecordingRuleGroup {
 					continue // Skip time dimension as legend
 				}
 
-				params := baseParams
-				params.Dim = dim
-				params.Legend = legend
-
-				// Generate and process the PromQL query
-				input, err := extractPromQLInput(params, now)
-				if err != nil {
-					fmt.Printf(">>> error1: %v\n", err)
-					continue
+				// Create base selector
+				selector := &Selector{
+					Metric: "cc_pg_stat_activity",
 				}
 
-				query, err := GenerateStandardQuery(input)
-				fmt.Printf(">>> query: %s\n", query)
-				if err == nil && query != "" {
-					query = cleanupQueryForRecordingRule(query)
-					if !seenQueries[query] {
-						rulesByInterval[scenario.Step] = append(rulesByInterval[scenario.Step], RecordingRule{
-							Name: fmt.Sprintf("cc_pg_stat_activity:sum_by_%s__%s%s", dim, legend, intervalSuffix),
-							Expr: query,
-						})
-						seenQueries[query] = true
+				// Apply label_replace to dim and legend if they are different and dim is not "time"
+				var expr Node = selector
+
+				// Construct the aggregation node
+				var query Node
+				if dim == "time" {
+					aggregation := &Aggregation{
+						Func: "sum",
+						By:   []string{"sys_id", "sys_scope", "sys_type", "datname"},
+						Expr: expr,
 					}
+					// Add legend to aggregation "by" clause if not already included
+					if !contains(aggregation.By, legend) {
+						if legend != "datname" {
+							aggregation.By = append(aggregation.By, legend)
+						}
+					}
+					query = aggregation
 				} else {
-					fmt.Printf(">>> error2: %v\n", err)
+					avgOverTimeWindow := scenario.Duration
+					if dim == legend {
+						aggregation := &Aggregation{
+							Func: "sum",
+							By:   []string{"sys_id", "sys_scope", "sys_type", "datname"},
+							Expr: expr,
+						}
+						// Add legend to aggregation "by" clause if not already included
+						if !contains(aggregation.By, dim) {
+							if dim != "datname" {
+								aggregation.By = append(aggregation.By, dim)
+							}
+						}
+						query = &FunctionCall{
+							Func: "avg_over_time",
+							Args: []Node{
+								aggregation,
+							},
+							TimeInterval: &LiteralInt{Value: avgOverTimeWindow},
+							TimeStep:     &LiteralInt{Value: scenario.Step},
+						}
+					} else {
+						aggregation := &Aggregation{
+							Func: "sum",
+							By:   []string{"sys_id", "sys_scope", "sys_type", "datname"},
+							Expr: expr,
+						}
+						// Add dim to aggregation "by" clause if not already included
+						if !contains(aggregation.By, dim) {
+							if dim != "datname" {
+								aggregation.By = append(aggregation.By, dim)
+							}
+						}
+
+						// Add legend to aggregation "by" clause if not already included
+						if !contains(aggregation.By, legend) {
+							if legend != "datname" {
+								aggregation.By = append(aggregation.By, legend)
+							}
+						}
+
+						query = &FunctionCall{
+							Func: "avg_over_time",
+							Args: []Node{
+								aggregation,
+							},
+							TimeInterval: &LiteralInt{Value: avgOverTimeWindow},
+							TimeStep:     &LiteralInt{Value: scenario.Step},
+						}
+					}
 				}
+
+				// Generate query string
+				queryStr := query.String()
+
+				// if !seenQueries[queryStr] {
+				rulesByInterval[scenario.Step] = append(rulesByInterval[scenario.Step], RecordingRule{
+					Name: fmt.Sprintf("cc_pg_stat_activity:sum_by_%s__%s%s", dim, legend, intervalSuffix),
+					Expr: queryStr,
+				})
+				seenQueries[queryStr] = true
+				// }
 			}
 		}
 	}
@@ -129,42 +179,14 @@ func ExtractRecordingRules() []RecordingRuleGroup {
 	return groups
 }
 
-// cleanupQueryForRecordingRule sanitizes a PromQL query for use in recording rules
-// It removes specific filters and ensures proper dimension inclusion
-func cleanupQueryForRecordingRule(query string) string {
-	// Remove sort_desc wrapper if present
-	if strings.HasPrefix(query, "sort_desc(") {
-		query = strings.TrimPrefix(query, "sort_desc(")
-		query = strings.TrimSuffix(query, ")")
+// Helper function to check if a slice contains a string
+func contains(slice []string, str string) bool {
+	for _, v := range slice {
+		if v == str {
+			return true
+		}
 	}
-
-	// Remove specific database and system filters while preserving structure
-	query = regexp.MustCompile(`\{[^}]*\}`).ReplaceAllStringFunc(query, func(match string) string {
-		patterns := []string{
-			`datname=~"[^"]*"(,\s*)?`,
-			`sys_id=~"[^"]*"(,\s*)?`,
-			`sys_scope=~"[^"]*"(,\s*)?`,
-			`sys_type=~"[^"]*"(,\s*)?`,
-		}
-
-		for _, pattern := range patterns {
-			match = regexp.MustCompile(pattern).ReplaceAllString(match, "")
-		}
-		if match == "{}" {
-			return ""
-		}
-		return match
-	})
-
-	// Clean up formatting and ensure proper system dimensions
-	query = strings.ReplaceAll(query, "  ", " ")
-	if strings.Contains(query, "datname") {
-		query = strings.ReplaceAll(query, "sum by(", "sum by(sys_id, sys_scope, sys_type,")
-	} else {
-		query = strings.ReplaceAll(query, "sum by(", "sum by(datname, sys_id, sys_scope, sys_type,")
-	}
-
-	return strings.TrimSpace(query)
+	return false
 }
 
 // GeneratePrometheusConfig generates YAML configuration for Prometheus recording rules

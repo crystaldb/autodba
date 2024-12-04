@@ -100,7 +100,7 @@ func generateRecordingRuleQuery(input PromQLInput) (string, error) {
 	// For other dimensions, wrap with sort_desc and avg_over_time
 	// to match the behavior of the original queries
 	timeRange := fmt.Sprintf("%ds", int(input.End.Sub(input.Start).Seconds()))
-	stepSize := fmt.Sprintf("%d", int(input.Step.Seconds()))
+	stepSize := fmt.Sprintf("%ds", int(input.Step.Seconds()))
 
 	return (&SortDesc{
 		Expr: &FunctionCall{
@@ -168,8 +168,9 @@ func GenerateStandardQuery(input PromQLInput) (string, error) {
 		}
 	} else {
 		avgOverTimeWindow := fmt.Sprintf("%ds", int(timeRange))
+		step := fmt.Sprintf("%ds", int(input.Step.Seconds()))
 		if dim == legend {
-			query = genAvgOverDimQuery(dim, expr, avgOverTimeWindow, limitValue, offsetValue, input.Step)
+			query = genAvgOverDimQuery(dim, expr, avgOverTimeWindow, limitValue, offsetValue, step)
 		} else if limitValue == 0 {
 			query = &FunctionCall{
 				Func: "avg_over_time",
@@ -181,11 +182,11 @@ func GenerateStandardQuery(input PromQLInput) (string, error) {
 					},
 				},
 				TimeInterval: &LiteralInt{Value: avgOverTimeWindow},
-				TimeStep:     &LiteralInt{Value: strconv.FormatInt(int64(input.Step.Seconds()), 10)},
+				TimeStep:     &LiteralInt{Value: step},
 			}
 		} else { // dim != legend and limit != ""
 			// Step 1: Generate `limitOffsetAgg` with limit and offset
-			limitOffsetAgg := genAvgOverDimQuery(dim, expr, avgOverTimeWindow, limitValue, offsetValue, input.Step)
+			limitOffsetAgg := genAvgOverDimQuery(dim, expr, avgOverTimeWindow, limitValue, offsetValue, step)
 
 			// Step 2: Convert all values in `limitOffsetAgg` to `1`
 			scaledLimitOffsetAgg := &BinaryExpr{
@@ -218,7 +219,7 @@ func GenerateStandardQuery(input PromQLInput) (string, error) {
 					},
 				},
 				TimeInterval: &LiteralInt{Value: avgOverTimeWindow},
-				TimeStep:     &LiteralInt{Value: strconv.FormatInt(int64(input.Step.Seconds()), 10)},
+				TimeStep:     &LiteralInt{Value: step},
 			}
 		}
 	}
@@ -232,7 +233,7 @@ func GenerateStandardQuery(input PromQLInput) (string, error) {
 	return query.String(), nil
 }
 
-func genAvgOverDimQuery(dim string, expr Node, avgOverTimeWindow string, limitValue int, offsetValue int, step time.Duration) Node {
+func genAvgOverDimQuery(dim string, expr Node, avgOverTimeWindow string, limitValue int, offsetValue int, step string) Node {
 	avgByDim := &FunctionCall{
 		Func: "avg_over_time",
 		Args: []Node{
@@ -243,7 +244,7 @@ func genAvgOverDimQuery(dim string, expr Node, avgOverTimeWindow string, limitVa
 			},
 		},
 		TimeInterval: &LiteralInt{Value: avgOverTimeWindow},
-		TimeStep:     &LiteralInt{Value: strconv.FormatInt(int64(step.Seconds()), 10)},
+		TimeStep:     &LiteralInt{Value: step},
 	}
 
 	var limitOffsetAgg Node
