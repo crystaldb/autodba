@@ -63,57 +63,21 @@ func GenerateActivityCubePromQLQuery(input PromQLInput) (string, error) {
 }
 
 func generateRecordingRuleQuery(input PromQLInput) (string, error) {
-	// Extract and validate parameters
-	databaseList := input.DatabaseList
-	dbIdentifier := input.DbIdentifier
-
-	systemType, systemID, systemScope, err := splitDbIdentifier(dbIdentifier)
-	if err != nil {
-		return "", fmt.Errorf("error in splitting dbIdentifier: %w", err)
-	}
-
-	// Construct the base selector
-	labels := map[string]string{
-		"datname":   escapePromQLLabelValue(databaseList),
-		"sys_id":    systemID,
-		"sys_scope": systemScope,
-		"sys_type":  systemType,
-	}
-
 	interval := getRecordingRuleInterval(input.End.Sub(input.Start))
 	metricName, err := GetRecordingRuleName([]string{input.Dim, input.Legend}, interval)
 	if err != nil {
 		return "", fmt.Errorf("error in getting recording rule name: %w", err)
 	}
 
-	// Create base selector with required labels
-	selector := &Selector{
-		Metric: metricName,
-		Labels: labels,
-	}
+	return innerGenerateStandardQuery(input, metricName)
+}
 
-	// For time dimension, return the selector directly
-	if input.Dim == "time" {
-		return selector.String(), nil
-	}
-
-	// For other dimensions, wrap with sort_desc and avg_over_time
-	// to match the behavior of the original queries
-	timeRange := fmt.Sprintf("%ds", int(input.End.Sub(input.Start).Seconds()))
-	stepSize := fmt.Sprintf("%ds", int(input.Step.Seconds()))
-
-	return (&SortDesc{
-		Expr: &FunctionCall{
-			Func:         "avg_over_time",
-			Args:         []Node{selector},
-			TimeInterval: &LiteralInt{Value: timeRange},
-			TimeStep:     &LiteralInt{Value: stepSize},
-		},
-	}).String(), nil
+func GenerateStandardQuery(input PromQLInput) (string, error) {
+	return innerGenerateStandardQuery(input, "cc_pg_stat_activity")
 }
 
 // Function to generate a PromQL query with sorting and pagination (New AST-based version)
-func GenerateStandardQuery(input PromQLInput) (string, error) {
+func innerGenerateStandardQuery(input PromQLInput, baseMetric string) (string, error) {
 	// Extract and validate parameters
 	databaseList := input.DatabaseList
 	startTime := input.Start
@@ -151,7 +115,7 @@ func GenerateStandardQuery(input PromQLInput) (string, error) {
 	}
 
 	selector := &Selector{
-		Metric: "cc_pg_stat_activity",
+		Metric: baseMetric,
 		Labels: labels,
 	}
 
