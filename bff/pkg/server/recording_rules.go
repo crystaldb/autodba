@@ -2,6 +2,7 @@ package server
 
 import (
 	"fmt"
+	"log"
 	"sort"
 	"strings"
 )
@@ -51,6 +52,51 @@ type RecordingRuleGroup struct {
 	Rules    []RecordingRule // List of recording rules in this group
 }
 
+// GetRecordingRuleName generates a consistent recording rule name by sorting dimensions
+// and applying special rules for 'time' and 'datname' dimensions
+func GetRecordingRuleName(dimensions []string, intervalSuffix string) (string, error) {
+	// Validate input
+	if len(dimensions) != 2 {
+		return "", fmt.Errorf("exactly two dimensions are required, got %d", len(dimensions))
+	}
+
+	// Handle time dimension - it should always be first if present
+	if dimensions[1] == "time" {
+		dimensions[0], dimensions[1] = dimensions[1], dimensions[0]
+	}
+
+	// If one of the dimensions is time, don't sort them (keep time first)
+	if dimensions[0] != "time" {
+		sort.Strings(dimensions)
+	}
+
+	// If datname is present, remove it from the name
+	dim1, dim2 := dimensions[0], dimensions[1]
+	if dim1 == "datname" {
+		dim1 = dim2
+		dim2 = ""
+	} else if dim2 == "datname" {
+		dim2 = ""
+	}
+
+	if dim1 == dim2 {
+		dim2 = ""
+	}
+
+	// If we removed datname and have an empty second dimension, just use the first
+	if dim2 == "" {
+		return fmt.Sprintf("cc_pg_stat_activity:sum_by_%s%s",
+			dim1,
+			intervalSuffix), nil
+	}
+
+	// Otherwise use both dimensions
+	return fmt.Sprintf("cc_pg_stat_activity:sum_by_%s__%s%s",
+		dim1,
+		dim2,
+		intervalSuffix), nil
+}
+
 // ExtractRecordingRules generates all necessary recording rules for PostgreSQL activity metrics
 // It creates two-dimensional aggregations for all valid dimension combinations
 // ExtractRecordingRules generates all necessary recording rules for PostgreSQL activity metrics
@@ -69,6 +115,17 @@ func ExtractRecordingRules() []RecordingRuleGroup {
 			for _, legend := range ValidDimensions() {
 				if legend == "time" {
 					continue // Skip time dimension as legend
+				}
+
+				ruleName, err := GetRecordingRuleName([]string{dim, legend}, intervalSuffix)
+				if err != nil {
+					log.Printf("Error generating recording rule name: %v", err)
+					continue // Skip this combination if there's an error
+				}
+
+				if seenQueries[ruleName] {
+					log.Printf("Skipping duplicate rule: %s", ruleName)
+					continue
 				}
 
 				// Create base selector
@@ -152,10 +209,11 @@ func ExtractRecordingRules() []RecordingRuleGroup {
 
 				// if !seenQueries[queryStr] {
 				rulesByInterval[scenario.Step] = append(rulesByInterval[scenario.Step], RecordingRule{
-					Name: fmt.Sprintf("cc_pg_stat_activity:sum_by_%s__%s%s", dim, legend, intervalSuffix),
+					Name: ruleName,
 					Expr: queryStr,
 				})
-				seenQueries[queryStr] = true
+				seenQueries[ruleName] = true
+				// 	seenQueries[queryStr] = true
 				// }
 			}
 		}
