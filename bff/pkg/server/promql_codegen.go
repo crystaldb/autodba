@@ -81,10 +81,10 @@ func generateRecordingRuleQuery(input PromQLInput) (string, error) {
 	}
 
 	interval := getRecordingRuleInterval(input.End.Sub(input.Start))
-	metricName := fmt.Sprintf("cc_pg_stat_activity:sum_by_%s__%s_%s",
-		input.Dim,
-		input.Legend,
-		strings.ReplaceAll(interval, ".", "_"))
+	metricName, err := GetRecordingRuleName([]string{input.Dim, input.Legend}, interval)
+	if err != nil {
+		return "", fmt.Errorf("error in getting recording rule name: %w", err)
+	}
 
 	// Create base selector with required labels
 	selector := &Selector{

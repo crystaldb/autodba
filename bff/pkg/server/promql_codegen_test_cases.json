@@ -232,5 +232,239 @@
     },
     "expected": "sort_desc(avg_over_time(sum by(query_fp, usename) (cc_pg_stat_activity{datname=~\"db1\",sys_id=~\"b\",sys_scope=~\"c\",sys_type=~\"a\"})[3600s:10s]))",
     "has_error": false
+  },
+  {
+    "name": "Basic query with dim and legend",
+    "input": {
+      "database_list": "db1",
+      "start": "now-24h",
+      "end": "now",
+      "step": "10s",
+      "legend": "usename",
+      "dim": "datname",
+      "filterdim": "",
+      "filterdimselected": "",
+      "limit": "",
+      "offset": "",
+      "dbidentifier": "a/b/c"
+    },
+    "expected": "sort_desc(avg_over_time(cc_pg_stat_activity:sum_by_usename10m{datname=~\"db1\",sys_id=~\"b\",sys_scope=~\"c\",sys_type=~\"a\"}[86400s:10s]))",
+    "has_error": false
+  },
+  {
+    "name": "Query with filter",
+    "input": {
+      "database_list": "db1",
+      "start": "now-24h",
+      "end": "now",
+      "step": "10s",
+      "legend": "usename",
+      "dim": "datname",
+      "filterdim": "wait_event_name",
+      "filterdimselected": "Lock:transactionid",
+      "limit": "",
+      "offset": "",
+      "dbidentifier": "a/b/c"
+    },
+    "expected": "sort_desc(avg_over_time(cc_pg_stat_activity:sum_by_usename10m{datname=~\"db1\",sys_id=~\"b\",sys_scope=~\"c\",sys_type=~\"a\"}[86400s:10s]))",
+    "has_error": false
+  },
+  {
+    "name": "Query with filter (that turns into an empty filter)",
+    "input": {
+      "database_list": "db1",
+      "start": "now-24h",
+      "end": "now",
+      "step": "10s",
+      "legend": "usename",
+      "dim": "datname",
+      "filterdim": "wait_event_name",
+      "filterdimselected": "CPU",
+      "limit": "",
+      "offset": "",
+      "dbidentifier": "a/b/c"
+    },
+    "expected": "sort_desc(avg_over_time(cc_pg_stat_activity:sum_by_usename10m{datname=~\"db1\",sys_id=~\"b\",sys_scope=~\"c\",sys_type=~\"a\"}[86400s:10s]))",
+    "has_error": false
+  },
+  {
+    "name": "Query with topk and filter",
+    "input": {
+      "database_list": "db1",
+      "start": "now-24h",
+      "end": "now",
+      "step": "10s",
+      "legend": "client_addr",
+      "dim": "usename",
+      "filterdim": "",
+      "filterdimselected": "",
+      "limit": "3",
+      "offset": "2",
+      "dbidentifier": "a/b/c"
+    },
+    "expected": "sort_desc(avg_over_time(cc_pg_stat_activity:sum_by_client_addr__usename10m{datname=~\"db1\",sys_id=~\"b\",sys_scope=~\"c\",sys_type=~\"a\"}[86400s:10s]))",
+    "has_error": false
+  },
+  {
+    "name": "Query with complex filter (multiple selected values)",
+    "input": {
+      "database_list": "db1",
+      "start": "now-24h",
+      "end": "now",
+      "step": "10s",
+      "legend": "usename",
+      "dim": "datname",
+      "filterdim": "wait_event_name",
+      "filterdimselected": "Lock:transactionid,BufferPin:buffer_content",
+      "limit": "",
+      "offset": "",
+      "dbidentifier": "a/b/c"
+    },
+    "expected": "sort_desc(avg_over_time(cc_pg_stat_activity:sum_by_usename10m{datname=~\"db1\",sys_id=~\"b\",sys_scope=~\"c\",sys_type=~\"a\"}[86400s:10s]))",
+    "has_error": false
+  },
+  {
+    "name": "Query with no end time specified",
+    "input": {
+      "database_list": "db1",
+      "start": "now-24h",
+      "end": "",
+      "step": "10s",
+      "legend": "usename",
+      "dim": "datname",
+      "filterdim": "",
+      "filterdimselected": "",
+      "limit": "",
+      "offset": "",
+      "dbidentifier": "a/b/c"
+    },
+    "expected": "",
+    "has_error": true
+  },
+  {
+    "name": "Query with large limit and no offset",
+    "input": {
+      "database_list": "db1",
+      "start": "now-24h",
+      "end": "now",
+      "step": "10s",
+      "legend": "client_addr",
+      "dim": "usename",
+      "filterdim": "",
+      "filterdimselected": "",
+      "limit": "100",
+      "offset": "",
+      "dbidentifier": "a/b/c"
+    },
+    "expected": "sort_desc(avg_over_time(cc_pg_stat_activity:sum_by_client_addr__usename10m{datname=~\"db1\",sys_id=~\"b\",sys_scope=~\"c\",sys_type=~\"a\"}[86400s:10s]))",
+    "has_error": false
+  },
+  {
+    "name": "Query with only offset (and no limit) won't have a limit",
+    "input": {
+      "database_list": "db1",
+      "start": "now-24h",
+      "end": "now",
+      "step": "10s",
+      "legend": "client_addr",
+      "dim": "usename",
+      "filterdim": "",
+      "filterdimselected": "",
+      "limit": "",
+      "offset": "5",
+      "dbidentifier": "a/b/c"
+    },
+    "expected": "sort_desc(avg_over_time(cc_pg_stat_activity:sum_by_client_addr__usename10m{datname=~\"db1\",sys_id=~\"b\",sys_scope=~\"c\",sys_type=~\"a\"}[86400s:10s]))",
+    "has_error": false
+  },
+  {
+    "name": "Query with missing start time",
+    "input": {
+      "database_list": "db1",
+      "start": "",
+      "end": "now",
+      "step": "10s",
+      "legend": "client_addr",
+      "dim": "usename",
+      "filterdim": "",
+      "filterdimselected": "",
+      "limit": "",
+      "offset": "",
+      "dbidentifier": "a/b/c"
+    },
+    "expected": "",
+    "has_error": true
+  },
+  {
+    "name": "Query with `time` as `dim` and `legend`",
+    "input": {
+      "database_list": "db1",
+      "start": "now-24h",
+      "end": "now",
+      "step": "10s",
+      "legend": "time",
+      "dim": "time",
+      "filterdim": "",
+      "filterdimselected": "",
+      "limit": "",
+      "offset": "",
+      "dbidentifier": "a/b/c"
+    },
+    "expected": "cc_pg_stat_activity:sum_by_time10m{datname=~\"db1\",sys_id=~\"b\",sys_scope=~\"c\",sys_type=~\"a\"}",
+    "has_error": false
+  },
+  {
+    "name": "Query with FilterDim 'wait_event_name' and empty FilterDimSelected",
+    "input": {
+      "database_list": "db1",
+      "start": "now-24h",
+      "end": "now",
+      "step": "10s",
+      "legend": "usename",
+      "dim": "datname",
+      "filterdim": "wait_event_name",
+      "filterdimselected": "",
+      "limit": "",
+      "offset": "",
+      "dbidentifier": "a/b/c"
+    },
+    "expected": "sort_desc(avg_over_time(cc_pg_stat_activity:sum_by_usename10m{datname=~\"db1\",sys_id=~\"b\",sys_scope=~\"c\",sys_type=~\"a\"}[86400s:10s]))",
+    "has_error": false
+  },
+  {
+    "name": "Query with FilterDim 'query' and empty FilterDimSelected",
+    "input": {
+      "database_list": "db1",
+      "start": "now-24h",
+      "end": "now",
+      "step": "10s",
+      "legend": "client_addr",
+      "dim": "datname",
+      "filterdim": "query_fp",
+      "filterdimselected": "",
+      "limit": "",
+      "offset": "",
+      "dbidentifier": "a/b/c"
+    },
+    "expected": "sort_desc(avg_over_time(cc_pg_stat_activity:sum_by_client_addr10m{datname=~\"db1\",sys_id=~\"b\",sys_scope=~\"c\",sys_type=~\"a\"}[86400s:10s]))",
+    "has_error": false
+  },
+  {
+    "name": "Query with 'query' as dim",
+    "input": {
+      "database_list": "db1",
+      "start": "now-24h",
+      "end": "now",
+      "step": "10s",
+      "legend": "usename",
+      "dim": "query_fp",
+      "filterdim": "",
+      "filterdimselected": "",
+      "limit": "",
+      "offset": "",
+      "dbidentifier": "a/b/c"
+    },
+    "expected": "sort_desc(avg_over_time(cc_pg_stat_activity:sum_by_query_fp__usename10m{datname=~\"db1\",sys_id=~\"b\",sys_scope=~\"c\",sys_type=~\"a\"}[86400s:10s]))",
+    "has_error": false
   }
 ]
