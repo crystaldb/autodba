@@ -203,7 +203,7 @@ func processFullSnapshotData(promClient *prometheusClient, s3Location string, sy
 		}
 	}
 
-	staleMarkers := createStaleMarkers(previousMetrics[systemInfo][FullSnapshotType], currentMetrics, fullSnapshot.CollectedAt.AsTime().UnixMilli())
+	staleMarkers := createStaleMarkers(previousMetrics[systemInfo][FullSnapshotType], currentMetrics, collectedAt*1000)
 
 	allMetrics := append(currentMetrics, staleMarkers...)
 
@@ -472,7 +472,7 @@ func processCompactSnapshotData(promClient *prometheusClient, s3Location string,
 				fingerprint := base64.StdEncoding.EncodeToString([]byte(fp))
 				queryFull := backend.GetQueryText()
 
-				err = storage.QueryStore.StoreQuery(fingerprint, query, queryFull,collectedAt)
+				err = storage.QueryStore.StoreQuery(fingerprint, query, queryFull, collectedAt)
 				if err != nil {
 					return nil, fmt.Errorf("store query: %w", err)
 				}
@@ -512,7 +512,7 @@ func processCompactSnapshotData(promClient *prometheusClient, s3Location string,
 		}
 	}
 
-	staleMarkers := createStaleMarkers(previousMetrics[systemInfo][snapshotType], currentMetrics, compactSnapshot.CollectedAt.AsTime().UnixMilli())
+	staleMarkers := createStaleMarkers(previousMetrics[systemInfo][snapshotType], currentMetrics, collectedAt*1000)
 
 	allMetrics := append(currentMetrics, staleMarkers...)
 
