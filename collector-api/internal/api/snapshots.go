@@ -140,11 +140,46 @@ const (
 	CompactActivitySnapshotType = "compact_activity"
 	CompactLogSnapshotType      = "compact_log"
 	CompactSystemSnapshotType   = "compact_system"
+	DefaultSnapshotBatchSize    = 100
 )
 
 func init() {
 	// Initialize the previousMetrics map
 	previousMetrics = make(map[SystemInfo]map[string][]prompb.TimeSeries)
+}
+
+func HandleSnapshotBatches(cfg *config.Config, tasks []SnapshotTask, batchSize int) error {
+	if cfg.Debug {
+		log.Printf("Processing %d snapshot tasks in batches of %d", len(tasks), batchSize)
+	}
+
+	var errors []error
+
+	for i := 0; i < len(tasks); i += batchSize {
+		end := i + batchSize
+		if end > len(tasks) {
+			end = len(tasks)
+		}
+
+		batch := tasks[i:end]
+		if cfg.Debug {
+			log.Printf("Processing batch %d-%d of %d tasks", i+1, end, len(tasks))
+		}
+
+		if err := HandleSnapshots(cfg, batch); err != nil {
+			errors = append(errors, fmt.Errorf("process batch %d-%d: %w", i+1, end, err))
+			continue // Continue processing other batches
+		}
+	}
+
+	if len(errors) > 0 {
+		return fmt.Errorf("encountered %d batch processing errors: %v", len(errors), combineErrors(errors))
+	}
+
+	if cfg.Debug {
+		log.Printf("Successfully processed all %d tasks in batches", len(tasks))
+	}
+	return nil
 }
 
 func HandleSnapshots(cfg *config.Config, tasks []SnapshotTask) error {
@@ -158,7 +193,9 @@ func HandleSnapshots(cfg *config.Config, tasks []SnapshotTask) error {
 	}
 
 	var allMetrics []prompb.TimeSeries
+	var errors []error
 
+	// Process all tasks and collect errors
 	for _, task := range tasks {
 		if cfg.Debug {
 			log.Printf("Processing snapshot with s3_location: %s and collected_at: %d", task.S3Location, task.CollectedAt)
@@ -173,27 +210,52 @@ func HandleSnapshots(cfg *config.Config, tasks []SnapshotTask) error {
 			metrics, err = processFullSnapshotData(&promClient, task.S3Location, task.SystemInfo, task.CollectedAt)
 		}
 		if err != nil {
-			return fmt.Errorf("process snapshot data: %w", err)
+			err = fmt.Errorf("process snapshot data for %s: %w", task.S3Location, err)
+			if len(tasks) == 1 {
+				return err
+			}
+			errors = append(errors, err)
+			continue // Continue processing other tasks
 		}
 
 		allMetrics = append(allMetrics, metrics...)
 	}
 
-	if len(allMetrics) == 0 {
-		if cfg.Debug {
-			log.Printf("No metrics to send, skipping remote write")
+	// Send metrics if we have any
+	if len(allMetrics) > 0 {
+		if err := sendRemoteWrite(promClient, allMetrics); err != nil {
+			errors = append(errors, fmt.Errorf("send remote write: %w", err))
 		}
+	} else if cfg.Debug {
+		log.Printf("No metrics to send, skipping remote write")
+	}
+
+	if cfg.Debug && len(errors) == 0 {
+		log.Printf("All snapshot tasks processed successfully!")
+	}
+
+	// Return combined errors if any occurred
+	if len(errors) > 0 {
+		return fmt.Errorf("encountered %d errors during processing: %v", len(errors), combineErrors(errors))
+	}
+
+	return nil
+}
+
+// Helper function to combine multiple errors into a single error message
+func combineErrors(errors []error) error {
+	if len(errors) == 0 {
 		return nil
 	}
 
-	if err := sendRemoteWrite(promClient, allMetrics); err != nil {
-		return fmt.Errorf("send remote write: %w", err)
+	var combined strings.Builder
+	for i, err := range errors {
+		if i > 0 {
+			combined.WriteString("; ")
+		}
+		combined.WriteString(err.Error())
 	}
-
-	if cfg.Debug {
-		log.Printf("All snapshot tasks processed successfully!")
-	}
-	return nil
+	return fmt.Errorf(combined.String())
 }
 
 func processFullSnapshotData(promClient *prometheusClient, s3Location string, systemInfo SystemInfo, collectedAt int64) ([]prompb.TimeSeries, error) {
@@ -652,23 +714,19 @@ func ReprocessSnapshots(cfg *config.Config, reprocessFull, reprocessCompact bool
 		}
 	}
 
-	// Process snapshots in chronological order
+	// Filter snapshots
+	filteredSnapshots := make([]SnapshotTask, 0, len(allSnapshots))
 	for _, snapshot := range allSnapshots {
-		if time.Unix(0, snapshot.CollectedAt*int64(time.Second)).Before(targetStart) {
-			log.Printf("Skipping snapshot %s (system_id: %s) before start time %v", snapshot.S3Location, snapshot.SystemInfo.SystemID, targetStart)
-			continue
+		if !time.Unix(0, snapshot.CollectedAt*int64(time.Second)).Before(targetStart) {
+			filteredSnapshots = append(filteredSnapshots, snapshot)
+		} else if cfg.Debug {
+			log.Printf("Filtering out snapshot %s (system_id: %s) before start time %v",
+				snapshot.S3Location, snapshot.SystemInfo.SystemID, targetStart)
 		}
-		if snapshot.IsCompact {
-			log.Printf("Processing compact snapshot: %s (system_id: %s)", snapshot.S3Location, snapshot.SystemInfo.SystemID)
-			if err := HandleSnapshots(cfg, []SnapshotTask{snapshot}); err != nil {
-				log.Printf("Error processing compact snapshot %s (system_id: %s): %v", snapshot.S3Location, snapshot.SystemInfo.SystemID, err)
-			}
-		} else {
-			log.Printf("Processing full snapshot: %s (system_id: %s)", snapshot.S3Location, snapshot.SystemInfo.SystemID)
-			if err := HandleSnapshots(cfg, []SnapshotTask{snapshot}); err != nil {
-				log.Printf("Error processing full snapshot %s (system_id: %s): %v", snapshot.S3Location, snapshot.SystemInfo.SystemID, err)
-			}
-		}
+	}
+
+	if err := HandleSnapshotBatches(cfg, filteredSnapshots, DefaultSnapshotBatchSize); err != nil {
+		log.Printf("Error handling snapshot batches: %v", err)
 	}
 
 	// Evaluate recording rules for the entire time range
@@ -678,7 +736,7 @@ func ReprocessSnapshots(cfg *config.Config, reprocessFull, reprocessCompact bool
 			return fmt.Errorf("Failed to evaluate recording rules: %v", err)
 		}
 
-		// return fmt.Errorf("Successfully evaluated recording rules. Now, restart the prometheus service with the right configuration to enable.")
+		log.Printf("Successfully evaluated recording rules. Now, restart the prometheus service with the right configuration to enable.")
 	}
 
 	return nil
