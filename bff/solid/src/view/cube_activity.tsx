@@ -338,7 +338,7 @@ interface PropsSelectButton {
 function SelectButton(props: PropsSelectButton) {
   return (
     <div
-      class={`flex text-sm px-2 py-2 border-s rounded-lg ${cssSelectorGeneral} ${props.class}`}
+      class={`flex text-sm p-2 border-s rounded-lg ${cssSelectorGeneral} ${props.class}`}
     >
       <div class="whitespace-pre">{props.label}</div>
       <SelectSliceBy

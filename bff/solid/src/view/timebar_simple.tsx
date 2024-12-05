@@ -84,7 +84,7 @@ export function TimebarSimple(props: ITimebarSimpleProps) {
           queryUpdate();
           setDirty(false);
         }}
-        class="text-sm px-2.5 py-2 rounded-lg hover:bg-zinc-300 dark:hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed"
+        class="text-sm p-2 rounded-lg hover:bg-zinc-300 dark:hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed"
         classList={{
           "bg-yellow-400 text-black font-semibold":
             !!state.chronoInterpreted && dirty(),
@@ -260,7 +260,7 @@ function TimeSelector(props: TimeSelectorProps) {
             value={state.chronoRaw}
             onInput={(e) => setState("chronoRaw", e.currentTarget.value)}
             placeholder="Enter time (e.g. '2 hours ago')"
-            class="text-sm px-2.5 py-2 rounded-lg bg-zinc-200 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700"
+            class="text-sm p-2 rounded-lg bg-zinc-200 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700"
           />
           <Show when={!state.chronoRaw || props.error()}>
             <div class="text-xs text-zinc-500">
@@ -347,7 +347,8 @@ function TimespanSelector() {
             setState("timespan_ms", record.ms);
             untrack(() => setState("interval_ms", record.ms2));
             queryUpdate();
-          })}
+          })
+        }
       />
     </>
   );
@@ -379,7 +380,7 @@ function ViewSelector(props: PropsViewSelector) {
       <button
         type="button"
         id={id}
-        class={`flex gap-2 text-sm px-2.5 py-2 rounded-lg ${cssSelectorGeneral} ${props.class}`}
+        class={`flex gap-2 text-sm p-2 rounded-lg ${cssSelectorGeneral} ${props.class}`}
       >
         <span class="whitespace-pre me-2">{props.name}:</span>
         <span class="text-fuchsia-500">
@@ -401,7 +402,7 @@ function ViewSelector(props: PropsViewSelector) {
             {(record) => (
               <button
                 type="button"
-                class={`flex justify-center gap-2 text-sm px-2.5 py-2 rounded-lg ${cssSelectorGeneral}`}
+                class={`flex justify-center gap-2 text-sm p-2 rounded-lg ${cssSelectorGeneral}`}
                 classList={{
                   "text-fuchsia-500": state[props.property] === record.ms,
                 }}

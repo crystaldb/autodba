@@ -58,7 +58,10 @@ export function DimensionBars(props: IDimensionBars) {
   });
 
   return (
-    <section class={`flex flex-col gap-4 ${props.class}`}>
+    <section
+      data-testid="nonTimeTable"
+      class={`flex flex-col gap-4 ${props.class}`}
+    >
       <For each={cubeDataGrouped()}>
         {({ total, dimensionValue, records }) => (
           <DimensionRowGrouped

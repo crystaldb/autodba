@@ -55,8 +55,9 @@ export function EchartsLinechart(props: PropsEchartsLinechart) {
     series: props.metricList.map((metric) => ({
       name: metric,
       type: "line",
-      // stack: "Total",
       dimensions: ["time_ms", metric],
+      animation: false,
+      // stack: "Total",
       // // areaStyle: {},
       // lineStyle: { width: 1, },
       // emphasis: { focus: "series", },
