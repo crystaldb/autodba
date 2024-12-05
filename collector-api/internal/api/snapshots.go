@@ -681,6 +681,8 @@ func sendRemoteWrite(client prometheusClient, promPB []prompb.TimeSeries) error 
 }
 
 func ReprocessSnapshots(cfg *config.Config, reprocessFull, reprocessCompact bool) error {
+	startTime := time.Now()
+
 	queue := GetQueueInstance()
 	defer func() {
 		queue.Unlock()
@@ -800,6 +802,8 @@ func ReprocessSnapshots(cfg *config.Config, reprocessFull, reprocessCompact bool
 		log.Printf("Error handling snapshot batches: %v", err)
 	}
 
+	log.Printf("Successfully handled snapshot batches. Took %v", time.Since(startTime))
+
 	// Evaluate recording rules for the entire time range
 	if earliestTimestamp > 0 && latestTimestamp > 0 {
 
@@ -809,6 +813,8 @@ func ReprocessSnapshots(cfg *config.Config, reprocessFull, reprocessCompact bool
 
 		log.Printf("Successfully evaluated recording rules. Now, restart the prometheus service with the right configuration to enable.")
 	}
+
+	log.Printf("Reprocessing snapshots completed. Took %v", time.Since(startTime))
 
 	return nil
 }
