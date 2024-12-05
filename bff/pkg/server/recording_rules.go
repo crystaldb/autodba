@@ -13,21 +13,6 @@ type RecordingRule struct {
 	Expr string // The PromQL expression to be evaluated
 }
 
-// ValidDimensions returns all valid dimensions for activity queries
-// These dimensions are used to create different aggregation combinations
-func ValidDimensions() []string {
-	return []string{
-		"time",             // timestamp of the measurement
-		"datname",          // database name
-		"client_addr",      // client host address
-		"application_name", // name of the application
-		"backend_type",     // type of backend session
-		"query_fp",         // SQL query being executed
-		"usename",          // database user name
-		"wait_event_name",  // name of the wait event if any
-	}
-}
-
 // TimeScenario defines a time window and recording interval
 type TimeScenario struct {
 	Duration string // Total time window to consider (e.g., "6h")

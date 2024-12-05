@@ -24,19 +24,32 @@ type PromQLInput struct {
 	DbIdentifier      string        `json:"dbidentifier"`
 }
 
+var ValidDimensionsList = []string{
+	"time",             // timestamp of the measurement
+	"datname",          // database name
+	"client_addr",      // client host address
+	"application_name", // name of the application
+	"backend_type",     // type of backend session
+	"query_fp",         // SQL query being executed
+	"usename",          // database user name
+	"wait_event_name",  // name of the wait event if any
+}
+
+// ValidDimensions returns all valid dimensions for activity queries
+// These dimensions are used to create different aggregation combinations
+func ValidDimensions() []string {
+	return ValidDimensionsList
+}
+
 // Utility function to validate dimensions
 func isValidDimension(dim string) bool {
-	validDimensions := map[string]bool{
-		"time":             true,
-		"datname":          true, // database
-		"client_addr":      true, // host
-		"application_name": true, // application
-		"backend_type":     true, // session_type
-		"query_fp":         true, // sql
-		"usename":          true, // user
-		"wait_event_name":  true, // wait_event
+	validDims := ValidDimensions()
+	for _, validDim := range validDims {
+		if validDim == dim {
+			return true
+		}
 	}
-	return validDimensions[dim]
+	return false
 }
 
 const query_fp_label = "query_fp"
