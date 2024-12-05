@@ -55,46 +55,58 @@ type RecordingRuleGroup struct {
 // GetRecordingRuleName generates a consistent recording rule name by sorting dimensions
 // and applying special rules for 'time' and 'datname' dimensions
 func GetRecordingRuleName(dimensions []string, intervalSuffix string) (string, error) {
-	// Validate input
-	if len(dimensions) != 2 {
-		return "", fmt.Errorf("exactly two dimensions are required, got %d", len(dimensions))
+	uniqueDimensions := uniqueSortedDimensions(dimensions)
+
+	// Generate the recording rule name based on the number of dimensions
+	switch len(uniqueDimensions) {
+	case 0:
+		return fmt.Sprintf("cc_pg_stat_activity:sum_by_%s", intervalSuffix), nil
+	case 1:
+		return fmt.Sprintf("cc_pg_stat_activity:sum_by_%s_%s", uniqueDimensions[0], intervalSuffix), nil
+	case 2:
+		dim1, dim2 := uniqueDimensions[0], uniqueDimensions[1]
+		return fmt.Sprintf("cc_pg_stat_activity:sum_by_%s__%s_%s", dim1, dim2, intervalSuffix), nil
+	case 3:
+		dim1, dim2, dim3 := uniqueDimensions[0], uniqueDimensions[1], uniqueDimensions[2]
+		return fmt.Sprintf("cc_pg_stat_activity:sum_by_%s__%s__%s_%s", dim1, dim2, dim3, intervalSuffix), nil
+	default:
+		return "", fmt.Errorf("one to three dimensions are required, got %d", len(uniqueDimensions))
+	}
+}
+
+func uniqueSortedDimensions(dimensions []string) []string {
+	dimensionSet := make(map[string]struct{})
+	for _, dim := range dimensions {
+		if dim != "datname" && dim != "" {
+			dimensionSet[dim] = struct{}{}
+		}
 	}
 
-	// Handle time dimension - it should always be first if present
-	if dimensions[1] == "time" {
-		dimensions[0], dimensions[1] = dimensions[1], dimensions[0]
+	uniqueDimensions := make([]string, 0, len(dimensionSet))
+	for dim := range dimensionSet {
+		uniqueDimensions = append(uniqueDimensions, dim)
 	}
+	sort.Strings(uniqueDimensions)
 
-	// If one of the dimensions is time, don't sort them (keep time first)
-	if dimensions[0] != "time" {
-		sort.Strings(dimensions)
+	switch len(uniqueDimensions) {
+	case 2:
+		dim1, dim2 := uniqueDimensions[0], uniqueDimensions[1]
+		if dim2 == "time" {
+			dim1, dim2 = dim2, dim1
+		}
+		return []string{dim1, dim2}
+	case 3:
+		dim1, dim2, dim3 := uniqueDimensions[0], uniqueDimensions[1], uniqueDimensions[2]
+		if dim3 == "time" {
+			dim1, dim2, dim3 = dim3, dim1, dim2
+		}
+		if dim2 == "time" {
+			dim1, dim2 = dim2, dim1
+		}
+		return []string{dim1, dim2, dim3}
+	default:
+		return uniqueDimensions
 	}
-
-	// If datname is present, remove it from the name
-	dim1, dim2 := dimensions[0], dimensions[1]
-	if dim1 == "datname" {
-		dim1 = dim2
-		dim2 = ""
-	} else if dim2 == "datname" {
-		dim2 = ""
-	}
-
-	if dim1 == dim2 {
-		dim2 = ""
-	}
-
-	// If we removed datname and have an empty second dimension, just use the first
-	if dim2 == "" {
-		return fmt.Sprintf("cc_pg_stat_activity:sum_by_%s%s",
-			dim1,
-			intervalSuffix), nil
-	}
-
-	// Otherwise use both dimensions
-	return fmt.Sprintf("cc_pg_stat_activity:sum_by_%s__%s%s",
-		dim1,
-		dim2,
-		intervalSuffix), nil
 }
 
 // ExtractRecordingRules generates all necessary recording rules for PostgreSQL activity metrics
@@ -108,7 +120,7 @@ func ExtractRecordingRules() []RecordingRuleGroup {
 	// Generate rules for each time scenario
 	for _, scenario := range timeScenarios {
 		// Create interval suffix for rule naming (e.g., "_10m")
-		intervalSuffix := "_" + strings.ReplaceAll(scenario.Step, ".", "_")
+		intervalSuffix := strings.ReplaceAll(scenario.Step, ".", "_")
 
 		// Generate rules for each dimension combination
 		for _, dim := range ValidDimensions() {
@@ -117,91 +129,10 @@ func ExtractRecordingRules() []RecordingRuleGroup {
 					continue // Skip time dimension as legend
 				}
 
-				ruleName, err := GetRecordingRuleName([]string{dim, legend}, intervalSuffix)
-				if err != nil {
-					log.Printf("Error generating recording rule name: %v", err)
-					continue // Skip this combination if there's an error
-				}
-
-				if seenQueries[ruleName] {
-					log.Printf("Skipping duplicate rule: %s", ruleName)
+				ruleName, query := generateRecordingRuleFormulae(dim, legend, "", intervalSuffix, seenQueries, scenario)
+				if query == nil {
+					log.Printf("Skipping rule: dim=%s, legend=%s", dim, legend)
 					continue
-				}
-
-				// Create base selector
-				selector := &Selector{
-					Metric: "cc_pg_stat_activity",
-				}
-
-				// Apply label_replace to dim and legend if they are different and dim is not "time"
-				var expr Node = selector
-
-				// Construct the aggregation node
-				var query Node
-				if dim == "time" {
-					aggregation := &Aggregation{
-						Func: "sum",
-						By:   []string{"sys_id", "sys_scope", "sys_type", "datname"},
-						Expr: expr,
-					}
-					// Add legend to aggregation "by" clause if not already included
-					if !contains(aggregation.By, legend) {
-						if legend != "datname" {
-							aggregation.By = append(aggregation.By, legend)
-						}
-					}
-					query = aggregation
-				} else {
-					avgOverTimeWindow := scenario.Duration
-					if dim == legend {
-						aggregation := &Aggregation{
-							Func: "sum",
-							By:   []string{"sys_id", "sys_scope", "sys_type", "datname"},
-							Expr: expr,
-						}
-						// Add legend to aggregation "by" clause if not already included
-						if !contains(aggregation.By, dim) {
-							if dim != "datname" {
-								aggregation.By = append(aggregation.By, dim)
-							}
-						}
-						query = &FunctionCall{
-							Func: "avg_over_time",
-							Args: []Node{
-								aggregation,
-							},
-							TimeInterval: &LiteralInt{Value: avgOverTimeWindow},
-							TimeStep:     &LiteralInt{Value: scenario.Step},
-						}
-					} else {
-						aggregation := &Aggregation{
-							Func: "sum",
-							By:   []string{"sys_id", "sys_scope", "sys_type", "datname"},
-							Expr: expr,
-						}
-						// Add dim to aggregation "by" clause if not already included
-						if !contains(aggregation.By, dim) {
-							if dim != "datname" {
-								aggregation.By = append(aggregation.By, dim)
-							}
-						}
-
-						// Add legend to aggregation "by" clause if not already included
-						if !contains(aggregation.By, legend) {
-							if legend != "datname" {
-								aggregation.By = append(aggregation.By, legend)
-							}
-						}
-
-						query = &FunctionCall{
-							Func: "avg_over_time",
-							Args: []Node{
-								aggregation,
-							},
-							TimeInterval: &LiteralInt{Value: avgOverTimeWindow},
-							TimeStep:     &LiteralInt{Value: scenario.Step},
-						}
-					}
 				}
 
 				// Generate query string
@@ -215,6 +146,30 @@ func ExtractRecordingRules() []RecordingRuleGroup {
 				seenQueries[ruleName] = true
 				// 	seenQueries[queryStr] = true
 				// }
+
+				for _, filter := range ValidDimensions() {
+					if filter == "time" {
+						continue // Skip time dimension as filter
+					}
+
+					ruleName, query := generateRecordingRuleFormulae(dim, legend, filter, intervalSuffix, seenQueries, scenario)
+					if query == nil {
+						log.Printf("Skipping rule: dim=%s, legend=%s, filter=%s", dim, legend, filter)
+						continue
+					}
+
+					// Generate query string
+					queryStr := query.String()
+
+					// if !seenQueries[queryStr] {
+					rulesByInterval[scenario.Step] = append(rulesByInterval[scenario.Step], RecordingRule{
+						Name: ruleName,
+						Expr: queryStr,
+					})
+					seenQueries[ruleName] = true
+					// 	seenQueries[queryStr] = true
+					// }
+				}
 			}
 		}
 	}
@@ -235,6 +190,62 @@ func ExtractRecordingRules() []RecordingRuleGroup {
 	})
 
 	return groups
+}
+
+func generateRecordingRuleFormulae(dim string, legend string, filter string, intervalSuffix string, seenQueries map[string]bool, scenario TimeScenario) (string, Node) {
+	dimensions := []string{dim, legend}
+	if filter != "" {
+		dimensions = append(dimensions, filter)
+	}
+	ruleName, err := GetRecordingRuleName(dimensions, intervalSuffix)
+	if err != nil {
+		log.Printf("Error generating recording rule name: %v", err)
+		return "", nil
+	}
+
+	uniqueDimensions := uniqueSortedDimensions(filterTimeDimension(dimensions))
+
+	if seenQueries[ruleName] {
+		log.Printf("Skipping duplicate rule: %s", ruleName)
+		return "", nil
+	}
+
+	selector := &Selector{
+		Metric: "cc_pg_stat_activity",
+	}
+
+	var expr Node = selector
+
+	var query Node
+	aggregation := &Aggregation{
+		Func: "sum",
+		By:   append([]string{"sys_id", "sys_scope", "sys_type", "datname"}, uniqueDimensions...),
+		Expr: expr,
+	}
+	if dim == "time" {
+		query = aggregation
+	} else {
+		avgOverTimeWindow := scenario.Duration
+		query = &FunctionCall{
+			Func: "avg_over_time",
+			Args: []Node{
+				aggregation,
+			},
+			TimeInterval: &LiteralInt{Value: avgOverTimeWindow},
+			TimeStep:     &LiteralInt{Value: scenario.Step},
+		}
+	}
+	return ruleName, query
+}
+
+func filterTimeDimension(dimensions []string) []string {
+	filtered := make([]string, 0, len(dimensions))
+	for _, dim := range dimensions {
+		if dim != "time" {
+			filtered = append(filtered, dim)
+		}
+	}
+	return filtered
 }
 
 // Helper function to check if a slice contains a string
