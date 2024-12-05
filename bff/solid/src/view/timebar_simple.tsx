@@ -1,4 +1,5 @@
 import { flip } from "@floating-ui/dom";
+import { debounce } from "@solid-primitives/scheduled";
 import * as chrono from "chrono-node";
 import {
   For,
@@ -451,7 +452,7 @@ function queryUpdate() {
     if (!time_begin) return;
     setState("time_begin", time_begin);
     if (state.apiThrottle.needDataFor)
-      queryEndpointDataSimple(state.apiThrottle.needDataFor);
+      debounce(queryEndpointDataSimple, 10)(state.apiThrottle.needDataFor);
   }
 }
 
