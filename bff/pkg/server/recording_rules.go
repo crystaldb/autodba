@@ -108,20 +108,16 @@ func ExtractRecordingRules() []RecordingRuleGroup {
 				ruleName, query := generateRecordingRuleFormulae(dim, legend, "", intervalSuffix, seenQueries, scenario)
 				if query == nil {
 					log.Printf("Skipping rule: dim=%s, legend=%s", dim, legend)
-					continue
+				} else {
+					// Generate query string
+					queryStr := query.String()
+
+					rulesByInterval[scenario.Step] = append(rulesByInterval[scenario.Step], RecordingRule{
+						Name: ruleName,
+						Expr: queryStr,
+					})
+					seenQueries[ruleName] = true
 				}
-
-				// Generate query string
-				queryStr := query.String()
-
-				// if !seenQueries[queryStr] {
-				rulesByInterval[scenario.Step] = append(rulesByInterval[scenario.Step], RecordingRule{
-					Name: ruleName,
-					Expr: queryStr,
-				})
-				seenQueries[ruleName] = true
-				// 	seenQueries[queryStr] = true
-				// }
 
 				for _, filter := range ValidDimensions() {
 					if filter == "time" {
@@ -137,14 +133,11 @@ func ExtractRecordingRules() []RecordingRuleGroup {
 					// Generate query string
 					queryStr := query.String()
 
-					// if !seenQueries[queryStr] {
 					rulesByInterval[scenario.Step] = append(rulesByInterval[scenario.Step], RecordingRule{
 						Name: ruleName,
 						Expr: queryStr,
 					})
 					seenQueries[ruleName] = true
-					// 	seenQueries[queryStr] = true
-					// }
 				}
 			}
 		}
