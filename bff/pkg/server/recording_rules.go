@@ -3,6 +3,7 @@ package server
 import (
 	"fmt"
 	"log"
+	"os"
 	"sort"
 	"strings"
 )
@@ -112,11 +113,16 @@ func ExtractRecordingRules() []RecordingRuleGroup {
 					// Generate query string
 					queryStr := query.String()
 
+					if seenQueries[queryStr] {
+						log.Printf("Error: another rule generated the same query: %s with query: %s", ruleName, queryStr)
+						os.Exit(1)
+					}
 					rulesByInterval[scenario.Step] = append(rulesByInterval[scenario.Step], RecordingRule{
 						Name: ruleName,
 						Expr: queryStr,
 					})
 					seenQueries[ruleName] = true
+					seenQueries[queryStr] = true
 				}
 
 				for _, filter := range ValidDimensions() {
@@ -133,11 +139,17 @@ func ExtractRecordingRules() []RecordingRuleGroup {
 					// Generate query string
 					queryStr := query.String()
 
+					if seenQueries[queryStr] {
+						log.Printf("Error: another rule generated the same query: %s with query: %s", ruleName, queryStr)
+						os.Exit(1)
+					}
+
 					rulesByInterval[scenario.Step] = append(rulesByInterval[scenario.Step], RecordingRule{
 						Name: ruleName,
 						Expr: queryStr,
 					})
 					seenQueries[ruleName] = true
+					seenQueries[queryStr] = true
 				}
 			}
 		}
