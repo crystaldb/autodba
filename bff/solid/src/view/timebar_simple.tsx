@@ -28,6 +28,19 @@ export function TimebarSimple(props: ITimebarSimpleProps) {
   const [error, setError] = createSignal<string | null>(null);
   const [dirty, setDirty] = createSignal<boolean>(false);
 
+  createEffect(
+    on(
+      [
+        () => state.instance_active,
+        () => state.activityCube.uiLegend,
+        () => state.activityCube.uiDimension1,
+        () => state.activityCube.uiFilter1Value,
+        //
+      ],
+      () => queryUpdate(),
+    ),
+  );
+
   return (
     <section
       class={`mb-3 flex flex-col lg:flex-row items-center gap-4 ${props.class}`}
@@ -94,7 +107,7 @@ function LiveIndicator(props: LiveProps) {
 
   function runLiveUpdate() {
     batch(() => {
-      setState("chronoRaw", `${getTimespanLabel(state.timespan_ms)} ago`);
+      setState("chronoRaw", `${getLabelTimespan(state.timespan_ms)} ago`);
       setState("chronoInterpreted", chrono.parseDate(state.chronoRaw));
       queryUpdate();
     });
@@ -145,7 +158,7 @@ function LiveIndicator(props: LiveProps) {
               props.setError(null);
               setState(
                 "chronoRaw",
-                `${getTimespanLabel(state.timespan_ms)} ago`,
+                `${getLabelTimespan(state.timespan_ms)} ago`,
               );
               setState("chronoInterpreted", chrono.parseDate(state.chronoRaw));
             }
@@ -192,8 +205,8 @@ function TimeSelector(props: TimeSelectorProps) {
   const examples = [
     // "now",
     "last tuesday 3:15pm",
-    // "yesterday at 2pm",
     "2h ago",
+    // "yesterday at 2pm",
     // "3 days ago",
   ];
 
@@ -272,8 +285,8 @@ function TimespanString(props: TimespanStringProps) {
         <Match when={!props.error() && state.chronoInterpreted}>
           {(chronoInterpreted) => (
             <div class="text-green-600 dark:text-green-400">
-              <p>
-                Time range:{" "}
+              <section class="flex items-center justify-between">
+                <p>Time range:</p>
                 <span
                   class={`text-2xs text-neutral-700 dark:text-neutral-300 ${
                     Object.getOwnPropertyNames(
@@ -285,7 +298,10 @@ function TimespanString(props: TimespanStringProps) {
                 >
                   Updating
                 </span>
-              </p>
+                <span class="text-zinc-500 text-2xs">
+                  {getLabelInterval(state.interval_ms)} intervals
+                </span>
+              </section>
               <p>
                 {formatTimeRange(
                   chronoInterpreted(),
@@ -331,8 +347,7 @@ function TimespanSelector() {
             setState("timespan_ms", record.ms);
             untrack(() => setState("interval_ms", record.ms2));
             queryUpdate();
-          })
-        }
+          })}
       />
     </>
   );
@@ -402,46 +417,31 @@ function ViewSelector(props: PropsViewSelector) {
   );
 }
 
-interface PropsIntervalSelector {
-  class?: string;
-}
-
-function IntervalSelector(props: PropsIntervalSelector) {
-  const { state, setState } = contextState();
-  const id = "intervalSelector_simple";
-  const options = [
-    { ms: 1 * 1000, label: "1s", ms2: 0 },
-    { ms: 5 * 1000, label: "5s", ms2: 0 },
-    { ms: 10 * 1000, label: "10s", ms2: 0 },
-    { ms: 30 * 1000, label: "30s", ms2: 0 },
-    { ms: 1 * 60 * 1000, label: "1m", ms2: 0 },
-    { ms: 5 * 60 * 1000, label: "5m", ms2: 0 },
-    { ms: 10 * 60 * 1000, label: "10m", ms2: 0 },
-    { ms: 15 * 60 * 1000, label: "15m", ms2: 0 },
-    { ms: 30 * 60 * 1000, label: "30m", ms2: 0 },
-    { ms: 1 * 60 * 60 * 1000, label: "1h", ms2: 0 },
-  ];
-
-  return (
-    <>
-      <ViewSelector
-        name="Interval"
-        property="interval_ms"
-        id={id}
-        options={options.filter(
-          (record) => state.timespan_ms / record.ms <= 350,
-        )}
-        onClick={(record) => () =>
-          batch(() => {
-            setState("interval_ms", record.ms);
-            queryUpdate();
-          })
-        }
-        class={props.class}
-      />
-    </>
-  );
-}
+// interface PropsIntervalSelector {
+//   class?: string;
+// }
+// function IntervalSelector(props: PropsIntervalSelector) {
+//   const { state, setState } = contextState();
+//   const id = "intervalSelector_simple";
+//   return (
+//     <>
+//       <ViewSelector
+//         name="Interval"
+//         property="interval_ms"
+//         id={id}
+//         options={optionsInterval.filter(
+//           (record) => state.timespan_ms / record.ms <= 350,
+//         )}
+//         onClick={(record) => () =>
+//           batch(() => {
+//             setState("interval_ms", record.ms);
+//             queryUpdate();
+//           })}
+//         class={props.class}
+//       />
+//     </>
+//   );
+// }
 
 function queryUpdate() {
   const { state, setState } = contextState();
@@ -454,7 +454,7 @@ function queryUpdate() {
   }
 }
 
-export const optionsTimespan = [
+const optionsTimespan = [
   { ms: 14 * 24 * 60 * 60 * 1000, label: "14d", ms2: 60 * 60 * 1000 },
   { ms: 7 * 24 * 60 * 60 * 1000, label: "7d", ms2: 30 * 60 * 1000 },
   { ms: 2 * 24 * 60 * 60 * 1000, label: "2d", ms2: 30 * 60 * 1000 },
@@ -466,8 +466,24 @@ export const optionsTimespan = [
   { ms: 15 * 60 * 1000, label: "15m", ms2: 10 * 1000 },
   { ms: 2 * 60 * 1000, label: "2m", ms2: 5 * 1000 },
 ];
-
-function getTimespanLabel(ms: number): string {
+function getLabelTimespan(ms: number): string {
   const option = optionsTimespan.find((opt) => opt.ms === ms);
+  return option?.label || `${ms / 60000}m`;
+}
+
+const optionsInterval = [
+  { ms: 1 * 1000, label: "1s", ms2: 0 },
+  { ms: 5 * 1000, label: "5s", ms2: 0 },
+  { ms: 10 * 1000, label: "10s", ms2: 0 },
+  { ms: 30 * 1000, label: "30s", ms2: 0 },
+  { ms: 1 * 60 * 1000, label: "1m", ms2: 0 },
+  { ms: 5 * 60 * 1000, label: "5m", ms2: 0 },
+  { ms: 10 * 60 * 1000, label: "10m", ms2: 0 },
+  { ms: 15 * 60 * 1000, label: "15m", ms2: 0 },
+  { ms: 30 * 60 * 1000, label: "30m", ms2: 0 },
+  { ms: 1 * 60 * 60 * 1000, label: "1h", ms2: 0 },
+];
+function getLabelInterval(ms: number): string {
+  const option = optionsInterval.find((opt) => opt.ms === ms);
   return option?.label || `${ms / 60000}m`;
 }
