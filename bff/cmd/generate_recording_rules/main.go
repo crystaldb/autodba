@@ -32,29 +32,41 @@ import (
 	"local/bff/pkg/server"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
+func writeRulesToFile(path string, yamlConfig string) error {
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return fmt.Errorf("error creating directory: %v", err)
+	}
+
+	if err := os.WriteFile(path, []byte(yamlConfig), 0644); err != nil {
+		return fmt.Errorf("error writing file: %v", err)
+	}
+
+	fmt.Printf("Recording rules written to %s\n", path)
+	return nil
+}
+
 func main() {
-	outputPath := flag.String("output", "../prometheus/recording_rules.yml", "Output path for the recording rules YAML")
+	outputPaths := flag.String("output", "../prometheus/recording_rules.yml,../collector-api/recording_rules.yml",
+		"Comma-separated list of output paths for the recording rules YAML")
 	flag.Parse()
 
 	// Generate rules
 	rules := server.ExtractRecordingRules()
 	yamlConfig := server.GeneratePrometheusConfig(rules)
 
-	// Ensure directory exists
-	dir := filepath.Dir(*outputPath)
-	if err := os.MkdirAll(dir, 0755); err != nil {
-		fmt.Fprintf(os.Stderr, "Error creating directory: %v\n", err)
-		os.Exit(1)
+	// Split paths and write to each location
+	paths := strings.Split(*outputPaths, ",")
+	for _, path := range paths {
+		path = strings.TrimSpace(path) // Handle any spaces after commas
+		if err := writeRulesToFile(path, yamlConfig); err != nil {
+			fmt.Fprintf(os.Stderr, "%v\n", err)
+			os.Exit(1)
+		}
 	}
 
-	// Write to file
-	if err := os.WriteFile(*outputPath, []byte(yamlConfig), 0644); err != nil {
-		fmt.Fprintf(os.Stderr, "Error writing file: %v\n", err)
-		os.Exit(1)
-	}
-
-	fmt.Printf("Recording rules written to %s\n", *outputPath)
 	fmt.Printf("Generated %d rule groups\n", len(rules))
 }

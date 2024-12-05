@@ -75,10 +75,10 @@ func GetRecordingRuleName(dimensions []string, intervalSuffix string) (string, e
 }
 
 func uniqueSortedDimensions(dimensions []string) []string {
-	dimensionSet := make(map[string]struct{})
+	dimensionSet := make(map[string]bool)
 	for _, dim := range dimensions {
 		if dim != "datname" && dim != "" {
-			dimensionSet[dim] = struct{}{}
+			dimensionSet[dim] = true
 		}
 	}
 
@@ -86,27 +86,18 @@ func uniqueSortedDimensions(dimensions []string) []string {
 	for dim := range dimensionSet {
 		uniqueDimensions = append(uniqueDimensions, dim)
 	}
-	sort.Strings(uniqueDimensions)
+	// Sort dimensions with "time" first
+	sort.Slice(uniqueDimensions, func(i, j int) bool {
+		if uniqueDimensions[i] == "time" {
+			return true
+		}
+		if uniqueDimensions[j] == "time" {
+			return false
+		}
+		return uniqueDimensions[i] < uniqueDimensions[j]
+	})
 
-	switch len(uniqueDimensions) {
-	case 2:
-		dim1, dim2 := uniqueDimensions[0], uniqueDimensions[1]
-		if dim2 == "time" {
-			dim1, dim2 = dim2, dim1
-		}
-		return []string{dim1, dim2}
-	case 3:
-		dim1, dim2, dim3 := uniqueDimensions[0], uniqueDimensions[1], uniqueDimensions[2]
-		if dim3 == "time" {
-			dim1, dim2, dim3 = dim3, dim1, dim2
-		}
-		if dim2 == "time" {
-			dim1, dim2 = dim2, dim1
-		}
-		return []string{dim1, dim2, dim3}
-	default:
-		return uniqueDimensions
-	}
+	return uniqueDimensions
 }
 
 // ExtractRecordingRules generates all necessary recording rules for PostgreSQL activity metrics

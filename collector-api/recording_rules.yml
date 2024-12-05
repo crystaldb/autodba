@@ -2,116 +2,102 @@ groups:
   - name: activity_cube_recording_rules_10m
     interval: 10m
     rules:
-      - record: cc_pg_stat_activity:sum_by_time__datname_10m
-        expr: sum by(sys_id, sys_scope, sys_type,datname) (cc_pg_stat_activity)
+      - record: cc_pg_stat_activity:sum_by_time_10m
+        expr: sum by(sys_id, sys_scope, sys_type, datname) (cc_pg_stat_activity)
       - record: cc_pg_stat_activity:sum_by_time__client_addr_10m
-        expr: sum by(datname, sys_id, sys_scope, sys_type,client_addr) (cc_pg_stat_activity)
+        expr: sum by(sys_id, sys_scope, sys_type, datname, client_addr) (cc_pg_stat_activity)
       - record: cc_pg_stat_activity:sum_by_time__application_name_10m
-        expr: sum by(datname, sys_id, sys_scope, sys_type,application_name) (cc_pg_stat_activity)
+        expr: sum by(sys_id, sys_scope, sys_type, datname, application_name) (cc_pg_stat_activity)
       - record: cc_pg_stat_activity:sum_by_time__backend_type_10m
-        expr: sum by(datname, sys_id, sys_scope, sys_type,backend_type) (cc_pg_stat_activity)
+        expr: sum by(sys_id, sys_scope, sys_type, datname, backend_type) (cc_pg_stat_activity)
       - record: cc_pg_stat_activity:sum_by_time__query_10m
-        expr: sum by(datname, sys_id, sys_scope, sys_type,query) (cc_pg_stat_activity)
+        expr: sum by(sys_id, sys_scope, sys_type, datname, query) (cc_pg_stat_activity)
       - record: cc_pg_stat_activity:sum_by_time__usename_10m
-        expr: sum by(datname, sys_id, sys_scope, sys_type,usename) (cc_pg_stat_activity)
+        expr: sum by(sys_id, sys_scope, sys_type, datname, usename) (cc_pg_stat_activity)
       - record: cc_pg_stat_activity:sum_by_time__wait_event_name_10m
-        expr: sum by(datname, sys_id, sys_scope, sys_type,wait_event_name) (cc_pg_stat_activity)
-      - record: cc_pg_stat_activity:sum_by_datname__datname_10m
-        expr: avg_over_time(sum by(sys_id, sys_scope, sys_type,datname) (cc_pg_stat_activity)[21600s:600s])
-      - record: cc_pg_stat_activity:sum_by_datname__client_addr_10m
-        expr: avg_over_time(sum by(sys_id, sys_scope, sys_type,datname, client_addr) (cc_pg_stat_activity)[21600s:600s])
-      - record: cc_pg_stat_activity:sum_by_datname__application_name_10m
-        expr: avg_over_time(sum by(sys_id, sys_scope, sys_type,datname, application_name) (cc_pg_stat_activity)[21600s:600s])
-      - record: cc_pg_stat_activity:sum_by_datname__backend_type_10m
-        expr: avg_over_time(sum by(sys_id, sys_scope, sys_type,datname, backend_type) (cc_pg_stat_activity)[21600s:600s])
-      - record: cc_pg_stat_activity:sum_by_datname__query_10m
-        expr: avg_over_time(sum by(sys_id, sys_scope, sys_type,datname, query) (cc_pg_stat_activity)[21600s:600s])
-      - record: cc_pg_stat_activity:sum_by_datname__usename_10m
-        expr: avg_over_time(sum by(sys_id, sys_scope, sys_type,datname, usename) (cc_pg_stat_activity)[21600s:600s])
-      - record: cc_pg_stat_activity:sum_by_datname__wait_event_name_10m
-        expr: avg_over_time(sum by(sys_id, sys_scope, sys_type,datname, wait_event_name) (cc_pg_stat_activity)[21600s:600s])
-      - record: cc_pg_stat_activity:sum_by_client_addr__datname_10m
-        expr: avg_over_time(sum by(sys_id, sys_scope, sys_type,client_addr, datname) (cc_pg_stat_activity)[21600s:600s])
-      - record: cc_pg_stat_activity:sum_by_client_addr__client_addr_10m
-        expr: avg_over_time(sum by(datname, sys_id, sys_scope, sys_type,client_addr) (cc_pg_stat_activity)[21600s:600s])
-      - record: cc_pg_stat_activity:sum_by_client_addr__application_name_10m
-        expr: avg_over_time(sum by(datname, sys_id, sys_scope, sys_type,client_addr, application_name) (cc_pg_stat_activity)[21600s:600s])
-      - record: cc_pg_stat_activity:sum_by_client_addr__backend_type_10m
-        expr: avg_over_time(sum by(datname, sys_id, sys_scope, sys_type,client_addr, backend_type) (cc_pg_stat_activity)[21600s:600s])
-      - record: cc_pg_stat_activity:sum_by_client_addr__query_10m
-        expr: avg_over_time(sum by(datname, sys_id, sys_scope, sys_type,client_addr, query) (cc_pg_stat_activity)[21600s:600s])
-      - record: cc_pg_stat_activity:sum_by_client_addr__usename_10m
-        expr: avg_over_time(sum by(datname, sys_id, sys_scope, sys_type,client_addr, usename) (cc_pg_stat_activity)[21600s:600s])
-      - record: cc_pg_stat_activity:sum_by_client_addr__wait_event_name_10m
-        expr: avg_over_time(sum by(datname, sys_id, sys_scope, sys_type,client_addr, wait_event_name) (cc_pg_stat_activity)[21600s:600s])
-      - record: cc_pg_stat_activity:sum_by_application_name__datname_10m
-        expr: avg_over_time(sum by(sys_id, sys_scope, sys_type,application_name, datname) (cc_pg_stat_activity)[21600s:600s])
+        expr: sum by(sys_id, sys_scope, sys_type, datname, wait_event_name) (cc_pg_stat_activity)
+      - record: cc_pg_stat_activity:sum_by_10m
+        expr: avg_over_time(sum by(sys_id, sys_scope, sys_type, datname) (cc_pg_stat_activity)[6h:10m])
+      - record: cc_pg_stat_activity:sum_by_client_addr_10m
+        expr: avg_over_time(sum by(sys_id, sys_scope, sys_type, datname, client_addr) (cc_pg_stat_activity)[6h:10m])
+      - record: cc_pg_stat_activity:sum_by_application_name_10m
+        expr: avg_over_time(sum by(sys_id, sys_scope, sys_type, datname, application_name) (cc_pg_stat_activity)[6h:10m])
+      - record: cc_pg_stat_activity:sum_by_backend_type_10m
+        expr: avg_over_time(sum by(sys_id, sys_scope, sys_type, datname, backend_type) (cc_pg_stat_activity)[6h:10m])
+      - record: cc_pg_stat_activity:sum_by_query_10m
+        expr: avg_over_time(sum by(sys_id, sys_scope, sys_type, datname, query) (cc_pg_stat_activity)[6h:10m])
+      - record: cc_pg_stat_activity:sum_by_usename_10m
+        expr: avg_over_time(sum by(sys_id, sys_scope, sys_type, datname, usename) (cc_pg_stat_activity)[6h:10m])
+      - record: cc_pg_stat_activity:sum_by_wait_event_name_10m
+        expr: avg_over_time(sum by(sys_id, sys_scope, sys_type, datname, wait_event_name) (cc_pg_stat_activity)[6h:10m])
       - record: cc_pg_stat_activity:sum_by_application_name__client_addr_10m
-        expr: avg_over_time(sum by(datname, sys_id, sys_scope, sys_type,application_name, client_addr) (cc_pg_stat_activity)[21600s:600s])
-      - record: cc_pg_stat_activity:sum_by_application_name__application_name_10m
-        expr: avg_over_time(sum by(datname, sys_id, sys_scope, sys_type,application_name) (cc_pg_stat_activity)[21600s:600s])
-      - record: cc_pg_stat_activity:sum_by_application_name__backend_type_10m
-        expr: avg_over_time(sum by(datname, sys_id, sys_scope, sys_type,application_name, backend_type) (cc_pg_stat_activity)[21600s:600s])
-      - record: cc_pg_stat_activity:sum_by_application_name__query_10m
-        expr: avg_over_time(sum by(datname, sys_id, sys_scope, sys_type,application_name, query) (cc_pg_stat_activity)[21600s:600s])
-      - record: cc_pg_stat_activity:sum_by_application_name__usename_10m
-        expr: avg_over_time(sum by(datname, sys_id, sys_scope, sys_type,application_name, usename) (cc_pg_stat_activity)[21600s:600s])
-      - record: cc_pg_stat_activity:sum_by_application_name__wait_event_name_10m
-        expr: avg_over_time(sum by(datname, sys_id, sys_scope, sys_type,application_name, wait_event_name) (cc_pg_stat_activity)[21600s:600s])
-      - record: cc_pg_stat_activity:sum_by_backend_type__datname_10m
-        expr: avg_over_time(sum by(sys_id, sys_scope, sys_type,backend_type, datname) (cc_pg_stat_activity)[21600s:600s])
+        expr: avg_over_time(sum by(sys_id, sys_scope, sys_type, datname, application_name, client_addr) (cc_pg_stat_activity)[6h:10m])
+      - record: cc_pg_stat_activity:sum_by_application_name__backend_type__client_addr_10m
+        expr: avg_over_time(sum by(sys_id, sys_scope, sys_type, datname, application_name, backend_type, client_addr) (cc_pg_stat_activity)[6h:10m])
+      - record: cc_pg_stat_activity:sum_by_application_name__client_addr__query_10m
+        expr: avg_over_time(sum by(sys_id, sys_scope, sys_type, datname, application_name, client_addr, query) (cc_pg_stat_activity)[6h:10m])
+      - record: cc_pg_stat_activity:sum_by_application_name__client_addr__usename_10m
+        expr: avg_over_time(sum by(sys_id, sys_scope, sys_type, datname, application_name, client_addr, usename) (cc_pg_stat_activity)[6h:10m])
+      - record: cc_pg_stat_activity:sum_by_application_name__client_addr__wait_event_name_10m
+        expr: avg_over_time(sum by(sys_id, sys_scope, sys_type, datname, application_name, client_addr, wait_event_name) (cc_pg_stat_activity)[6h:10m])
       - record: cc_pg_stat_activity:sum_by_backend_type__client_addr_10m
-        expr: avg_over_time(sum by(datname, sys_id, sys_scope, sys_type,backend_type, client_addr) (cc_pg_stat_activity)[21600s:600s])
-      - record: cc_pg_stat_activity:sum_by_backend_type__application_name_10m
-        expr: avg_over_time(sum by(datname, sys_id, sys_scope, sys_type,backend_type, application_name) (cc_pg_stat_activity)[21600s:600s])
-      - record: cc_pg_stat_activity:sum_by_backend_type__backend_type_10m
-        expr: avg_over_time(sum by(datname, sys_id, sys_scope, sys_type,backend_type) (cc_pg_stat_activity)[21600s:600s])
+        expr: avg_over_time(sum by(sys_id, sys_scope, sys_type, datname, backend_type, client_addr) (cc_pg_stat_activity)[6h:10m])
+      - record: cc_pg_stat_activity:sum_by_backend_type__client_addr__query_10m
+        expr: avg_over_time(sum by(sys_id, sys_scope, sys_type, datname, backend_type, client_addr, query) (cc_pg_stat_activity)[6h:10m])
+      - record: cc_pg_stat_activity:sum_by_backend_type__client_addr__usename_10m
+        expr: avg_over_time(sum by(sys_id, sys_scope, sys_type, datname, backend_type, client_addr, usename) (cc_pg_stat_activity)[6h:10m])
+      - record: cc_pg_stat_activity:sum_by_backend_type__client_addr__wait_event_name_10m
+        expr: avg_over_time(sum by(sys_id, sys_scope, sys_type, datname, backend_type, client_addr, wait_event_name) (cc_pg_stat_activity)[6h:10m])
+      - record: cc_pg_stat_activity:sum_by_client_addr__query_10m
+        expr: avg_over_time(sum by(sys_id, sys_scope, sys_type, datname, client_addr, query) (cc_pg_stat_activity)[6h:10m])
+      - record: cc_pg_stat_activity:sum_by_client_addr__query__usename_10m
+        expr: avg_over_time(sum by(sys_id, sys_scope, sys_type, datname, client_addr, query, usename) (cc_pg_stat_activity)[6h:10m])
+      - record: cc_pg_stat_activity:sum_by_client_addr__query__wait_event_name_10m
+        expr: avg_over_time(sum by(sys_id, sys_scope, sys_type, datname, client_addr, query, wait_event_name) (cc_pg_stat_activity)[6h:10m])
+      - record: cc_pg_stat_activity:sum_by_client_addr__usename_10m
+        expr: avg_over_time(sum by(sys_id, sys_scope, sys_type, datname, client_addr, usename) (cc_pg_stat_activity)[6h:10m])
+      - record: cc_pg_stat_activity:sum_by_client_addr__usename__wait_event_name_10m
+        expr: avg_over_time(sum by(sys_id, sys_scope, sys_type, datname, client_addr, usename, wait_event_name) (cc_pg_stat_activity)[6h:10m])
+      - record: cc_pg_stat_activity:sum_by_client_addr__wait_event_name_10m
+        expr: avg_over_time(sum by(sys_id, sys_scope, sys_type, datname, client_addr, wait_event_name) (cc_pg_stat_activity)[6h:10m])
+      - record: cc_pg_stat_activity:sum_by_application_name__backend_type_10m
+        expr: avg_over_time(sum by(sys_id, sys_scope, sys_type, datname, application_name, backend_type) (cc_pg_stat_activity)[6h:10m])
+      - record: cc_pg_stat_activity:sum_by_application_name__backend_type__query_10m
+        expr: avg_over_time(sum by(sys_id, sys_scope, sys_type, datname, application_name, backend_type, query) (cc_pg_stat_activity)[6h:10m])
+      - record: cc_pg_stat_activity:sum_by_application_name__backend_type__usename_10m
+        expr: avg_over_time(sum by(sys_id, sys_scope, sys_type, datname, application_name, backend_type, usename) (cc_pg_stat_activity)[6h:10m])
+      - record: cc_pg_stat_activity:sum_by_application_name__backend_type__wait_event_name_10m
+        expr: avg_over_time(sum by(sys_id, sys_scope, sys_type, datname, application_name, backend_type, wait_event_name) (cc_pg_stat_activity)[6h:10m])
+      - record: cc_pg_stat_activity:sum_by_application_name__query_10m
+        expr: avg_over_time(sum by(sys_id, sys_scope, sys_type, datname, application_name, query) (cc_pg_stat_activity)[6h:10m])
+      - record: cc_pg_stat_activity:sum_by_application_name__query__usename_10m
+        expr: avg_over_time(sum by(sys_id, sys_scope, sys_type, datname, application_name, query, usename) (cc_pg_stat_activity)[6h:10m])
+      - record: cc_pg_stat_activity:sum_by_application_name__query__wait_event_name_10m
+        expr: avg_over_time(sum by(sys_id, sys_scope, sys_type, datname, application_name, query, wait_event_name) (cc_pg_stat_activity)[6h:10m])
+      - record: cc_pg_stat_activity:sum_by_application_name__usename_10m
+        expr: avg_over_time(sum by(sys_id, sys_scope, sys_type, datname, application_name, usename) (cc_pg_stat_activity)[6h:10m])
+      - record: cc_pg_stat_activity:sum_by_application_name__usename__wait_event_name_10m
+        expr: avg_over_time(sum by(sys_id, sys_scope, sys_type, datname, application_name, usename, wait_event_name) (cc_pg_stat_activity)[6h:10m])
+      - record: cc_pg_stat_activity:sum_by_application_name__wait_event_name_10m
+        expr: avg_over_time(sum by(sys_id, sys_scope, sys_type, datname, application_name, wait_event_name) (cc_pg_stat_activity)[6h:10m])
       - record: cc_pg_stat_activity:sum_by_backend_type__query_10m
-        expr: avg_over_time(sum by(datname, sys_id, sys_scope, sys_type,backend_type, query) (cc_pg_stat_activity)[21600s:600s])
+        expr: avg_over_time(sum by(sys_id, sys_scope, sys_type, datname, backend_type, query) (cc_pg_stat_activity)[6h:10m])
+      - record: cc_pg_stat_activity:sum_by_backend_type__query__usename_10m
+        expr: avg_over_time(sum by(sys_id, sys_scope, sys_type, datname, backend_type, query, usename) (cc_pg_stat_activity)[6h:10m])
+      - record: cc_pg_stat_activity:sum_by_backend_type__query__wait_event_name_10m
+        expr: avg_over_time(sum by(sys_id, sys_scope, sys_type, datname, backend_type, query, wait_event_name) (cc_pg_stat_activity)[6h:10m])
       - record: cc_pg_stat_activity:sum_by_backend_type__usename_10m
-        expr: avg_over_time(sum by(datname, sys_id, sys_scope, sys_type,backend_type, usename) (cc_pg_stat_activity)[21600s:600s])
+        expr: avg_over_time(sum by(sys_id, sys_scope, sys_type, datname, backend_type, usename) (cc_pg_stat_activity)[6h:10m])
+      - record: cc_pg_stat_activity:sum_by_backend_type__usename__wait_event_name_10m
+        expr: avg_over_time(sum by(sys_id, sys_scope, sys_type, datname, backend_type, usename, wait_event_name) (cc_pg_stat_activity)[6h:10m])
       - record: cc_pg_stat_activity:sum_by_backend_type__wait_event_name_10m
-        expr: avg_over_time(sum by(datname, sys_id, sys_scope, sys_type,backend_type, wait_event_name) (cc_pg_stat_activity)[21600s:600s])
-      - record: cc_pg_stat_activity:sum_by_query__datname_10m
-        expr: avg_over_time(sum by(sys_id, sys_scope, sys_type,query, datname) (cc_pg_stat_activity)[21600s:600s])
-      - record: cc_pg_stat_activity:sum_by_query__client_addr_10m
-        expr: avg_over_time(sum by(datname, sys_id, sys_scope, sys_type,query, client_addr) (cc_pg_stat_activity)[21600s:600s])
-      - record: cc_pg_stat_activity:sum_by_query__application_name_10m
-        expr: avg_over_time(sum by(datname, sys_id, sys_scope, sys_type,query, application_name) (cc_pg_stat_activity)[21600s:600s])
-      - record: cc_pg_stat_activity:sum_by_query__backend_type_10m
-        expr: avg_over_time(sum by(datname, sys_id, sys_scope, sys_type,query, backend_type) (cc_pg_stat_activity)[21600s:600s])
-      - record: cc_pg_stat_activity:sum_by_query__query_10m
-        expr: avg_over_time(sum by(datname, sys_id, sys_scope, sys_type,query) (cc_pg_stat_activity)[21600s:600s])
+        expr: avg_over_time(sum by(sys_id, sys_scope, sys_type, datname, backend_type, wait_event_name) (cc_pg_stat_activity)[6h:10m])
       - record: cc_pg_stat_activity:sum_by_query__usename_10m
-        expr: avg_over_time(sum by(datname, sys_id, sys_scope, sys_type,query, usename) (cc_pg_stat_activity)[21600s:600s])
+        expr: avg_over_time(sum by(sys_id, sys_scope, sys_type, datname, query, usename) (cc_pg_stat_activity)[6h:10m])
+      - record: cc_pg_stat_activity:sum_by_query__usename__wait_event_name_10m
+        expr: avg_over_time(sum by(sys_id, sys_scope, sys_type, datname, query, usename, wait_event_name) (cc_pg_stat_activity)[6h:10m])
       - record: cc_pg_stat_activity:sum_by_query__wait_event_name_10m
-        expr: avg_over_time(sum by(datname, sys_id, sys_scope, sys_type,query, wait_event_name) (cc_pg_stat_activity)[21600s:600s])
-      - record: cc_pg_stat_activity:sum_by_usename__datname_10m
-        expr: avg_over_time(sum by(sys_id, sys_scope, sys_type,usename, datname) (cc_pg_stat_activity)[21600s:600s])
-      - record: cc_pg_stat_activity:sum_by_usename__client_addr_10m
-        expr: avg_over_time(sum by(datname, sys_id, sys_scope, sys_type,usename, client_addr) (cc_pg_stat_activity)[21600s:600s])
-      - record: cc_pg_stat_activity:sum_by_usename__application_name_10m
-        expr: avg_over_time(sum by(datname, sys_id, sys_scope, sys_type,usename, application_name) (cc_pg_stat_activity)[21600s:600s])
-      - record: cc_pg_stat_activity:sum_by_usename__backend_type_10m
-        expr: avg_over_time(sum by(datname, sys_id, sys_scope, sys_type,usename, backend_type) (cc_pg_stat_activity)[21600s:600s])
-      - record: cc_pg_stat_activity:sum_by_usename__query_10m
-        expr: avg_over_time(sum by(datname, sys_id, sys_scope, sys_type,usename, query) (cc_pg_stat_activity)[21600s:600s])
-      - record: cc_pg_stat_activity:sum_by_usename__usename_10m
-        expr: avg_over_time(sum by(datname, sys_id, sys_scope, sys_type,usename) (cc_pg_stat_activity)[21600s:600s])
+        expr: avg_over_time(sum by(sys_id, sys_scope, sys_type, datname, query, wait_event_name) (cc_pg_stat_activity)[6h:10m])
       - record: cc_pg_stat_activity:sum_by_usename__wait_event_name_10m
-        expr: avg_over_time(sum by(datname, sys_id, sys_scope, sys_type,usename, wait_event_name) (cc_pg_stat_activity)[21600s:600s])
-      - record: cc_pg_stat_activity:sum_by_wait_event_name__datname_10m
-        expr: avg_over_time(sum by(sys_id, sys_scope, sys_type,wait_event_name, datname) (cc_pg_stat_activity)[21600s:600s])
-      - record: cc_pg_stat_activity:sum_by_wait_event_name__client_addr_10m
-        expr: avg_over_time(sum by(datname, sys_id, sys_scope, sys_type,wait_event_name, client_addr) (cc_pg_stat_activity)[21600s:600s])
-      - record: cc_pg_stat_activity:sum_by_wait_event_name__application_name_10m
-        expr: avg_over_time(sum by(datname, sys_id, sys_scope, sys_type,wait_event_name, application_name) (cc_pg_stat_activity)[21600s:600s])
-      - record: cc_pg_stat_activity:sum_by_wait_event_name__backend_type_10m
-        expr: avg_over_time(sum by(datname, sys_id, sys_scope, sys_type,wait_event_name, backend_type) (cc_pg_stat_activity)[21600s:600s])
-      - record: cc_pg_stat_activity:sum_by_wait_event_name__query_10m
-        expr: avg_over_time(sum by(datname, sys_id, sys_scope, sys_type,wait_event_name, query) (cc_pg_stat_activity)[21600s:600s])
-      - record: cc_pg_stat_activity:sum_by_wait_event_name__usename_10m
-        expr: avg_over_time(sum by(datname, sys_id, sys_scope, sys_type,wait_event_name, usename) (cc_pg_stat_activity)[21600s:600s])
-      - record: cc_pg_stat_activity:sum_by_wait_event_name__wait_event_name_10m
-        expr: avg_over_time(sum by(datname, sys_id, sys_scope, sys_type,wait_event_name) (cc_pg_stat_activity)[21600s:600s])
+        expr: avg_over_time(sum by(sys_id, sys_scope, sys_type, datname, usename, wait_event_name) (cc_pg_stat_activity)[6h:10m])
 
