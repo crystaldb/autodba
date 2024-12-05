@@ -47,7 +47,9 @@ export function TimebarSimple(props: ITimebarSimpleProps) {
             <UpdateButton />
           </Show>
           <LiveIndicator setError={setError} />
+          {/*
           <IntervalSelector />
+          */}
         </div>
       </div>
     </section>
@@ -139,16 +141,15 @@ function LiveIndicator(props: LiveProps) {
         checked={state.isLive}
         onChange={(e) => {
           batch(() => {
-            setState("isLive", e.target.checked);
             if (e.target.checked) {
-              // Initial update when enabling live mode
+              props.setError(null);
               setState(
                 "chronoRaw",
                 `${getTimespanLabel(state.timespan_ms)} ago`,
               );
-              props.setError(null);
-              queryUpdate();
+              setState("chronoInterpreted", chrono.parseDate(state.chronoRaw));
             }
+            setState("isLive", e.target.checked);
           });
         }}
       />
@@ -189,11 +190,11 @@ function TimeSelector(props: TimeSelectorProps) {
   const { state, setState } = contextState();
 
   const examples = [
-    "now",
-    "last tuesday 3pm",
-    "yesterday at 2pm",
-    "2 hours ago",
-    "3 days ago",
+    // "now",
+    "last tuesday 3:15pm",
+    // "yesterday at 2pm",
+    "2h ago",
+    // "3 days ago",
   ];
 
   createEffect(() => {
@@ -273,36 +274,39 @@ function TimespanString(props: TimespanStringProps) {
             <div class="text-green-600 dark:text-green-400">
               <p>
                 Time range:{" "}
-                <Show
-                  when={
-                    (state.apiThrottle.needDataFor === ApiEndpoint.activity &&
-                      !state.activityCube.cubeData.length) ||
-                    (state.apiThrottle.needDataFor === ApiEndpoint.metric &&
-                      !state.metricData.length) ||
-                    (state.apiThrottle.needDataFor ===
-                      ApiEndpoint.prometheus_metrics &&
-                      !state.prometheusMetricsData.length)
-                  }
+                <span
+                  class={`text-2xs text-neutral-700 dark:text-neutral-300 ${
+                    Object.getOwnPropertyNames(
+                      state.apiThrottle.requestInFlight,
+                    ).length
+                      ? "visible"
+                      : "invisible"
+                  }`}
                 >
-                  <span class="text-yellow-600 dark:text-yellow-400">
-                    No data available for this time range
-                  </span>
-                </Show>
+                  Updating
+                </span>
               </p>
-              {formatTimeRange(
-                chronoInterpreted(),
-                new Date(chronoInterpreted().getTime() + state.timespan_ms),
-              )}
-              <aside
-                class={`text-2xs text-neutral-700 dark:text-neutral-300 ${
-                  Object.getOwnPropertyNames(state.apiThrottle.requestInFlight)
-                    .length
-                    ? "visible"
-                    : "invisible"
-                }`}
+              <p>
+                {formatTimeRange(
+                  chronoInterpreted(),
+                  new Date(chronoInterpreted().getTime() + state.timespan_ms),
+                )}
+              </p>
+              <Show
+                when={
+                  (state.apiThrottle.needDataFor === ApiEndpoint.activity &&
+                    !state.activityCube.cubeData.length) ||
+                  (state.apiThrottle.needDataFor === ApiEndpoint.metric &&
+                    !state.metricData.length) ||
+                  (state.apiThrottle.needDataFor ===
+                    ApiEndpoint.prometheus_metrics &&
+                    !state.prometheusMetricsData.length)
+                }
               >
-                Updating
-              </aside>
+                <span class="text-yellow-600 dark:text-yellow-400">
+                  No data available for this time range
+                </span>
+              </Show>
             </div>
           )}
         </Match>
