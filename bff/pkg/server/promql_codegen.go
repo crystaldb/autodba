@@ -64,7 +64,7 @@ func GenerateActivityCubePromQLQuery(input PromQLInput) (string, error) {
 
 func generateRecordingRuleQuery(input PromQLInput) (string, error) {
 	interval := getRecordingRuleInterval(input.End.Sub(input.Start))
-	metricName, err := GetRecordingRuleName([]string{input.Dim, input.Legend}, interval)
+	metricName, err := GetRecordingRuleName([]string{input.Dim, input.Legend, input.FilterDim}, interval)
 	if err != nil {
 		return "", fmt.Errorf("error in getting recording rule name: %w", err)
 	}
