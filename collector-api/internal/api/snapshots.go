@@ -101,16 +101,17 @@ func SnapshotHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Error storing snapshot", http.StatusInternalServerError)
 		return
 	}
+	task := SnapshotTask{
+		S3Location:  s3Location,
+		CollectedAt: collectedAt,
+		SystemInfo:  systemInfo,
+		IsCompact:   false,
+	}
 
 	queue := GetQueueInstance()
 	if queue.IsLocked() {
 		// Queue the task for later processing
-		queue.Enqueue(SnapshotTask{
-			S3Location:  s3Location,
-			CollectedAt: collectedAt,
-			SystemInfo:  systemInfo,
-			IsCompact:   false,
-		})
+		queue.Enqueue(task)
 		w.WriteHeader(http.StatusAccepted)
 		fmt.Fprint(w, "Full snapshot queued for processing")
 		log.Printf("Full snapshot queued for processing: s3_location=%s, collected_at=%d", s3Location, collectedAt)
@@ -118,7 +119,7 @@ func SnapshotHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Process immediately if not locked
-	err = HandleFullSnapshot(cfg, s3Location, collectedAt, systemInfo)
+	err = HandleSnapshots(cfg, []SnapshotTask{task})
 	if err != nil {
 		if cfg.Debug {
 			log.Printf("Error handling full snapshot submission: %v", err)
@@ -146,9 +147,9 @@ func init() {
 	previousMetrics = make(map[SystemInfo]map[string][]prompb.TimeSeries)
 }
 
-func handleSnapshot(cfg *config.Config, s3Location string, collectedAt int64, systemInfo SystemInfo, processFunc func(*prometheusClient, string, SystemInfo, int64) ([]prompb.TimeSeries, error)) error {
+func HandleSnapshots(cfg *config.Config, tasks []SnapshotTask) error {
 	if cfg.Debug {
-		log.Printf("Processing snapshot with s3_location: %s and collected_at: %d", s3Location, collectedAt)
+		log.Printf("Processing %d snapshot tasks", len(tasks))
 	}
 
 	promClient := prometheusClient{
@@ -156,9 +157,26 @@ func handleSnapshot(cfg *config.Config, s3Location string, collectedAt int64, sy
 		endpoint: prometheusURL,
 	}
 
-	allMetrics, err := processFunc(&promClient, s3Location, systemInfo, collectedAt)
-	if err != nil {
-		return fmt.Errorf("process snapshot data: %w", err)
+	var allMetrics []prompb.TimeSeries
+
+	for _, task := range tasks {
+		if cfg.Debug {
+			log.Printf("Processing snapshot with s3_location: %s and collected_at: %d", task.S3Location, task.CollectedAt)
+		}
+
+		var metrics []prompb.TimeSeries
+		var err error
+
+		if task.IsCompact {
+			metrics, err = processCompactSnapshotData(&promClient, task.S3Location, task.SystemInfo, task.CollectedAt)
+		} else {
+			metrics, err = processFullSnapshotData(&promClient, task.S3Location, task.SystemInfo, task.CollectedAt)
+		}
+		if err != nil {
+			return fmt.Errorf("process snapshot data: %w", err)
+		}
+
+		allMetrics = append(allMetrics, metrics...)
 	}
 
 	if len(allMetrics) == 0 {
@@ -173,14 +191,9 @@ func handleSnapshot(cfg *config.Config, s3Location string, collectedAt int64, sy
 	}
 
 	if cfg.Debug {
-		log.Printf("Snapshot processed successfully!")
+		log.Printf("All snapshot tasks processed successfully!")
 	}
 	return nil
-}
-
-// HandleFullSnapshot processes a full snapshot, generates metrics, and sends them to Prometheus
-func HandleFullSnapshot(cfg *config.Config, s3Location string, collectedAt int64, systemInfo SystemInfo) error {
-	return handleSnapshot(cfg, s3Location, collectedAt, systemInfo, processFullSnapshotData)
 }
 
 func processFullSnapshotData(promClient *prometheusClient, s3Location string, systemInfo SystemInfo, collectedAt int64) ([]prompb.TimeSeries, error) {
@@ -353,15 +366,17 @@ func CompactSnapshotHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	task := SnapshotTask{
+		S3Location:  s3Location,
+		CollectedAt: collectedAt,
+		SystemInfo:  systemInfo,
+		IsCompact:   true,
+	}
+
 	queue := GetQueueInstance()
 	if queue.IsLocked() {
 		// Queue the task for later processing
-		queue.Enqueue(SnapshotTask{
-			S3Location:  s3Location,
-			CollectedAt: collectedAt,
-			SystemInfo:  systemInfo,
-			IsCompact:   true,
-		})
+		queue.Enqueue(task)
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprint(w, "Compact snapshot queued for processing")
 		log.Printf("Compact snapshot queued for processing: s3_location=%s, collected_at=%d", s3Location, collectedAt)
@@ -369,7 +384,7 @@ func CompactSnapshotHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Simulate handling the compact snapshot (you'll replace this with your actual logic)
-	err = HandleCompactSnapshot(cfg, s3Location, collectedAt, systemInfo)
+	err = HandleSnapshots(cfg, []SnapshotTask{task})
 	if err != nil {
 		if cfg.Debug {
 			log.Printf("Error handling compact snapshot: %v", err)
@@ -438,12 +453,6 @@ func readAndDecompressSnapshot(s3Location string) ([]byte, error) {
 	}
 
 	return pbBytes, nil
-}
-
-// HandleCompactSnapshot processes a compact snapshot, generates metrics and stale markers,
-// and sends them to Prometheus
-func HandleCompactSnapshot(cfg *config.Config, s3Location string, collectedAt int64, systemInfo SystemInfo) error {
-	return handleSnapshot(cfg, s3Location, collectedAt, systemInfo, processCompactSnapshotData)
 }
 
 func processCompactSnapshotData(promClient *prometheusClient, s3Location string, systemInfo SystemInfo, collectedAt int64) ([]prompb.TimeSeries, error) {
@@ -547,12 +556,7 @@ func ReprocessSnapshots(cfg *config.Config, reprocessFull, reprocessCompact bool
 		}
 	}()
 
-	var allSnapshots []struct {
-		timestamp  int64
-		s3Location string
-		systemInfo SystemInfo
-		isCompact  bool
-	}
+	var allSnapshots []SnapshotTask
 
 	var earliestTimestamp int64
 	var latestTimestamp int64
@@ -588,16 +592,11 @@ func ReprocessSnapshots(cfg *config.Config, reprocessFull, reprocessCompact bool
 					snapshot.S3Location, systemInfo, snapshotSystemInfo)
 			}
 
-			allSnapshots = append(allSnapshots, struct {
-				timestamp  int64
-				s3Location string
-				systemInfo SystemInfo
-				isCompact  bool
-			}{
-				timestamp:  snapshot.CollectedAt,
-				s3Location: snapshot.S3Location,
-				systemInfo: systemInfo,
-				isCompact:  false,
+			allSnapshots = append(allSnapshots, SnapshotTask{
+				S3Location:  snapshot.S3Location,
+				CollectedAt: snapshot.CollectedAt,
+				SystemInfo:  systemInfo,
+				IsCompact:   false,
 			})
 		}
 	}
@@ -623,23 +622,18 @@ func ReprocessSnapshots(cfg *config.Config, reprocessFull, reprocessCompact bool
 				SystemType:  snapshot.SystemType,
 			}
 
-			allSnapshots = append(allSnapshots, struct {
-				timestamp  int64
-				s3Location string
-				systemInfo SystemInfo
-				isCompact  bool
-			}{
-				timestamp:  snapshot.CollectedAt,
-				s3Location: snapshot.S3Location,
-				systemInfo: systemInfo,
-				isCompact:  true,
+			allSnapshots = append(allSnapshots, SnapshotTask{
+				S3Location:  snapshot.S3Location,
+				CollectedAt: snapshot.CollectedAt,
+				SystemInfo:  systemInfo,
+				IsCompact:   true,
 			})
 		}
 	}
 
 	// Sort all snapshots by timestamp
 	sort.Slice(allSnapshots, func(i, j int) bool {
-		return allSnapshots[i].timestamp < allSnapshots[j].timestamp
+		return allSnapshots[i].CollectedAt < allSnapshots[j].CollectedAt
 	})
 
 	var targetStart time.Time
@@ -660,19 +654,19 @@ func ReprocessSnapshots(cfg *config.Config, reprocessFull, reprocessCompact bool
 
 	// Process snapshots in chronological order
 	for _, snapshot := range allSnapshots {
-		if time.Unix(0, snapshot.timestamp*int64(time.Second)).Before(targetStart) {
-			log.Printf("Skipping snapshot %s (system_id: %s) before start time %v", snapshot.s3Location, snapshot.systemInfo.SystemID, targetStart)
+		if time.Unix(0, snapshot.CollectedAt*int64(time.Second)).Before(targetStart) {
+			log.Printf("Skipping snapshot %s (system_id: %s) before start time %v", snapshot.S3Location, snapshot.SystemInfo.SystemID, targetStart)
 			continue
 		}
-		if snapshot.isCompact {
-			log.Printf("Processing compact snapshot: %s (system_id: %s)", snapshot.s3Location, snapshot.systemInfo.SystemID)
-			if err := HandleCompactSnapshot(cfg, snapshot.s3Location, snapshot.timestamp, snapshot.systemInfo); err != nil {
-				log.Printf("Error processing compact snapshot %s (system_id: %s): %v", snapshot.s3Location, snapshot.systemInfo.SystemID, err)
+		if snapshot.IsCompact {
+			log.Printf("Processing compact snapshot: %s (system_id: %s)", snapshot.S3Location, snapshot.SystemInfo.SystemID)
+			if err := HandleSnapshots(cfg, []SnapshotTask{snapshot}); err != nil {
+				log.Printf("Error processing compact snapshot %s (system_id: %s): %v", snapshot.S3Location, snapshot.SystemInfo.SystemID, err)
 			}
 		} else {
-			log.Printf("Processing full snapshot: %s (system_id: %s)", snapshot.s3Location, snapshot.systemInfo.SystemID)
-			if err := HandleFullSnapshot(cfg, snapshot.s3Location, snapshot.timestamp, snapshot.systemInfo); err != nil {
-				log.Printf("Error processing full snapshot %s (system_id: %s): %v", snapshot.s3Location, snapshot.systemInfo.SystemID, err)
+			log.Printf("Processing full snapshot: %s (system_id: %s)", snapshot.S3Location, snapshot.SystemInfo.SystemID)
+			if err := HandleSnapshots(cfg, []SnapshotTask{snapshot}); err != nil {
+				log.Printf("Error processing full snapshot %s (system_id: %s): %v", snapshot.S3Location, snapshot.SystemInfo.SystemID, err)
 			}
 		}
 	}

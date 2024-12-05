@@ -77,11 +77,11 @@ func (q *Queue) ProcessQueue(cfg *config.Config) error {
 
 	for _, task := range tasks {
 		if task.IsCompact {
-			if err := HandleCompactSnapshot(cfg, task.S3Location, task.CollectedAt, task.SystemInfo); err != nil {
+			if err := HandleSnapshots(cfg, []SnapshotTask{task}); err != nil {
 				return err
 			}
 		} else {
-			if err := HandleFullSnapshot(cfg, task.S3Location, task.CollectedAt, task.SystemInfo); err != nil {
+			if err := HandleSnapshots(cfg, []SnapshotTask{task}); err != nil {
 				return err
 			}
 		}
