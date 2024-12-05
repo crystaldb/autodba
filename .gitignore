@@ -180,3 +180,5 @@ crystaldb-collector.db
 autodba-collector.conf
 :memory:
 prometheus_data
+
+.aider*
