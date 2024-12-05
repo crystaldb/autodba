@@ -9,111 +9,27 @@ import {
   allowInFlight,
   clearBusyWaiting,
   clearInFlight,
-  getTimeAtPercentage,
   setInFlight,
 } from "~/state";
 
 const magicPrometheusMaxSamplesLimit = 11000;
 
-// BEGIN HACK CODE: we are (temporarily) prioritizing time-to-completion over quality here while we work out the product spec for retries and exponential backoffs.
-/** globalWithTemporaryHackTimeouts
- * CONTEXT: This code is temporary until we implement retry with exponential backoff. A global variable is used because, during development, each time this file is saved, Vite reloads the code, getting around the check to see if a timeout already exists. As a result, a developer can quickly have tons of requests being retried every 5 seconds, causing requests to continually be sending, which turns your laptop fan on. So, for now, we're polluting the global namespace since this code will be removed soon.
- */
-const retryMs = 5000;
-type GlobalWithTemporaryHackTimeouts = typeof globalThis & {
-  timeout_queryDatabases: NodeJS.Timeout | null;
-  timeout_queryInstances: NodeJS.Timeout | null;
-};
-const globalWithTemporaryHackTimeouts =
-  globalThis as GlobalWithTemporaryHackTimeouts;
-export function retryQuery(
-  blockExcessRetriesKey: "timeout_queryDatabases" | "timeout_queryInstances",
-  fn: (arg0: boolean) => Promise<boolean>,
-): boolean {
-  if (globalWithTemporaryHackTimeouts[blockExcessRetriesKey]) return false;
-  console.log(`Query: ${blockExcessRetriesKey}: will retry in ${retryMs}ms`);
-  globalWithTemporaryHackTimeouts[blockExcessRetriesKey] = setTimeout(() => {
-    globalWithTemporaryHackTimeouts[blockExcessRetriesKey] = null;
-    fn(true);
-  }, retryMs);
-  return false;
-}
-// END HACK CODE
-
-export async function queryInstances(retryIfNeeded: boolean): Promise<boolean> {
-  const { setState } = contextState();
-  const response = await fetchWithAuth("/api/v1/instance", { method: "GET" });
-
-  if (!response.ok) {
-    if (retryIfNeeded)
-      return retryQuery("timeout_queryInstances", queryInstances);
-    return false;
-  }
-  const json = await response.json();
-  const instance_list = json?.list || [];
-  if (!instance_list.length) {
-    if (retryIfNeeded)
-      return retryQuery("timeout_queryInstances", queryInstances);
-    return false;
-  }
-  const instance_active = instance_list[0]
-    ? JSON.parse(JSON.stringify(instance_list[0]))
-    : null;
-  batch(() => {
-    setState("instance_active", instance_active);
-    setState("instance_list", [
-      ...instance_list,
-      // {
-      //   dbIdentifier: "0000000000111111111222222222233333333334444444444455555555555" + "::" + "amazon_rds" + "::" + "us-west-99",
-      //   systemId: "0000000000111111111222222222233333333334444444444455555555555",
-      //   systemType: "amazon_rds",
-      //   systemScope: "us-west-99",
-      // },
-    ]);
-  });
-  if (retryIfNeeded) queryDatabases(retryIfNeeded);
-  return true;
+export async function queryEndpointDataSimple(
+  apiEndpoint: ApiEndpoint,
+): Promise<boolean> {
+  return apiEndpoint === ApiEndpoint.activity
+    ? queryActivityCube()
+    : apiEndpoint === ApiEndpoint.prometheus_metrics
+      ? fetchPrometheusMetrics(apiEndpoint)
+      : queryStandardEndpointFullTimeframe(apiEndpoint);
 }
 
-export async function queryDatabases(retryIfNeeded: boolean): Promise<boolean> {
-  const { state, setState } = contextState();
-  if (!state.instance_active?.dbIdentifier) {
-    if (retryIfNeeded)
-      return retryQuery("timeout_queryDatabases", queryDatabases);
-    return false;
-  }
-  const response = await fetchWithAuth(
-    `/api/v1/instance/database?dbidentifier=${state.instance_active.dbIdentifier}`,
-    { method: "GET" },
-  );
-
-  if (!response.ok) {
-    if (retryIfNeeded)
-      return retryQuery("timeout_queryDatabases", queryDatabases);
-    return false;
-  }
-  const json = await response.json();
-
-  setState("database_list", json || []);
-  return true;
-}
-
-export function isLive(): boolean {
-  const { state } = contextState();
-  if (!state.database_list.length) return false;
-  if (state.range_end !== 100) return false;
-  return true;
-}
-
-export async function fetchPrometheusMetrics(apiEndpoint: ApiEndpoint) {
+async function fetchPrometheusMetrics(apiEndpoint: ApiEndpoint) {
   const { state, setState } = contextState();
   if (apiEndpoint !== ApiEndpoint.prometheus_metrics) return false;
   if (!allowInFlight(ApiEndpoint.prometheus_metrics)) return false;
 
-  if (
-    state.timeframe_ms / state.interval_ms >=
-    magicPrometheusMaxSamplesLimit
-  ) {
+  if (state.timespan_ms / state.interval_ms >= magicPrometheusMaxSamplesLimit) {
     console.log(
       "Timeframe too large for Prometheus query (11k samples limit)",
       state.interval_ms,
@@ -127,9 +43,9 @@ export async function fetchPrometheusMetrics(apiEndpoint: ApiEndpoint) {
   const url = `/api/v1/${
     apiEndpoint //
   }?start=${
-    `now-${state.timeframe_ms}ms` //
+    state.time_begin //
   }&end=${
-    "now" //
+    state.time_begin + state.timespan_ms //
   }&step=${
     state.interval_ms //
   }ms`;
@@ -148,28 +64,11 @@ export async function fetchPrometheusMetrics(apiEndpoint: ApiEndpoint) {
   batch(() => {
     setState("server_now", server_now);
     const dataBucketName = "prometheusMetricsData" as Part<State, keyof State>;
-    setState(dataBucketName, data);
+    setState(dataBucketName, data || []);
 
     clearBusyWaiting();
   });
   return true;
-}
-
-export async function queryEndpointDataIfLive(
-  apiEndpoint: ApiEndpoint,
-): Promise<boolean> {
-  if (!isLive()) return false;
-  return queryEndpointData(apiEndpoint);
-}
-
-export async function queryEndpointData(
-  apiEndpoint: ApiEndpoint,
-): Promise<boolean> {
-  return apiEndpoint === ApiEndpoint.activity
-    ? queryActivityCube()
-    : apiEndpoint === ApiEndpoint.prometheus_metrics
-      ? fetchPrometheusMetrics(apiEndpoint)
-      : queryStandardEndpointFullTimeframe(apiEndpoint);
 }
 
 async function queryActivityCube(): Promise<boolean> {
@@ -185,10 +84,7 @@ async function queryActivityCubeFullTimeframe(): Promise<boolean> {
   if (!state.instance_active?.dbIdentifier) return false;
   if (!allowInFlight(ApiEndpoint.activity)) return false;
 
-  if (
-    state.timeframe_ms / state.interval_ms >=
-    magicPrometheusMaxSamplesLimit
-  ) {
+  if (state.timespan_ms / state.interval_ms >= magicPrometheusMaxSamplesLimit) {
     console.log(
       "Timeframe too large for Prometheus query (11k samples limit)",
       state.interval_ms,
@@ -202,9 +98,9 @@ async function queryActivityCubeFullTimeframe(): Promise<boolean> {
   const url = `/api/v1/activity?why=cube&database_list=(${
     state.database_list.join("|") //
   })&start=${
-    `now-${state.timeframe_ms}ms` //
+    state.time_begin //
   }&end=${
-    "now" //
+    state.time_begin + state.timespan_ms //
   }&step=${
     state.interval_ms //
   }ms&limitdim=${
@@ -271,23 +167,14 @@ async function queryActivityCubeTimeWindow(): Promise<boolean> {
   if (!state.server_now) return false;
   if (!allowInFlight(ApiEndpoint.activity)) return false;
 
-  const request_time_begin = Math.floor(
-    getTimeAtPercentage(
-      { timeframe_ms: state.timeframe_ms, server_now: state.server_now },
-      state.range_begin,
-    ),
+  const request_time_begin = state.time_begin;
+  const request_time_end = state.time_begin + state.timespan_ms;
+  console.log(
+    "WINDOW3 is",
+    request_time_begin,
+    request_time_end,
+    state.timespan_ms,
   );
-  const request_time_end = Math.max(
-    request_time_begin + 1,
-    Math.ceil(
-      getTimeAtPercentage(
-        { timeframe_ms: state.timeframe_ms, server_now: state.server_now },
-        state.range_end,
-      ),
-    ),
-  );
-
-  console.log("WINDOW is", request_time_begin, request_time_end);
   if (
     (request_time_end - request_time_begin) / state.interval_ms >=
     magicPrometheusMaxSamplesLimit
@@ -385,9 +272,9 @@ export async function queryFilterOptions(): Promise<boolean> {
   const url = `/api/v1/activity?why=filteroptions&database_list=(${
     state.database_list.join("|") //
   })&start=${
-    `now-${state.timeframe_ms}ms` //
+    state.time_begin //
   }&end=${
-    "now" //
+    state.time_begin + state.timespan_ms //
   }&step=${
     state.interval_ms //
   }ms&limitdim=${
@@ -441,10 +328,7 @@ async function queryStandardEndpointFullTimeframe(
   if (!state.instance_active?.dbIdentifier) return false;
   if (!allowInFlight(ApiEndpoint.metric)) return false;
 
-  if (
-    state.timeframe_ms / state.interval_ms >=
-    magicPrometheusMaxSamplesLimit
-  ) {
+  if (state.timespan_ms / state.interval_ms >= magicPrometheusMaxSamplesLimit) {
     console.log(
       "Timeframe too large for Prometheus query (11k samples limit)",
       state.interval_ms,
@@ -460,9 +344,9 @@ async function queryStandardEndpointFullTimeframe(
   }?datname=(${
     state.database_list.join("|") //
   })&start=${
-    `now-${state.timeframe_ms}ms` //
+    state.time_begin //
   }&end=${
-    "now" //
+    state.time_begin + state.timespan_ms //
   }&step=${
     state.interval_ms //
   }ms&dbidentifier=${
@@ -483,7 +367,7 @@ async function queryStandardEndpointFullTimeframe(
   batch(() => {
     setState("server_now", server_now);
     const dataBucketName = `${apiEndpoint}Data` as Part<State, keyof State>;
-    setState(dataBucketName, data);
+    setState(dataBucketName, data || []);
 
     clearBusyWaiting();
   });
