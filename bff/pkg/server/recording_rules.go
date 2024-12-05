@@ -22,7 +22,7 @@ func ValidDimensions() []string {
 		"client_addr",      // client host address
 		"application_name", // name of the application
 		"backend_type",     // type of backend session
-		"query",            // SQL query being executed
+		"query_fp",         // SQL query being executed
 		"usename",          // database user name
 		"wait_event_name",  // name of the wait event if any
 	}
