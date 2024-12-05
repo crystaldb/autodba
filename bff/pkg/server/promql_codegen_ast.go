@@ -162,5 +162,5 @@ func (b *BinaryExpr) String() string {
 	if b.Bool {
 		boolModifier = "bool "
 	}
-	return fmt.Sprintf("%s %s%s%s %s%s", b.LHS.String(), b.Op, onClause, groupClause, boolModifier, b.RHS.String())
+	return fmt.Sprintf("%s %s%s%s %s(%s)", b.LHS.String(), b.Op, onClause, groupClause, boolModifier, b.RHS.String())
 }
