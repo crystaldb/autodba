@@ -212,7 +212,7 @@ function ViewSelector(props: PropsViewSelector) {
       <button
         type="button"
         id={id}
-        class={`flex gap-2 text-sm px-2.5 py-2 rounded-lg ${cssSelectorGeneral} ${props.class}`}
+        class={`flex gap-2 text-sm p-2 rounded-lg ${cssSelectorGeneral} ${props.class}`}
       >
         <span class="whitespace-pre me-2">{props.name}:</span>
         <span class="text-fuchsia-500 w-16">
@@ -234,7 +234,7 @@ function ViewSelector(props: PropsViewSelector) {
             {(record) => (
               <button
                 type="button"
-                class={`flex justify-center gap-2 text-sm px-2.5 py-2 rounded-lg ${cssSelectorGeneral}`}
+                class={`flex justify-center gap-2 text-sm p-2 rounded-lg ${cssSelectorGeneral}`}
                 classList={{
                   "text-fuchsia-500": state[props.property] === record.ms,
                 }}
@@ -294,7 +294,7 @@ function LiveIndicator() {
   const { state } = contextState();
   return (
     <div
-      class="border border-yellow-300 dark:border-0 dark:border-green-500 px-2.5 py-2.5 rounded-md bg-yellow-200 text-black font-semibold leading-none"
+      class="border border-yellow-300 dark:border-0 dark:border-green-500 p-2.5 rounded-md bg-yellow-200 text-black font-semibold leading-none"
       classList={{ invisible: !isLive() }}
     >
       <span class="invisible">.</span>

@@ -73,9 +73,7 @@ function PageWrapper(testid: string, page: () => JSX.Element) {
             <Show when={state.activityCube.error}>
               {(error) => (
                 <aside
-                  class={
-                    "bg-red-500 mb-1 px-4 py-3 rounded-lg text-sm text-black"
-                  }
+                  class={"bg-red-500 mb-1 p-3 rounded-lg text-sm text-black"}
                 >
                   {error()}
                 </aside>
