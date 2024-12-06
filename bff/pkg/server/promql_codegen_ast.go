@@ -32,7 +32,10 @@ func (s *Selector) String() string {
 		labelParts = append(labelParts, fmt.Sprintf(`%s=~"%s"`, k, s.Labels[k]))
 	}
 
-	return fmt.Sprintf(`%s{%s}`, s.Metric, strings.Join(labelParts, ","))
+	if len(labelParts) > 0 {
+		return fmt.Sprintf(`%s{%s}`, s.Metric, strings.Join(labelParts, ","))
+	}
+	return s.Metric
 }
 
 // Aggregation represents an aggregation function in PromQL.
@@ -65,7 +68,7 @@ func (f *FunctionCall) String() string {
 	}
 	if f.TimeInterval != nil {
 		if f.TimeStep != nil {
-			return fmt.Sprintf(`%s(%s[%s:%ss])`, f.Func, strings.Join(args, ", "), f.TimeInterval, f.TimeStep)
+			return fmt.Sprintf(`%s(%s[%s:%s])`, f.Func, strings.Join(args, ", "), f.TimeInterval, f.TimeStep)
 		}
 		return fmt.Sprintf(`%s(%s[%s:])`, f.Func, strings.Join(args, ", "), f.TimeInterval)
 	}
@@ -159,5 +162,5 @@ func (b *BinaryExpr) String() string {
 	if b.Bool {
 		boolModifier = "bool "
 	}
-	return fmt.Sprintf("%s %s%s%s %s%s", b.LHS.String(), b.Op, onClause, groupClause, boolModifier, b.RHS.String())
+	return fmt.Sprintf("%s %s%s%s %s(%s)", b.LHS.String(), b.Op, onClause, groupClause, boolModifier, b.RHS.String())
 }
