@@ -41,12 +41,30 @@ export function EchartsLinechart(props: PropsEchartsLinechart) {
       },
     },
     xAxis: {
-      // type: "category",
       type: "time",
-      // boundaryGap: false,
-      // axisLine: { onZero: false },
       axisLabel: {
         rotate: 45,
+        formatter: (() => {
+          let lastShownDate: string | null = null;
+
+          return (value: number) => {
+            const date = new Date(value);
+            const currentDate = `${(date.getMonth() + 1)
+              .toString()
+              .padStart(2, "0")}/${date.getDate().toString().padStart(2, "0")}`;
+            const time = `${date.getHours().toString().padStart(2, "0")}:${date
+              .getMinutes()
+              .toString()
+              .padStart(2, "0")}`;
+
+            if (currentDate !== lastShownDate) {
+              lastShownDate = currentDate;
+              return `${currentDate} ${time}`;
+            }
+
+            return time;
+          };
+        })(),
       },
     },
     yAxis: {
@@ -55,8 +73,9 @@ export function EchartsLinechart(props: PropsEchartsLinechart) {
     series: props.metricList.map((metric) => ({
       name: metric,
       type: "line",
-      // stack: "Total",
       dimensions: ["time_ms", metric],
+      animation: false,
+      // stack: "Total",
       // // areaStyle: {},
       // lineStyle: { width: 1, },
       // emphasis: { focus: "series", },

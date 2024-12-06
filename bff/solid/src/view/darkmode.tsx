@@ -38,7 +38,7 @@ export function DarkmodeSelector(props: DarkmodeSelectorProps) {
       <button
         type="button"
         onClick={() => setOpen(!open())}
-        class="relative inline-flex items-center rounded-md px-3 py-2 text-sm font-semibold ring-1 ring-inset ring-zinc-200 focus:z-10 dark:block dark:text-zinc-300 dark:hover:bg-backgrounddark hover:bg-zinc-50 dark:ring-zinc-800"
+        class="relative inline-flex items-center rounded-md p-2 text-sm font-semibold ring-1 ring-inset ring-zinc-200 focus:z-10 dark:block dark:text-zinc-300 dark:hover:bg-backgrounddark hover:bg-zinc-50 dark:ring-zinc-800"
       >
         <HiOutlineSun size="24" class="dark:hidden" />
         <HiOutlineMoon
@@ -51,7 +51,7 @@ export function DarkmodeSelector(props: DarkmodeSelectorProps) {
           <button
             type="button"
             onClick={() => setDarkmode("dark")}
-            class="relative inline-flex items-center rounded-s-md px-3 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300"
+            class="relative inline-flex items-center rounded-s-md p-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300"
             classList={{
               "bg-gray-300": darkmode() === "dark",
               "bg-backgroundlite hover:bg-gray-50 focus:z-10":
@@ -63,7 +63,7 @@ export function DarkmodeSelector(props: DarkmodeSelectorProps) {
           <button
             type="button"
             onClick={() => setDarkmode("light")}
-            class="-ms-px relative inline-flex items-center px-3 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300"
+            class="-ms-px relative inline-flex items-center p-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300"
             classList={{
               "bg-gray-300": darkmode() === "light",
               "bg-backgroundlite hover:bg-gray-50 focus:z-10":
@@ -75,7 +75,7 @@ export function DarkmodeSelector(props: DarkmodeSelectorProps) {
           <button
             type="button"
             onClick={() => setDarkmode("system")}
-            class="-ms-px relative inline-flex items-center rounded-e-md px-3 py-2 text-2xs whitespace-pre leading-none font-semibold text-gray-900 ring-1 ring-inset ring-gray-300"
+            class="-ms-px relative inline-flex items-center rounded-e-md p-2 text-2xs whitespace-pre leading-none font-semibold text-gray-900 ring-1 ring-inset ring-gray-300"
             classList={{
               "bg-gray-300": darkmode() === "system",
               "bg-backgroundlite hover:bg-gray-50 focus:z-10":

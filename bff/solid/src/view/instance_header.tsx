@@ -27,7 +27,7 @@ export function InstanceHeader(props: PropsInstanceHeader) {
       <Show when={state.instance_list.length > 1} fallback=<H1Header />>
         <section class="relative self-start flex flex-col gap-y-1 max-w-[calc(100vw-2rem)] xs:max-w-[calc(min(100vw-5rem))]">
           <div
-            class={` py-4 px-6 rounded-md flex items-center gap-4 cursor-pointer ${cssSelectorGeneral}`}
+            class={` p-4 rounded-md flex items-center gap-4 cursor-pointer ${cssSelectorGeneral}`}
             onClick={() => setSelectInstanceOpen((prev) => !prev)}
           >
             <H1Header />
@@ -40,7 +40,7 @@ export function InstanceHeader(props: PropsInstanceHeader) {
               <For each={state.instance_list}>
                 {(instance: Instance, index: () => number) => (
                   <li
-                    class={`px-6 py-4 cursor-pointer overflow-auto ${cssSelectorGeneralHover}`}
+                    class={`p-4 cursor-pointer overflow-auto ${cssSelectorGeneralHover}`}
                     classList={{
                       "text-fuchsia-500 rounded-md bg-backgroundlite dark:bg-backgrounddark":
                         instance.dbIdentifier ===
