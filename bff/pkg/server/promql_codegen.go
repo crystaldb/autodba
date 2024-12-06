@@ -24,19 +24,32 @@ type PromQLInput struct {
 	DbIdentifier      string        `json:"dbidentifier"`
 }
 
+var ValidDimensionsList = []string{
+	"time",             // timestamp of the measurement
+	"datname",          // database name
+	"client_addr",      // client host address
+	"application_name", // name of the application
+	"backend_type",     // type of backend session
+	"query_fp",         // SQL query being executed
+	"usename",          // database user name
+	"wait_event_name",  // name of the wait event if any
+}
+
+// ValidDimensions returns all valid dimensions for activity queries
+// These dimensions are used to create different aggregation combinations
+func ValidDimensions() []string {
+	return ValidDimensionsList
+}
+
 // Utility function to validate dimensions
 func isValidDimension(dim string) bool {
-	validDimensions := map[string]bool{
-		"time":             true,
-		"datname":          true, // database
-		"client_addr":      true, // host
-		"application_name": true, // application
-		"backend_type":     true, // session_type
-		"query_fp":         true, // sql
-		"usename":          true, // user
-		"wait_event_name":  true, // wait_event
+	validDims := ValidDimensions()
+	for _, validDim := range validDims {
+		if validDim == dim {
+			return true
+		}
 	}
-	return validDimensions[dim]
+	return false
 }
 
 const query_fp_label = "query_fp"
@@ -63,57 +76,21 @@ func GenerateActivityCubePromQLQuery(input PromQLInput) (string, error) {
 }
 
 func generateRecordingRuleQuery(input PromQLInput) (string, error) {
-	// Extract and validate parameters
-	databaseList := input.DatabaseList
-	dbIdentifier := input.DbIdentifier
-
-	systemType, systemID, systemScope, err := splitDbIdentifier(dbIdentifier)
-	if err != nil {
-		return "", fmt.Errorf("error in splitting dbIdentifier: %w", err)
-	}
-
-	// Construct the base selector
-	labels := map[string]string{
-		"datname":   escapePromQLLabelValue(databaseList),
-		"sys_id":    systemID,
-		"sys_scope": systemScope,
-		"sys_type":  systemType,
-	}
-
 	interval := getRecordingRuleInterval(input.End.Sub(input.Start))
-	metricName := fmt.Sprintf("cc_pg_stat_activity:sum_by_%s__%s_%s",
-		input.Dim,
-		input.Legend,
-		strings.ReplaceAll(interval, ".", "_"))
-
-	// Create base selector with required labels
-	selector := &Selector{
-		Metric: metricName,
-		Labels: labels,
+	metricName, err := GetRecordingRuleName([]string{input.Dim, input.Legend, input.FilterDim}, interval)
+	if err != nil {
+		return "", fmt.Errorf("error in getting recording rule name: %w", err)
 	}
 
-	// For time dimension, return the selector directly
-	if input.Dim == "time" {
-		return selector.String(), nil
-	}
+	return innerGenerateStandardQuery(input, metricName)
+}
 
-	// For other dimensions, wrap with sort_desc and avg_over_time
-	// to match the behavior of the original queries
-	timeRange := fmt.Sprintf("%ds", int(input.End.Sub(input.Start).Seconds()))
-	stepSize := fmt.Sprintf("%d", int(input.Step.Seconds()))
-
-	return (&SortDesc{
-		Expr: &FunctionCall{
-			Func:         "avg_over_time",
-			Args:         []Node{selector},
-			TimeInterval: &LiteralInt{Value: timeRange},
-			TimeStep:     &LiteralInt{Value: stepSize},
-		},
-	}).String(), nil
+func GenerateStandardQuery(input PromQLInput) (string, error) {
+	return innerGenerateStandardQuery(input, "cc_pg_stat_activity")
 }
 
 // Function to generate a PromQL query with sorting and pagination (New AST-based version)
-func GenerateStandardQuery(input PromQLInput) (string, error) {
+func innerGenerateStandardQuery(input PromQLInput, baseMetric string) (string, error) {
 	// Extract and validate parameters
 	databaseList := input.DatabaseList
 	startTime := input.Start
@@ -151,7 +128,7 @@ func GenerateStandardQuery(input PromQLInput) (string, error) {
 	}
 
 	selector := &Selector{
-		Metric: "cc_pg_stat_activity",
+		Metric: baseMetric,
 		Labels: labels,
 	}
 
@@ -168,8 +145,9 @@ func GenerateStandardQuery(input PromQLInput) (string, error) {
 		}
 	} else {
 		avgOverTimeWindow := fmt.Sprintf("%ds", int(timeRange))
+		step := fmt.Sprintf("%ds", int(input.Step.Seconds()))
 		if dim == legend {
-			query = genAvgOverDimQuery(dim, expr, avgOverTimeWindow, limitValue, offsetValue, input.Step)
+			query = genAvgOverDimQuery(dim, expr, avgOverTimeWindow, limitValue, offsetValue, step)
 		} else if limitValue == 0 {
 			query = &FunctionCall{
 				Func: "avg_over_time",
@@ -181,11 +159,11 @@ func GenerateStandardQuery(input PromQLInput) (string, error) {
 					},
 				},
 				TimeInterval: &LiteralInt{Value: avgOverTimeWindow},
-				TimeStep:     &LiteralInt{Value: strconv.FormatInt(int64(input.Step.Seconds()), 10)},
+				TimeStep:     &LiteralInt{Value: step},
 			}
 		} else { // dim != legend and limit != ""
 			// Step 1: Generate `limitOffsetAgg` with limit and offset
-			limitOffsetAgg := genAvgOverDimQuery(dim, expr, avgOverTimeWindow, limitValue, offsetValue, input.Step)
+			limitOffsetAgg := genAvgOverDimQuery(dim, expr, avgOverTimeWindow, limitValue, offsetValue, step)
 
 			// Step 2: Convert all values in `limitOffsetAgg` to `1`
 			scaledLimitOffsetAgg := &BinaryExpr{
@@ -218,7 +196,7 @@ func GenerateStandardQuery(input PromQLInput) (string, error) {
 					},
 				},
 				TimeInterval: &LiteralInt{Value: avgOverTimeWindow},
-				TimeStep:     &LiteralInt{Value: strconv.FormatInt(int64(input.Step.Seconds()), 10)},
+				TimeStep:     &LiteralInt{Value: step},
 			}
 		}
 	}
@@ -232,7 +210,7 @@ func GenerateStandardQuery(input PromQLInput) (string, error) {
 	return query.String(), nil
 }
 
-func genAvgOverDimQuery(dim string, expr Node, avgOverTimeWindow string, limitValue int, offsetValue int, step time.Duration) Node {
+func genAvgOverDimQuery(dim string, expr Node, avgOverTimeWindow string, limitValue int, offsetValue int, step string) Node {
 	avgByDim := &FunctionCall{
 		Func: "avg_over_time",
 		Args: []Node{
@@ -243,7 +221,7 @@ func genAvgOverDimQuery(dim string, expr Node, avgOverTimeWindow string, limitVa
 			},
 		},
 		TimeInterval: &LiteralInt{Value: avgOverTimeWindow},
-		TimeStep:     &LiteralInt{Value: strconv.FormatInt(int64(step.Seconds()), 10)},
+		TimeStep:     &LiteralInt{Value: step},
 	}
 
 	var limitOffsetAgg Node

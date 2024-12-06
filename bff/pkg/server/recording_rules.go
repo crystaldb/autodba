@@ -2,31 +2,15 @@ package server
 
 import (
 	"fmt"
-	"regexp"
+	"log"
 	"sort"
 	"strings"
-	"time"
 )
 
 // RecordingRule represents a single Prometheus recording rule with a name and PromQL expression
 type RecordingRule struct {
 	Name string // The name of the recording rule
 	Expr string // The PromQL expression to be evaluated
-}
-
-// ValidDimensions returns all valid dimensions for activity queries
-// These dimensions are used to create different aggregation combinations
-func ValidDimensions() []string {
-	return []string{
-		"time",             // timestamp of the measurement
-		"datname",          // database name
-		"client_addr",      // client host address
-		"application_name", // name of the application
-		"backend_type",     // type of backend session
-		"query",            // SQL query being executed
-		"usename",          // database user name
-		"wait_event_name",  // name of the wait event if any
-	}
 }
 
 // TimeScenario defines a time window and recording interval
@@ -53,27 +37,66 @@ type RecordingRuleGroup struct {
 	Rules    []RecordingRule // List of recording rules in this group
 }
 
+// GetRecordingRuleName generates a consistent recording rule name by sorting dimensions
+// and applying special rules for 'time' and 'datname' dimensions
+func GetRecordingRuleName(dimensions []string, intervalSuffix string) (string, error) {
+	uniqueDimensions := uniqueSortedDimensions(dimensions)
+
+	// Generate the recording rule name based on the number of dimensions
+	switch len(uniqueDimensions) {
+	case 0:
+		return fmt.Sprintf("cc_pg_stat_activity:sum_by_%s", intervalSuffix), nil
+	case 1:
+		return fmt.Sprintf("cc_pg_stat_activity:sum_by_%s_%s", uniqueDimensions[0], intervalSuffix), nil
+	case 2:
+		dim1, dim2 := uniqueDimensions[0], uniqueDimensions[1]
+		return fmt.Sprintf("cc_pg_stat_activity:sum_by_%s__%s_%s", dim1, dim2, intervalSuffix), nil
+	case 3:
+		dim1, dim2, dim3 := uniqueDimensions[0], uniqueDimensions[1], uniqueDimensions[2]
+		return fmt.Sprintf("cc_pg_stat_activity:sum_by_%s__%s__%s_%s", dim1, dim2, dim3, intervalSuffix), nil
+	default:
+		return "", fmt.Errorf("one to three dimensions are required, got %d", len(uniqueDimensions))
+	}
+}
+
+func uniqueSortedDimensions(dimensions []string) []string {
+	dimensionSet := make(map[string]bool)
+	for _, dim := range dimensions {
+		if dim != "datname" && dim != "" {
+			dimensionSet[dim] = true
+		}
+	}
+
+	uniqueDimensions := make([]string, 0, len(dimensionSet))
+	for dim := range dimensionSet {
+		uniqueDimensions = append(uniqueDimensions, dim)
+	}
+	// Sort dimensions with "time" first
+	sort.Slice(uniqueDimensions, func(i, j int) bool {
+		if uniqueDimensions[i] == "time" {
+			return true
+		}
+		if uniqueDimensions[j] == "time" {
+			return false
+		}
+		return uniqueDimensions[i] < uniqueDimensions[j]
+	})
+
+	return uniqueDimensions
+}
+
+// ExtractRecordingRules generates all necessary recording rules for PostgreSQL activity metrics
+// It creates two-dimensional aggregations for all valid dimension combinations
 // ExtractRecordingRules generates all necessary recording rules for PostgreSQL activity metrics
 // It creates two-dimensional aggregations for all valid dimension combinations
 func ExtractRecordingRules() []RecordingRuleGroup {
 	rulesByInterval := make(map[string][]RecordingRule)
-	seenQueries := make(map[string]bool) // Track unique queries to avoid duplicates
-	now := time.Now()
+	seenQueries := make(map[string]bool)
 
-	// Generate two-dimension aggregations for each time scenario
+	// Generate rules for each time scenario
 	for _, scenario := range timeScenarios {
-		fmt.Printf(">>> scenario: %+v\n", scenario)
 		// Create interval suffix for rule naming (e.g., "_10m")
-		intervalSuffix := "_" + strings.ReplaceAll(scenario.Step, ".", "_")
-
-		// Base parameters for activity queries
-		baseParams := ActivityParams{
-			DbIdentifier: "a/b/c",
-			DatabaseList: "db1", // Dummy value for recording rules
-			Start:        "now-" + scenario.Duration,
-			End:          "now",
-			Step:         scenario.Step,
-		}
+		intervalSuffix := strings.ReplaceAll(scenario.Step, ".", "_")
 
 		// Generate rules for each dimension combination
 		for _, dim := range ValidDimensions() {
@@ -82,30 +105,39 @@ func ExtractRecordingRules() []RecordingRuleGroup {
 					continue // Skip time dimension as legend
 				}
 
-				params := baseParams
-				params.Dim = dim
-				params.Legend = legend
+				ruleName, query := generateRecordingRuleFormulae(dim, legend, "", intervalSuffix, seenQueries, scenario)
+				if query == nil {
+					log.Printf("Skipping rule: dim=%s, legend=%s", dim, legend)
+				} else {
+					// Generate query string
+					queryStr := query.String()
 
-				// Generate and process the PromQL query
-				input, err := extractPromQLInput(params, now)
-				if err != nil {
-					fmt.Printf(">>> error1: %v\n", err)
-					continue
+					rulesByInterval[scenario.Step] = append(rulesByInterval[scenario.Step], RecordingRule{
+						Name: ruleName,
+						Expr: queryStr,
+					})
+					seenQueries[ruleName] = true
 				}
 
-				query, err := GenerateStandardQuery(input)
-				fmt.Printf(">>> query: %s\n", query)
-				if err == nil && query != "" {
-					query = cleanupQueryForRecordingRule(query)
-					if !seenQueries[query] {
-						rulesByInterval[scenario.Step] = append(rulesByInterval[scenario.Step], RecordingRule{
-							Name: fmt.Sprintf("cc_pg_stat_activity:sum_by_%s__%s%s", dim, legend, intervalSuffix),
-							Expr: query,
-						})
-						seenQueries[query] = true
+				for _, filter := range ValidDimensions() {
+					if filter == "time" {
+						continue // Skip time dimension as filter
 					}
-				} else {
-					fmt.Printf(">>> error2: %v\n", err)
+
+					ruleName, query := generateRecordingRuleFormulae(dim, legend, filter, intervalSuffix, seenQueries, scenario)
+					if query == nil {
+						log.Printf("Skipping rule: dim=%s, legend=%s, filter=%s", dim, legend, filter)
+						continue
+					}
+
+					// Generate query string
+					queryStr := query.String()
+
+					rulesByInterval[scenario.Step] = append(rulesByInterval[scenario.Step], RecordingRule{
+						Name: ruleName,
+						Expr: queryStr,
+					})
+					seenQueries[ruleName] = true
 				}
 			}
 		}
@@ -129,42 +161,70 @@ func ExtractRecordingRules() []RecordingRuleGroup {
 	return groups
 }
 
-// cleanupQueryForRecordingRule sanitizes a PromQL query for use in recording rules
-// It removes specific filters and ensures proper dimension inclusion
-func cleanupQueryForRecordingRule(query string) string {
-	// Remove sort_desc wrapper if present
-	if strings.HasPrefix(query, "sort_desc(") {
-		query = strings.TrimPrefix(query, "sort_desc(")
-		query = strings.TrimSuffix(query, ")")
+func generateRecordingRuleFormulae(dim string, legend string, filter string, intervalSuffix string, seenQueries map[string]bool, scenario TimeScenario) (string, Node) {
+	dimensions := []string{dim, legend}
+	if filter != "" {
+		dimensions = append(dimensions, filter)
+	}
+	ruleName, err := GetRecordingRuleName(dimensions, intervalSuffix)
+	if err != nil {
+		log.Printf("Error generating recording rule name: %v", err)
+		return "", nil
 	}
 
-	// Remove specific database and system filters while preserving structure
-	query = regexp.MustCompile(`\{[^}]*\}`).ReplaceAllStringFunc(query, func(match string) string {
-		patterns := []string{
-			`datname=~"[^"]*"(,\s*)?`,
-			`sys_id=~"[^"]*"(,\s*)?`,
-			`sys_scope=~"[^"]*"(,\s*)?`,
-			`sys_type=~"[^"]*"(,\s*)?`,
-		}
+	uniqueDimensions := uniqueSortedDimensions(filterTimeDimension(dimensions))
 
-		for _, pattern := range patterns {
-			match = regexp.MustCompile(pattern).ReplaceAllString(match, "")
-		}
-		if match == "{}" {
-			return ""
-		}
-		return match
-	})
+	if seenQueries[ruleName] {
+		log.Printf("Skipping duplicate rule: %s", ruleName)
+		return "", nil
+	}
 
-	// Clean up formatting and ensure proper system dimensions
-	query = strings.ReplaceAll(query, "  ", " ")
-	if strings.Contains(query, "datname") {
-		query = strings.ReplaceAll(query, "sum by(", "sum by(sys_id, sys_scope, sys_type,")
+	selector := &Selector{
+		Metric: "cc_pg_stat_activity",
+	}
+
+	var expr Node = selector
+
+	var query Node
+	aggregation := &Aggregation{
+		Func: "sum",
+		By:   append([]string{"sys_id", "sys_scope", "sys_type", "datname"}, uniqueDimensions...),
+		Expr: expr,
+	}
+	if dim == "time" {
+		query = aggregation
 	} else {
-		query = strings.ReplaceAll(query, "sum by(", "sum by(datname, sys_id, sys_scope, sys_type,")
+		avgOverTimeWindow := scenario.Duration
+		query = &FunctionCall{
+			Func: "avg_over_time",
+			Args: []Node{
+				aggregation,
+			},
+			TimeInterval: &LiteralInt{Value: avgOverTimeWindow},
+			TimeStep:     &LiteralInt{Value: scenario.Step},
+		}
 	}
+	return ruleName, query
+}
 
-	return strings.TrimSpace(query)
+func filterTimeDimension(dimensions []string) []string {
+	filtered := make([]string, 0, len(dimensions))
+	for _, dim := range dimensions {
+		if dim != "time" {
+			filtered = append(filtered, dim)
+		}
+	}
+	return filtered
+}
+
+// Helper function to check if a slice contains a string
+func contains(slice []string, str string) bool {
+	for _, v := range slice {
+		if v == str {
+			return true
+		}
+	}
+	return false
 }
 
 // GeneratePrometheusConfig generates YAML configuration for Prometheus recording rules
