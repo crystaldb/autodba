@@ -17,11 +17,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - **`--reprocess-full-snapshots` and `--reprocess-compact-snapshots` flags** for data reprocessing.
 
 ### Changed
-- **Enhanced time selector UI** with improved usability and support for all time ranges.
+- **Enhanced time selector UI** with improved usability and support for arbitrary start and end times.
 - **Optimized input data collection** and PromQL queries for better performance.
 - **Upgraded Prometheus** with improved query capabilities.
 - **Renamed time-series labels** for better consistency.
 - **Code quality improvements** with Biome linting and formatting.
+- **Improved query storage architecture** by moving query text to SQLite and storing only fingerprints in Prometheus for better performance.
 
 ### Fixed
 - **Stale-marker cache initialization** from Prometheus.
