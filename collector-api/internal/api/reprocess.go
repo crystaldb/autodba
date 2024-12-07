@@ -149,7 +149,7 @@ func ReprocessSnapshots(cfg *config.Config, reprocessFull, reprocessCompact bool
 
 	log.Printf("Reprocessing snapshots completed. Took %v", time.Since(startTime))
 
-	return signalPrometheusConfigChange()
+	return nil
 }
 
 func EvaluateRecordingRules(cfg *config.Config, start, end time.Time) error {
