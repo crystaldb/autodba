@@ -4,6 +4,35 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.6.0] - 2024-12-06
+
+### Added
+- **Prometheus recording rules** to improve query performance and reduce server load.
+- **Prometheus self-monitoring** for better observability of the monitoring system.
+- **Support for podman-compose** as a fallback when Docker Compose is not available.
+- **PostgreSQL log collection from the collector** for improved debugging capabilities.
+- **2-day time range option** in the time selector for extended analysis periods.
+- **Export snapshots via API** enabling external data access and integration.
+- **`--no-collector` mode** in run.sh for flexible deployment options.
+- **`--reprocess-full-snapshots` and `--reprocess-compact-snapshots` flags** for data reprocessing.
+
+### Changed
+- **Enhanced time selector UI** with improved usability and support for arbitrary start and end times.
+- **Optimized input data collection** and PromQL queries for better performance.
+- **Upgraded Prometheus** with improved query capabilities.
+- **Renamed time-series labels** for better consistency.
+- **Code quality improvements** with Biome linting and formatting.
+- **Improved query storage architecture** by moving query text to SQLite and storing only fingerprints in Prometheus for better performance.
+
+### Fixed
+- **Stale-marker cache initialization** from Prometheus.
+- **Installation script** to run from any directory.
+- **Query filter options** to properly include database identifier.
+- **Installation issues** affecting new deployments.
+
+### Security    
+- **Added AUTODBA_FORCE_BYPASS_ACCESS_KEY environment variable** for flexible authentication control during development and testing.
+
 ## [0.5.0] - 2024-11-04
 
 ### Added
