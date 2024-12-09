@@ -6,6 +6,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     wget \
     && rm -rf /var/lib/apt/lists/*
 
+# Install golang
+ENV GOLANG_VERSION="1.22.1"
+RUN wget -O go.tgz "https://golang.org/dl/go${GOLANG_VERSION}.linux-amd64.tar.gz" \
+    && tar -C /usr/lib -xzf go.tgz \
+    && rm go.tgz
+
+ENV PATH="/usr/lib/go/bin:${PATH}" \
+    GOROOT="/usr/lib/go"
+
 WORKDIR /usr/local/autodba
 
 # Install Prometheus
@@ -21,6 +30,14 @@ RUN wget -qO- https://github.com/prometheus/prometheus/releases/download/v2.55.1
 COPY prometheus.normal.yml ./config/prometheus/prometheus.normal.yml
 COPY prometheus.reprocess.yml ./config/prometheus/prometheus.reprocess.yml
 COPY recording_rules.yml ./config/prometheus/recording_rules.yml
+
+# Copy and build the reloader service
+COPY cmd/reloader /build/reloader
+WORKDIR /build/reloader
+RUN go build -o /usr/local/autodba/bin/prometheus-reloader
+
+# Reset WORKDIR
+WORKDIR /usr/local/autodba
 
 COPY prometheus-entrypoint.sh /usr/local/autodba/bin/prometheus-entrypoint.sh
 RUN chmod +x /usr/local/autodba/bin/prometheus-entrypoint.sh

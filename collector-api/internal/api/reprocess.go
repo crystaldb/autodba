@@ -6,10 +6,12 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net/http"
 	"os"
 	"os/exec"
 	"path"
 	"sort"
+	"strings"
 	"time"
 )
 
@@ -149,7 +151,7 @@ func ReprocessSnapshots(cfg *config.Config, reprocessFull, reprocessCompact bool
 
 	log.Printf("Reprocessing snapshots completed. Took %v", time.Since(startTime))
 
-	return nil
+	return signalPrometheusConfigChange()
 }
 
 func EvaluateRecordingRules(cfg *config.Config, start, end time.Time) error {
@@ -267,4 +269,38 @@ func copyFile(src, dst string) error {
 	}
 
 	return os.Chmod(dst, sourceInfo.Mode())
+}
+
+func signalPrometheusConfigChange() error {
+	// Get Prometheus host from environment
+	prometheusHost := os.Getenv("PROMETHEUS_HOST")
+	if prometheusHost == "" {
+		prometheusHost = "localhost:9090"
+	}
+
+	// Extract base host without port
+	host := prometheusHost
+	if idx := strings.LastIndex(host, ":"); idx != -1 {
+		host = host[:idx]
+	}
+
+	// Call our custom endpoint to switch to normal mode
+	url := fmt.Sprintf("http://%s:7090/switch-to-normal", host)
+	req, err := http.NewRequest(http.MethodPost, url, nil)
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to send switch request to Prometheus: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("unexpected status code from Prometheus switch: %d", resp.StatusCode)
+	}
+
+	log.Printf("Successfully switched Prometheus to normal configuration")
+	return nil
 }
