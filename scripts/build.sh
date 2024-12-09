@@ -82,7 +82,8 @@ for arch in amd64 arm64; do
     # Copy prometheus setup
     echo "Copying prometheus setup files..."
     mkdir -p "${PROMETHEUS_CONFIG_DIR}"
-    cp prometheus/prometheus.normal.yml "${PROMETHEUS_CONFIG_DIR}/prometheus.yml"
+    cp prometheus/prometheus.normal.yml "${PROMETHEUS_CONFIG_DIR}/prometheus.normal.yml"
+    cp prometheus/prometheus.reprocess.yml "${PROMETHEUS_CONFIG_DIR}/prometheus.reprocess.yml"
     cp prometheus/recording_rules.yml "${PROMETHEUS_CONFIG_DIR}/recording_rules.yml"
 
     echo "Building collector-api-server..."
