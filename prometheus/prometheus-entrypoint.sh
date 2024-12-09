@@ -25,4 +25,4 @@ cp "$CONFIG_SOURCE" "$PARENT_DIR/config/prometheus/prometheus.yml"
     --web.console.libraries="$PARENT_DIR/config/prometheus/console_libraries" \
     --web.enable-remote-write-receiver \
     --web.enable-admin-api \
-    --query.max-concurrency=1
+    --query.max-concurrency=4
