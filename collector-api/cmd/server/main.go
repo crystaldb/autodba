@@ -42,6 +42,7 @@ func main() {
 	// Start reprocessing in a goroutine if needed
 	if *reprocessFull || *reprocessCompact {
 		queue := api.GetQueueInstance()
+		log.Printf("Initializing reprocessing")
 		// Lock the queue before creating the goroutine to avoid race conditions
 		queue.Lock()
 		go func() {

@@ -376,13 +376,33 @@ function SelectSliceBy(props: {
         class={`bg-transparent px-2 focus:outline-none ${props.class}`}
       >
         <For each={each()}>
-          {(value) => (
-            <Option
-              value={value[0]}
-              txt={value[1]}
-              selected={state.activityCube[props.dimension] === value[0]}
-            />
-          )}
+          {(value) => {
+            // TODO BEGIN: remove this block once SQL is working again
+            if (
+              props.dimension === DimensionField.uiFilter1 &&
+              value[0] === DimensionName.query
+            ) {
+              return (
+                <option
+                  data-testid="filterBySqlDisabed"
+                  value={value[0]}
+                  // selected={props.selected || undefined}
+                  class="appearance-none bg-neutral-100 dark:bg-neutral-800 text-zinc-500"
+                  disabled={true}
+                >
+                  {value[1]}
+                </option>
+              );
+            }
+            // TODO END: remove this block once SQL is working again
+            return (
+              <Option
+                value={value[0]}
+                txt={value[1]}
+                selected={state.activityCube[props.dimension] === value[0]}
+              />
+            );
+          }}
         </For>
       </select>
     </>
