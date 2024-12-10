@@ -16,6 +16,7 @@ import (
 )
 
 func ReprocessSnapshots(cfg *config.Config, reprocessFull, reprocessCompact bool) error {
+	log.Printf("Started reprocessing snapshots")
 	startTime := time.Now()
 
 	queue := GetQueueInstance()
@@ -302,5 +303,16 @@ func signalPrometheusConfigChange() error {
 	}
 
 	log.Printf("Successfully switched Prometheus to normal configuration")
+
+	reprocessDoneFile := os.Getenv("AUTODBA_REPROCESS_DONE_FILE")
+
+	if reprocessDoneFile == "" {
+		reprocessDoneFile = "/tmp/reprocess-done"
+	}
+
+	if err := os.WriteFile(reprocessDoneFile, []byte("reprocessing done"), 0644); err != nil {
+		return fmt.Errorf("failed to write reprocess done file: %w", err)
+	}
+
 	return nil
 }

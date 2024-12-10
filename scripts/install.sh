@@ -96,6 +96,10 @@ if $SYSTEM_INSTALL && command_exists "systemctl"; then
             exit 1
         fi
     fi
+
+    # Remove override files
+    rm -rf /etc/systemd/system/autodba.service.d
+
     chown -R autodba:autodba "$PARENT_DIR"
     echo "Setting up systemd service..."
     cat << EOF | tee /etc/systemd/system/autodba.service
