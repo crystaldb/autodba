@@ -90,3 +90,25 @@ You can monitor the reprocessing progress in the logs:
 ```bash
 sudo journalctl -fu autodba
 sudo journalctl -fu autodba-collector
+```
+
+7. **show-logs.sh**: This script provides a colorized view of the AutoDBA service logs, combining both autodba and collector logs into a single stream.
+
+### Usage:
+```bash
+./show-logs.sh
+```
+
+The script will:
+- Display combined logs from autodba and autodba-collector services
+- Color-code different components for better readability:
+  - Cyan: autodba service logs
+  - Magenta: collector service logs
+  - Yellow: timestamps
+- Format the output in an easy-to-read format: `[timestamp] [service] message`
+
+Example output:
+```
+Jan 15 10:30:45 [autodba] Starting AutoDBA service...
+Jan 15 10:30:46 [collector] Initializing collector...
+```
