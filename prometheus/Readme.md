@@ -3,11 +3,11 @@
 ## Default `query-max-concurrency` Setting: **4**
 
 The `query-max-concurrency` setting in Prometheus controls the maximum number of queries that can be executed concurrently.
-Setting this value appropriately is crucial to ensure that Prometheus can handle the load, as without overwhelming the system’s resources (CPU, memory, and io operations). System instability can occur if the memory resources are exceeded
+Setting this value appropriately is crucial to ensure that Prometheus can handle the load, as system instability can occur if the memory resources are exceeded
 
 ### Why Set `query-max-concurrency` to **4**?
 
-A concurrency setting of **4** is a reasonable starting point for most environments. As a rule of thumb, the number of cpu's avaialable should be used. Here's why:
+A concurrency setting of **4** is a reasonable starting point for most environments. As a rule of thumb, the number of cpu's avaialable should be used. There isn't any reason to go higher unless the workload is IO-bound. Here's why:
 Limiting concurrency helps avoid excessive CPU or memory usage, especially during periods of high query traffic. Prometheus will still be able to handle other tasks (like data ingestion and internal processing) without degrading system performance.
 
 ### What Happens if the Concurrency Limit is Exceeded?
