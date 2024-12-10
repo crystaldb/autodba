@@ -5,6 +5,9 @@
 # Set the base directory based on installation
 PARENT_DIR="${PARENT_DIR:-/usr/local/autodba}"
 
+# Start the reloader service
+$PARENT_DIR/bin/prometheus-reloader &
+
 # Choose config file based on reprocessing status
 if [ "${AUTODBA_REPROCESS_FULL_SNAPSHOTS}" = "true" ] || [ "${AUTODBA_REPROCESS_COMPACT_SNAPSHOTS}" = "true" ]; then
     CONFIG_SOURCE="$PARENT_DIR/config/prometheus/prometheus.reprocess.yml"
@@ -24,4 +27,5 @@ cp "$CONFIG_SOURCE" "$PARENT_DIR/config/prometheus/prometheus.yml"
     --web.console.templates="$PARENT_DIR/config/prometheus/consoles" \
     --web.console.libraries="$PARENT_DIR/config/prometheus/console_libraries" \
     --web.enable-remote-write-receiver \
-    --web.enable-admin-api
+    --web.enable-admin-api \
+    --web.enable-lifecycle

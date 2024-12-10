@@ -34,9 +34,6 @@ If the input is provided via stdin, it will be validated as valid JSON before us
 - `--system`: Install system-wide under `/usr/local/autodba`. This flag also uninstalls autodba service.
 - `--install-dir`: Specify a custom installation directory. If not specified, `$HOME/autodba` is used.
 
-4. **run.sh**: This script is used to run AutoDBA in a Docker container. It sets up a Docker environment, runs the AutoDBA image, and exposes Prometheus and BFF ports.
-
-### Usage:
 4. **run.sh**: This script is used to run AutoDBA in a Docker container. It sets up a Docker environment, runs the AutoDBA image, and exposes Prometheus, BFF, and Collector API ports.
 
 ### Usage:
@@ -59,3 +56,37 @@ The script will automatically assign ports based on your user ID and instance ID
 
 ### Notes
 - Use `sudo` for running system-wide `install.sh` and `uninstall.sh` scripts.
+
+5. **install_release.sh**: This script automates the complete installation of AutoDBA from released packages. It handles both the Agent and Collector installation in a single command.
+
+### Usage:
+```bash
+./install_release.sh [--config <CONFIG_FILE>] [--version <VERSION>]
+```
+- `--config`: Path to the autodba.conf configuration file (required)
+- `--version`: Specify AutoDBA version to install (default: latest)
+
+The script will:
+- Download and install AutoDBA Agent
+- Download and install AutoDBA Collector
+- Set up systemd services for both components
+- Verify the installation
+
+6. **reprocess.sh**: This script manages the reprocessing of AutoDBA snapshots. It handles stopping services, enabling reprocessing, and restarting services automatically.
+
+### Usage:
+```bash
+sudo ./reprocess.sh
+```
+
+The script will:
+- Stop AutoDBA services
+- Enable reprocessing flags
+- Start services with reprocessing enabled
+
+**Note**: When reprocessing is enabled, Prometheus self-monitoring and recording rules updates for newly ingested data are disabled to prevent errors during old data reprocessing. The script automatically handles returning to normal operations after reprocessing is complete.
+
+You can monitor the reprocessing progress in the logs:
+```bash
+sudo journalctl -fu autodba
+sudo journalctl -fu autodba-collector
