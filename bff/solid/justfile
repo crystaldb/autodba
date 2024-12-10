@@ -6,8 +6,29 @@ default:
   just -u --list
 
 check-types:
-  fd 'jsx' | entr -c npm run check-types
+  npm run check-types
+
+dev:
+  clear && npm run dev
+
+dev-dev:
+  clear; VITE_DEV_MODE=true npm run dev
 
 eslint:
-  eslint --fix '**/*.tsx' --color
+  eslint --fix '**/*.ts*' --color
+
+fix:
+  npx @biomejs/biome check . --write --unsafe
+
+run-eslint:
+  find -name '*ts*' | entr -c eslint --fix '**/*.ts*' --color
+
+run-prettier:
+  find -name '*ts*' | entr -c npx prettier '**/*.ts*' --write
+
+run-tsc:
+  find -name '*ts*' | entr -c tsc --project ./tsconfig.json
+
+vite-bundle-visualize:
+  npx vite-bundle-visualizer
 

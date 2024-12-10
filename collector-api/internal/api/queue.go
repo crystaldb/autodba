@@ -75,16 +75,5 @@ func (q *Queue) ProcessQueue(cfg *config.Config) error {
 	q.tasks = make([]SnapshotTask, 0)
 	q.mu.Unlock()
 
-	for _, task := range tasks {
-		if task.IsCompact {
-			if err := HandleCompactSnapshot(cfg, task.S3Location, task.CollectedAt, task.SystemInfo); err != nil {
-				return err
-			}
-		} else {
-			if err := HandleFullSnapshot(cfg, task.S3Location, task.CollectedAt, task.SystemInfo); err != nil {
-				return err
-			}
-		}
-	}
-	return nil
+	return HandleSnapshotBatches(cfg, tasks, DefaultSnapshotBatchSize)
 }

@@ -227,7 +227,7 @@ function DimensionTabsHorizontal(props: PropsDimensionTabs) {
         class="flex items-center gap-x-3 text-sm"
       >
         <FilterBySelectButton class="self-start" />
-        <ViewFilterOptions cubeData={props.cubeData} class="self-end" />
+        <ViewFilterOptions cubeData={props.cubeData} class="" />
       </section>
     </section>
   );
@@ -294,23 +294,27 @@ function ViewFilterOptions(props: { cubeData: CubeData; class?: string }) {
   const { state, setState } = contextState();
   return (
     <Show when={state.activityCube.uiFilter1 !== DimensionName.none}>
-      <div class={`flex items-center gap-x-3 text-sm ${props.class}`}>
-        <SelectSliceBy
-          dimension="uiFilter1Value"
-          list={filterOptions(props.cubeData)}
-          class="defaultOpen grow max-w-screen-sm"
-          defaultOpen={true}
-        />
-        <button
-          type="button"
-          class="hover:underline underline-offset-4 me-4"
-          classList={{ invisible: !state.activityCube.uiFilter1Value }}
-          onClick={() => {
-            setState("activityCube", "uiFilter1Value", "");
-          }}
-        >
-          clear
-        </button>
+      <div class={`flex items-center gap-x-3 text-sm ${props.class} grow`}>
+        <div class="flex grow items-center defaultOpen max-w-screen-sm border border-zinc-200 bg-backgroundlite dark:border-zinc-600 dark:bg-zinc-800 rounded-lg py-2 pe-2">
+          <SelectSliceBy
+            dimension="uiFilter1Value"
+            list={filterOptions(props.cubeData)}
+            class="defaultOpen grow"
+            defaultOpen={true}
+          />
+        </div>
+        <Show when={state.activityCube.uiFilter1Value}>
+          <button
+            type="button"
+            class="hover:underline underline-offset-4 me-4"
+            classList={{ invisible: !state.activityCube.uiFilter1Value }}
+            onClick={() => {
+              setState("activityCube", "uiFilter1Value", "");
+            }}
+          >
+            clear
+          </button>
+        </Show>
       </div>
     </Show>
   );
@@ -334,13 +338,14 @@ interface PropsSelectButton {
 function SelectButton(props: PropsSelectButton) {
   return (
     <div
-      class={`flex text-sm px-2.5 py-2 border-s rounded-lg ${cssSelectorGeneral} ${props.class}`}
+      class={`flex text-sm p-2 border-s rounded-lg ${cssSelectorGeneral} ${props.class}`}
     >
       <div class="whitespace-pre">{props.label}</div>
       <SelectSliceBy
         dimension={props.dimension}
         list={props.list}
         fnOnChange={props.fnOnChange}
+        class="text-fuchsia-500"
       />
     </div>
   );
@@ -360,23 +365,44 @@ function SelectSliceBy(props: {
   return (
     <>
       <select
-        multiple={defaultOpen()}
+        data-testclass="selectSliceBy"
+        // multiple={defaultOpen()}
         size={defaultOpen() ? Math.min(10, each.length) : 0}
         onChange={(event) => {
           const value = event.target.value as DimensionName;
           if (props.fnOnChange) props.fnOnChange(value);
           else setState("activityCube", props.dimension, value);
         }}
-        class={`bg-transparent text-fuchsia-500 px-2 focus:outline-none ${props.class}`}
+        class={`bg-transparent px-2 focus:outline-none ${props.class}`}
       >
         <For each={each()}>
-          {(value) => (
-            <Option
-              value={value[0]}
-              txt={value[1]}
-              selected={state.activityCube[props.dimension] === value[0]}
-            />
-          )}
+          {(value) => {
+            // TODO BEGIN: remove this block once SQL is working again
+            if (
+              props.dimension === DimensionField.uiFilter1 &&
+              value[0] === DimensionName.query
+            ) {
+              return (
+                <option
+                  data-testid="filterBySqlDisabed"
+                  value={value[0]}
+                  // selected={props.selected || undefined}
+                  class="appearance-none bg-neutral-100 dark:bg-neutral-800 text-zinc-500"
+                  disabled={true}
+                >
+                  {value[1]}
+                </option>
+              );
+            }
+            // TODO END: remove this block once SQL is working again
+            return (
+              <Option
+                value={value[0]}
+                txt={value[1]}
+                selected={state.activityCube[props.dimension] === value[0]}
+              />
+            );
+          }}
         </For>
       </select>
     </>
@@ -427,6 +453,7 @@ function filterOptions(cubeData: CubeData): [string, string][] {
 
   // let list: [string, string][] = input.map((x) => [x, x]);
 
-  if (state.activityCube.uiFilter1Value) list.unshift(["", "no filter"]);
+  // if (state.activityCube.uiFilter1Value) list.unshift(["", "no filter"]);
+  list.unshift(["", "no filter"]);
   return list;
 }

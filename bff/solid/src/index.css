@@ -27,7 +27,7 @@
   }
   .floating.width60 {
     @apply max-w-60;
-    @apply bg-neutral-100 text-black dark:bg-neutral-700 dark:text-white px-2.5 py-1.5 rounded;
+    @apply bg-neutral-100 text-black dark:bg-neutral-700 dark:text-white p-1.5 rounded;
   }
   a.activeTopNav {
     @apply border-b-2 border-fuchsia-500 text-fuchsia-600 dark:text-fuchsia-400 font-semibold;
@@ -35,15 +35,13 @@
   .btn {
     @apply font-bold;
     @apply dark:font-normal;
-    @apply px-4;
-    @apply py-2;
+    @apply p-2;
     @apply rounded;
   }
   .btn-thin {
     @apply font-normal;
     @apply text-sm;
-    @apply px-2;
-    @apply py-1;
+    @apply p-1;
     @apply rounded;
   }
   .btn-thinner {
@@ -56,8 +54,7 @@
   .btn-big1 {
     @apply font-bold;
     @apply dark:font-normal;
-    @apply px-6;
-    @apply py-4;
+    @apply p-4;
     @apply rounded;
   }
   .btn-disabled {

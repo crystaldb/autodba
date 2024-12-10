@@ -90,12 +90,41 @@ export function CubeDimensionTime() {
           },
         },
       },
+      // axisLabel: {
+      //   formatter: (value: string) => {
+      //     const timestamp = Number.parseInt(value, 10);
+      //     const date = moment(timestamp);
+      //     return `${date.format(timeFormat).replace(/ /, "\n")}(${timezoneAbbreviation})`;
+      //   },
+      // },
       axisLabel: {
-        formatter: (value: string) => {
-          const timestamp = Number.parseInt(value, 10);
-          const date = moment(timestamp);
-          return `${date.format(timeFormat).replace(/ /, "\n")}(${timezoneAbbreviation})`;
-        },
+        rotate: 65,
+        formatter: (() => {
+          let lastShownDate: string | null = null;
+
+          return (value: string) => {
+            const timestamp = Number.parseInt(value, 10);
+            // const date = moment(timestamp);
+            const date = new Date(timestamp);
+            const currentDate = `${(date.getMonth() + 1)
+              .toString()
+              .padStart(2, "0")}/${date.getDate().toString().padStart(2, "0")}`;
+            const time = `${date.getHours().toString().padStart(2, "0")}:${date
+              .getMinutes()
+              .toString()
+              .padStart(2, "0")}:${date
+              .getSeconds()
+              .toString()
+              .padStart(2, "0")}`;
+
+            if (currentDate !== lastShownDate) {
+              lastShownDate = currentDate;
+              return `${currentDate} ${time}`;
+            }
+
+            return time;
+          };
+        })(),
       },
     },
     yAxis: {

@@ -38,6 +38,7 @@
   },
   "dependencies": {
     "@floating-ui/dom": "^1.6.9",
+    "@solid-primitives/scheduled": "^1.4.4",
     "@solidjs/meta": "^0.29.4",
     "@solidjs/router": "^0.13.6",
     "@tanstack/solid-table": "^8.19.3",

@@ -18,6 +18,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"google.golang.org/protobuf/proto"
@@ -101,16 +102,17 @@ func SnapshotHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Error storing snapshot", http.StatusInternalServerError)
 		return
 	}
+	task := SnapshotTask{
+		S3Location:  s3Location,
+		CollectedAt: collectedAt,
+		SystemInfo:  systemInfo,
+		IsCompact:   false,
+	}
 
 	queue := GetQueueInstance()
 	if queue.IsLocked() {
 		// Queue the task for later processing
-		queue.Enqueue(SnapshotTask{
-			S3Location:  s3Location,
-			CollectedAt: collectedAt,
-			SystemInfo:  systemInfo,
-			IsCompact:   false,
-		})
+		queue.Enqueue(task)
 		w.WriteHeader(http.StatusAccepted)
 		fmt.Fprint(w, "Full snapshot queued for processing")
 		log.Printf("Full snapshot queued for processing: s3_location=%s, collected_at=%d", s3Location, collectedAt)
@@ -118,7 +120,7 @@ func SnapshotHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Process immediately if not locked
-	err = HandleFullSnapshot(cfg, s3Location, collectedAt, systemInfo)
+	err = HandleSnapshots(cfg, []SnapshotTask{task})
 	if err != nil {
 		if cfg.Debug {
 			log.Printf("Error handling full snapshot submission: %v", err)
@@ -139,6 +141,7 @@ const (
 	CompactActivitySnapshotType = "compact_activity"
 	CompactLogSnapshotType      = "compact_log"
 	CompactSystemSnapshotType   = "compact_system"
+	DefaultSnapshotBatchSize    = 100
 )
 
 func init() {
@@ -146,9 +149,126 @@ func init() {
 	previousMetrics = make(map[SystemInfo]map[string][]prompb.TimeSeries)
 }
 
-func handleSnapshot(cfg *config.Config, s3Location string, collectedAt int64, systemInfo SystemInfo, processFunc func(*prometheusClient, string, SystemInfo, int64) ([]prompb.TimeSeries, error)) error {
+func HandleSnapshotBatches(cfg *config.Config, tasks []SnapshotTask, batchSize int) error {
 	if cfg.Debug {
-		log.Printf("Processing snapshot with s3_location: %s and collected_at: %d", s3Location, collectedAt)
+		log.Printf("Processing %d snapshot tasks in batches of %d", len(tasks), batchSize)
+	}
+
+	var errors []error
+
+	for i := 0; i < len(tasks); i += batchSize {
+		end := i + batchSize
+		if end > len(tasks) {
+			end = len(tasks)
+		}
+
+		batch := tasks[i:end]
+		if cfg.Debug {
+			log.Printf("Processing batch %d-%d of %d tasks", i+1, end, len(tasks))
+		}
+
+		if err := HandleSnapshots(cfg, batch); err != nil {
+			errors = append(errors, fmt.Errorf("process batch %d-%d: %w", i+1, end, err))
+			continue // Continue processing other batches
+		}
+	}
+
+	if len(errors) > 0 {
+		return fmt.Errorf("encountered %d batch processing errors: %v", len(errors), combineErrors(errors))
+	}
+
+	if cfg.Debug {
+		log.Printf("Successfully processed all %d tasks in batches", len(tasks))
+	}
+	return nil
+}
+
+func HandleSnapshots(cfg *config.Config, tasks []SnapshotTask) error {
+	if cfg.Debug {
+		log.Printf("Processing %d snapshot tasks", len(tasks))
+	}
+
+	// Group tasks by SystemInfo
+	tasksBySystem := make(map[SystemInfo][]SnapshotTask)
+	for _, task := range tasks {
+		tasksBySystem[task.SystemInfo] = append(tasksBySystem[task.SystemInfo], task)
+	}
+
+	// Process each system's tasks concurrently
+	var wg sync.WaitGroup
+	errorsChan := make(chan error, len(tasksBySystem))
+	metricsChan := make(chan []prompb.TimeSeries, len(tasks))
+
+	for systemInfo, systemTasks := range tasksBySystem {
+		wg.Add(1)
+		go func(sysInfo SystemInfo, tasks []SnapshotTask) {
+			defer wg.Done()
+
+			promClient := prometheusClient{
+				Client:   http.DefaultClient,
+				endpoint: prometheusURL,
+			}
+
+			var allQueries []storage.QueryRep
+
+			// Process tasks for this system serially
+			for _, task := range tasks {
+				if cfg.Debug {
+					log.Printf("Processing snapshot for system %s: s3_location=%s, collected_at=%d",
+						sysInfo.SystemID, task.S3Location, task.CollectedAt)
+				}
+
+				var metrics []prompb.TimeSeries
+				var queries []storage.QueryRep
+				var err error
+
+				if task.IsCompact {
+					metrics, queries, err = processCompactSnapshotData(&promClient, task.S3Location, sysInfo, task.CollectedAt)
+				} else {
+					metrics, err = processFullSnapshotData(&promClient, task.S3Location, sysInfo, task.CollectedAt)
+				}
+
+				if err != nil {
+					errorsChan <- fmt.Errorf("process snapshot data for system %s, location %s: %w",
+						sysInfo.SystemID, task.S3Location, err)
+					return
+				}
+
+				allQueries = append(allQueries, queries...)
+
+				metricsChan <- metrics
+			}
+
+			// Batch store queries
+			if len(allQueries) > 0 {
+				if err := storage.QueryStore.StoreBatchQueries(allQueries); err != nil {
+					errorsChan <- fmt.Errorf("store batch queries: %w", err)
+				}
+			}
+		}(systemInfo, systemTasks)
+	}
+
+	// Close channels when all goroutines complete
+	go func() {
+		wg.Wait()
+		close(errorsChan)
+		close(metricsChan)
+	}()
+
+	// Collect results
+	var allMetrics []prompb.TimeSeries
+	var errors []error
+
+	// Estimate capacity for metrics slice
+	estimatedMetricsPerTask := 1000
+	allMetrics = make([]prompb.TimeSeries, 0, len(tasks)*estimatedMetricsPerTask)
+
+	for metrics := range metricsChan {
+		allMetrics = append(allMetrics, metrics...)
+	}
+
+	for err := range errorsChan {
+		errors = append(errors, err)
 	}
 
 	promClient := prometheusClient{
@@ -156,31 +276,41 @@ func handleSnapshot(cfg *config.Config, s3Location string, collectedAt int64, sy
 		endpoint: prometheusURL,
 	}
 
-	allMetrics, err := processFunc(&promClient, s3Location, systemInfo, collectedAt)
-	if err != nil {
-		return fmt.Errorf("process snapshot data: %w", err)
-	}
-
-	if len(allMetrics) == 0 {
-		if cfg.Debug {
-			log.Printf("No metrics to send, skipping remote write")
+	// Send metrics if we have any
+	if len(allMetrics) > 0 {
+		if err := sendRemoteWrite(promClient, allMetrics); err != nil {
+			errors = append(errors, fmt.Errorf("send remote write: %w", err))
 		}
-		return nil
+	} else if cfg.Debug {
+		log.Printf("No metrics to send, skipping remote write")
 	}
 
-	if err := sendRemoteWrite(promClient, allMetrics); err != nil {
-		return fmt.Errorf("send remote write: %w", err)
+	if cfg.Debug && len(errors) == 0 {
+		log.Printf("All snapshot tasks processed successfully!")
 	}
 
-	if cfg.Debug {
-		log.Printf("Snapshot processed successfully!")
+	// Return combined errors if any occurred
+	if len(errors) > 0 {
+		return fmt.Errorf("encountered %d errors during processing: %v", len(errors), combineErrors(errors))
 	}
+
 	return nil
 }
 
-// HandleFullSnapshot processes a full snapshot, generates metrics, and sends them to Prometheus
-func HandleFullSnapshot(cfg *config.Config, s3Location string, collectedAt int64, systemInfo SystemInfo) error {
-	return handleSnapshot(cfg, s3Location, collectedAt, systemInfo, processFullSnapshotData)
+// Helper function to combine multiple errors into a single error message
+func combineErrors(errors []error) error {
+	if len(errors) == 0 {
+		return nil
+	}
+
+	var combined strings.Builder
+	for i, err := range errors {
+		if i > 0 {
+			combined.WriteString("; ")
+		}
+		combined.WriteString(err.Error())
+	}
+	return fmt.Errorf(combined.String())
 }
 
 func processFullSnapshotData(promClient *prometheusClient, s3Location string, systemInfo SystemInfo, collectedAt int64) ([]prompb.TimeSeries, error) {
@@ -353,15 +483,17 @@ func CompactSnapshotHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	task := SnapshotTask{
+		S3Location:  s3Location,
+		CollectedAt: collectedAt,
+		SystemInfo:  systemInfo,
+		IsCompact:   true,
+	}
+
 	queue := GetQueueInstance()
 	if queue.IsLocked() {
 		// Queue the task for later processing
-		queue.Enqueue(SnapshotTask{
-			S3Location:  s3Location,
-			CollectedAt: collectedAt,
-			SystemInfo:  systemInfo,
-			IsCompact:   true,
-		})
+		queue.Enqueue(task)
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprint(w, "Compact snapshot queued for processing")
 		log.Printf("Compact snapshot queued for processing: s3_location=%s, collected_at=%d", s3Location, collectedAt)
@@ -369,7 +501,7 @@ func CompactSnapshotHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Simulate handling the compact snapshot (you'll replace this with your actual logic)
-	err = HandleCompactSnapshot(cfg, s3Location, collectedAt, systemInfo)
+	err = HandleSnapshots(cfg, []SnapshotTask{task})
 	if err != nil {
 		if cfg.Debug {
 			log.Printf("Error handling compact snapshot: %v", err)
@@ -440,48 +572,54 @@ func readAndDecompressSnapshot(s3Location string) ([]byte, error) {
 	return pbBytes, nil
 }
 
-// HandleCompactSnapshot processes a compact snapshot, generates metrics and stale markers,
-// and sends them to Prometheus
-func HandleCompactSnapshot(cfg *config.Config, s3Location string, collectedAt int64, systemInfo SystemInfo) error {
-	return handleSnapshot(cfg, s3Location, collectedAt, systemInfo, processCompactSnapshotData)
-}
-
-func processCompactSnapshotData(promClient *prometheusClient, s3Location string, systemInfo SystemInfo, collectedAt int64) ([]prompb.TimeSeries, error) {
+func processCompactSnapshotData(promClient *prometheusClient, s3Location string, systemInfo SystemInfo, collectedAt int64) ([]prompb.TimeSeries, []storage.QueryRep, error) {
 	pbBytes, err := readAndDecompressSnapshot(s3Location)
 	if err != nil {
-		return nil, fmt.Errorf("read and decompress snapshot: %w", err)
+		return nil, nil, fmt.Errorf("read and decompress snapshot: %w", err)
 	}
 
 	var compactSnapshot collector_proto.CompactSnapshot
 	if err := proto.Unmarshal(pbBytes, &compactSnapshot); err != nil {
-		return nil, fmt.Errorf("unmarshal compact snapshot: %w", err)
+		return nil, nil, fmt.Errorf("unmarshal compact snapshot: %w", err)
 	}
-	// store query text by fingerprint in db
-	for _, backend := range compactSnapshot.GetActivitySnapshot().GetBackends() {
-		baseRef := compactSnapshot.GetBaseRefs()
-		if baseRef != nil {
-			if backend.GetHasQueryIdx() {
-				fp := string(baseRef.GetQueryReferences()[backend.GetQueryIdx()].GetFingerprint())
+	// Preallocate slice based on expected size
+	backends := compactSnapshot.GetActivitySnapshot().GetBackends()
+	queries := make([]storage.QueryRep, 0, len(backends))
 
-				query := string(baseRef.GetQueryInformations()[backend.GetQueryIdx()].GetNormalizedQuery())
+	// Batch query processing
+	baseRef := compactSnapshot.GetBaseRefs()
+	if baseRef != nil {
+		queryRefs := baseRef.GetQueryReferences()
+		queryInfos := baseRef.GetQueryInformations()
 
-				if isQueryEmpty(query) {
-					continue
-				}
-
-				fingerprint := base64.StdEncoding.EncodeToString([]byte(fp))
-				queryFull := backend.GetQueryText()
-
-				err = storage.QueryStore.StoreQuery(fingerprint, query, queryFull, collectedAt)
-				if err != nil {
-					return nil, fmt.Errorf("store query: %w", err)
-				}
+		for _, backend := range backends {
+			if !backend.GetHasQueryIdx() {
+				continue
 			}
-		}
 
+			idx := backend.GetQueryIdx()
+			if idx >= int32(len(queryRefs)) || idx >= int32(len(queryInfos)) {
+				continue
+			}
+
+			query := string(queryInfos[idx].GetNormalizedQuery())
+			if isQueryEmpty(query) {
+				continue
+			}
+
+			fp := string(queryRefs[idx].GetFingerprint())
+			fingerprint := base64.StdEncoding.EncodeToString([]byte(fp))
+
+			queries = append(queries, storage.QueryRep{
+				Fingerprint: fingerprint,
+				Query:       query,
+				QueryFull:   backend.GetQueryText(),
+				CollectedAt: collectedAt,
+			})
+		}
 	}
 
-	var currentMetrics []prompb.TimeSeries
+	currentMetrics := make([]prompb.TimeSeries, 0, len(backends))
 	snapshotType := "n/a"
 
 	// Handle different types of snapshot data
@@ -502,23 +640,27 @@ func processCompactSnapshotData(promClient *prometheusClient, s3Location string,
 	}
 
 	if snapshotType != CompactActivitySnapshotType {
-		return currentMetrics, nil
+		return currentMetrics, queries, nil
 	}
 
-	if previousMetrics[systemInfo] == nil {
-		err := initializePreviousMetrics(promClient, systemInfo, snapshotType)
-		if err != nil {
+	prevMetricsForSystem, exists := previousMetrics[systemInfo]
+	if !exists {
+		if err := initializePreviousMetrics(promClient, systemInfo, snapshotType); err != nil {
 			log.Printf("Error in initializing previous metrics: %v", err)
 		}
+		prevMetricsForSystem = previousMetrics[systemInfo]
 	}
 
-	staleMarkers := createStaleMarkers(previousMetrics[systemInfo][snapshotType], currentMetrics, collectedAt*1000)
+	staleMarkers := createStaleMarkers(prevMetricsForSystem[snapshotType], currentMetrics, collectedAt*1000)
 
-	allMetrics := append(currentMetrics, staleMarkers...)
+	// Preallocate final slice
+	allMetrics := make([]prompb.TimeSeries, 0, len(currentMetrics)+len(staleMarkers))
+	allMetrics = append(allMetrics, currentMetrics...)
+	allMetrics = append(allMetrics, staleMarkers...)
 
 	previousMetrics[systemInfo][snapshotType] = currentMetrics
 
-	return allMetrics, nil
+	return allMetrics, queries, nil
 }
 
 func sendRemoteWrite(client prometheusClient, promPB []prompb.TimeSeries) error {
@@ -539,6 +681,8 @@ func sendRemoteWrite(client prometheusClient, promPB []prompb.TimeSeries) error 
 }
 
 func ReprocessSnapshots(cfg *config.Config, reprocessFull, reprocessCompact bool) error {
+	startTime := time.Now()
+
 	queue := GetQueueInstance()
 	defer func() {
 		queue.Unlock()
@@ -547,12 +691,7 @@ func ReprocessSnapshots(cfg *config.Config, reprocessFull, reprocessCompact bool
 		}
 	}()
 
-	var allSnapshots []struct {
-		timestamp  int64
-		s3Location string
-		systemInfo SystemInfo
-		isCompact  bool
-	}
+	var allSnapshots []SnapshotTask
 
 	var earliestTimestamp int64
 	var latestTimestamp int64
@@ -588,16 +727,11 @@ func ReprocessSnapshots(cfg *config.Config, reprocessFull, reprocessCompact bool
 					snapshot.S3Location, systemInfo, snapshotSystemInfo)
 			}
 
-			allSnapshots = append(allSnapshots, struct {
-				timestamp  int64
-				s3Location string
-				systemInfo SystemInfo
-				isCompact  bool
-			}{
-				timestamp:  snapshot.CollectedAt,
-				s3Location: snapshot.S3Location,
-				systemInfo: systemInfo,
-				isCompact:  false,
+			allSnapshots = append(allSnapshots, SnapshotTask{
+				S3Location:  snapshot.S3Location,
+				CollectedAt: snapshot.CollectedAt,
+				SystemInfo:  systemInfo,
+				IsCompact:   false,
 			})
 		}
 	}
@@ -623,23 +757,18 @@ func ReprocessSnapshots(cfg *config.Config, reprocessFull, reprocessCompact bool
 				SystemType:  snapshot.SystemType,
 			}
 
-			allSnapshots = append(allSnapshots, struct {
-				timestamp  int64
-				s3Location string
-				systemInfo SystemInfo
-				isCompact  bool
-			}{
-				timestamp:  snapshot.CollectedAt,
-				s3Location: snapshot.S3Location,
-				systemInfo: systemInfo,
-				isCompact:  true,
+			allSnapshots = append(allSnapshots, SnapshotTask{
+				S3Location:  snapshot.S3Location,
+				CollectedAt: snapshot.CollectedAt,
+				SystemInfo:  systemInfo,
+				IsCompact:   true,
 			})
 		}
 	}
 
 	// Sort all snapshots by timestamp
 	sort.Slice(allSnapshots, func(i, j int) bool {
-		return allSnapshots[i].timestamp < allSnapshots[j].timestamp
+		return allSnapshots[i].CollectedAt < allSnapshots[j].CollectedAt
 	})
 
 	var targetStart time.Time
@@ -658,24 +787,22 @@ func ReprocessSnapshots(cfg *config.Config, reprocessFull, reprocessCompact bool
 		}
 	}
 
-	// Process snapshots in chronological order
+	// Filter snapshots
+	filteredSnapshots := make([]SnapshotTask, 0, len(allSnapshots))
 	for _, snapshot := range allSnapshots {
-		if time.Unix(0, snapshot.timestamp*int64(time.Second)).Before(targetStart) {
-			log.Printf("Skipping snapshot %s (system_id: %s) before start time %v", snapshot.s3Location, snapshot.systemInfo.SystemID, targetStart)
-			continue
-		}
-		if snapshot.isCompact {
-			log.Printf("Processing compact snapshot: %s (system_id: %s)", snapshot.s3Location, snapshot.systemInfo.SystemID)
-			if err := HandleCompactSnapshot(cfg, snapshot.s3Location, snapshot.timestamp, snapshot.systemInfo); err != nil {
-				log.Printf("Error processing compact snapshot %s (system_id: %s): %v", snapshot.s3Location, snapshot.systemInfo.SystemID, err)
-			}
-		} else {
-			log.Printf("Processing full snapshot: %s (system_id: %s)", snapshot.s3Location, snapshot.systemInfo.SystemID)
-			if err := HandleFullSnapshot(cfg, snapshot.s3Location, snapshot.timestamp, snapshot.systemInfo); err != nil {
-				log.Printf("Error processing full snapshot %s (system_id: %s): %v", snapshot.s3Location, snapshot.systemInfo.SystemID, err)
-			}
+		if !time.Unix(0, snapshot.CollectedAt*int64(time.Second)).Before(targetStart) {
+			filteredSnapshots = append(filteredSnapshots, snapshot)
+		} else if cfg.Debug {
+			log.Printf("Filtering out snapshot %s (system_id: %s) before start time %v",
+				snapshot.S3Location, snapshot.SystemInfo.SystemID, targetStart)
 		}
 	}
+
+	if err := HandleSnapshotBatches(cfg, filteredSnapshots, DefaultSnapshotBatchSize); err != nil {
+		log.Printf("Error handling snapshot batches: %v", err)
+	}
+
+	log.Printf("Successfully handled snapshot batches. Took %v", time.Since(startTime))
 
 	// Evaluate recording rules for the entire time range
 	if earliestTimestamp > 0 && latestTimestamp > 0 {
@@ -684,8 +811,10 @@ func ReprocessSnapshots(cfg *config.Config, reprocessFull, reprocessCompact bool
 			return fmt.Errorf("Failed to evaluate recording rules: %v", err)
 		}
 
-		// return fmt.Errorf("Successfully evaluated recording rules. Now, restart the prometheus service with the right configuration to enable.")
+		log.Printf("Successfully evaluated recording rules. Now, restart the prometheus service with the right configuration to enable.")
 	}
+
+	log.Printf("Reprocessing snapshots completed. Took %v", time.Since(startTime))
 
 	return nil
 }
