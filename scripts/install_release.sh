@@ -2,6 +2,9 @@
 
 set -e
 
+# Get the current directory
+CURRENT_DIR=$(pwd)
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -11,7 +14,7 @@ NC='\033[0m' # No Color
 # Default values
 VERSION="0.6.0"
 ARCH="amd64"
-CONFIG_PATH="./autodba.conf"
+CONFIG_PATH="${CURRENT_DIR}/autodba.conf"
 
 # Function to print colored messages
 log_info() {
@@ -70,6 +73,7 @@ fi
 
 # Install AutoDBA Agent
 log_info "Installing AutoDBA Agent..."
+cd ${CURRENT_DIR}
 wget "https://github.com/crystaldb/autodba/releases/latest/download/autodba-${VERSION}-${ARCH}.tar.gz"
 tar -xzvf "autodba-${VERSION}-${ARCH}.tar.gz"
 cd "autodba-${VERSION}"
@@ -84,7 +88,7 @@ log_info "AutoDBA Agent installed successfully"
 
 # Install AutoDBA Collector
 log_info "Installing AutoDBA Collector..."
-cd ..
+cd ${CURRENT_DIR}
 wget "https://github.com/crystaldb/autodba/releases/latest/download/collector-${VERSION}-${ARCH}.tar.gz"
 tar -xzvf "collector-${VERSION}-${ARCH}.tar.gz"
 cd "collector-${VERSION}"
@@ -98,7 +102,7 @@ fi
 log_info "AutoDBA Collector installed successfully"
 
 # Clean up downloaded files
-cd ..
+cd ${CURRENT_DIR}
 rm -rf "autodba-${VERSION}" "collector-${VERSION}" "autodba-${VERSION}-${ARCH}.tar.gz" "collector-${VERSION}-${ARCH}.tar.gz"
 
 log_info "Installation completed successfully!"
