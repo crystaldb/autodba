@@ -5,6 +5,7 @@ import { contextState } from "~/context_state";
 import {
   ApiEndpoint,
   DimensionName,
+  DimensionRef,
   type State,
   allowInFlight,
   clearBusyWaiting,
@@ -108,14 +109,14 @@ async function queryActivityCubeFullTimeframe(): Promise<boolean> {
   }&limitlegend=${
     state.activityCube.limit //
   }&legend=${
-    state.activityCube.uiLegend //
+    rewriteDimension(state.activityCube.uiLegend) //
   }&dim=${
-    state.activityCube.uiDimension1 //
+    rewriteDimension(state.activityCube.uiDimension1) //
   }&filterdim=${
     state.activityCube.uiFilter1 === DimensionName.none ||
     !state.activityCube.uiFilter1Value
       ? ""
-      : state.activityCube.uiFilter1
+      : rewriteDimension(state.activityCube.uiFilter1)
   }&filterdimselected=${encodeURIComponent(
     state.activityCube.uiFilter1 !== DimensionName.none
       ? state.activityCube.uiFilter1Value || ""
@@ -169,12 +170,6 @@ async function queryActivityCubeTimeWindow(): Promise<boolean> {
 
   const request_time_begin = state.time_begin;
   const request_time_end = state.time_begin + state.timespan_ms;
-  console.log(
-    "WINDOW3 is",
-    request_time_begin,
-    request_time_end,
-    state.timespan_ms,
-  );
   if (
     (request_time_end - request_time_begin) / state.interval_ms >=
     magicPrometheusMaxSamplesLimit
@@ -214,14 +209,14 @@ async function queryActivityCubeTimeWindow(): Promise<boolean> {
   }&limitlegend=${
     state.activityCube.limit //
   }&legend=${
-    state.activityCube.uiLegend //
+    rewriteDimension(state.activityCube.uiLegend) //
   }&dim=${
-    state.activityCube.uiDimension1 //
+    rewriteDimension(state.activityCube.uiDimension1) //
   }&filterdim=${
     state.activityCube.uiFilter1 === DimensionName.none ||
     !state.activityCube.uiFilter1Value
       ? ""
-      : state.activityCube.uiFilter1
+      : rewriteDimension(state.activityCube.uiFilter1)
   }&filterdimselected=${encodeURIComponent(
     state.activityCube.uiFilter1 !== DimensionName.none
       ? state.activityCube.uiFilter1Value || ""
@@ -263,12 +258,26 @@ async function queryActivityCubeTimeWindow(): Promise<boolean> {
   return json;
 }
 
-export async function queryFilterOptions(): Promise<boolean> {
+export async function queryFilterOptions(): Promise<boolean | unknown> {
   const { state, setState } = contextState();
   if (!state.database_list.length) return false;
   if (!state.instance_active?.dbIdentifier) return false;
   if (!state.server_now) return false;
+  if (!state.activityCube.uiFilter1) {
+    batch(() => {
+      setState(
+        "activityCube",
+        produce((activityCube: State["activityCube"]) => {
+          activityCube.filter1Options = [];
+        }),
+      );
+    });
+    return Promise.resolve([]);
+  }
 
+  const dimensionForBothLegendAndDim = rewriteDimension(
+    state.activityCube.uiFilter1,
+  );
   const url = `/api/v1/activity?why=filteroptions&database_list=(${
     state.database_list.join("|") //
   })&start=${
@@ -282,9 +291,9 @@ export async function queryFilterOptions(): Promise<boolean> {
   }&limitlegend=${
     state.activityCube.limit //
   }&legend=${
-    state.activityCube.uiFilter1 //
+    dimensionForBothLegendAndDim //
   }&dim=${
-    state.activityCube.uiFilter1 //
+    dimensionForBothLegendAndDim //
   }&filterdim=${
     "" //
   }&filterdimselected=${encodeURIComponent(
@@ -372,4 +381,12 @@ async function queryStandardEndpointFullTimeframe(
     clearBusyWaiting();
   });
   return true;
+}
+
+function rewriteDimension(
+  dimensionName: DimensionName,
+): DimensionName | DimensionRef {
+  return dimensionName === DimensionName.query
+    ? DimensionRef.query
+    : dimensionName;
 }

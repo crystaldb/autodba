@@ -4,7 +4,7 @@ import { type JSX, Show, createResource } from "solid-js";
 import { Dynamic } from "solid-js/web";
 import { NavTopConfig1 } from "./NavTop";
 import { ContextState, contextState } from "./context_state";
-import { queryInstances } from "./http";
+import { queryInstances } from "./http_info";
 import { PageActivity } from "./page/activity";
 import { PageMetric } from "./page/metric";
 import { PagePrometheus } from "./page/prometheus";

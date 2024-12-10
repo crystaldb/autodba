@@ -1,4 +1,4 @@
-import { arrange, distinct, filter, fixedOrder, map, tidy } from "@tidyjs/tidy";
+import { arrange, distinct, fixedOrder, map, tidy } from "@tidyjs/tidy";
 import {
   For,
   type JSX,
@@ -15,12 +15,13 @@ import {
 } from "solid-js";
 import { produce } from "solid-js/store";
 import { contextState } from "../context_state";
-import { queryFilterOptions } from "../http";
+import { queryFilterOptions } from "../http_simple";
 import {
   type ActivityCube,
   type CubeData,
   DimensionField,
   DimensionName,
+  DimensionRef,
   listColors,
   listDimensionTabNames,
 } from "../state";
@@ -42,6 +43,9 @@ export type ILegend = {
   colorText: string;
   colorBg: string;
 }[];
+
+type DropdownOptionData = [string, string, string, string];
+const noValue = "";
 
 export function CubeActivity() {
   const { state } = contextState();
@@ -211,10 +215,10 @@ function DimensionTabsHorizontal(props: PropsDimensionTabs) {
           txt="Time"
           selected={state.activityCube[props.dimension] === DimensionName.time}
         />
-        <For each={listDimensionTabNames()}>
+        <For each={listDimensionTabNamesWithExtra()}>
           {(value) => (
             <Tab
-              value={value[0]}
+              value={value[0] as DimensionName}
               txt={`${value[1]}`}
               selected={state.activityCube[props.dimension] === value[0]}
             />
@@ -226,21 +230,24 @@ function DimensionTabsHorizontal(props: PropsDimensionTabs) {
         data-name="filterSection"
         class="flex items-center gap-x-3 text-sm"
       >
-        <FilterBySelectButton class="self-start" />
+        <SelectButtonFilterBy class="self-start" />
         <ViewFilterOptions cubeData={props.cubeData} class="" />
       </section>
     </section>
   );
 }
 
-function FilterBySelectButton(props: { class?: string }) {
+function SelectButtonFilterBy(props: { class?: string }) {
   const { setState } = contextState();
   return (
     <SelectButton
       label="Filter By:"
       class={props.class}
       dimension={DimensionField.uiFilter1}
-      list={[["none", "No filter"], ...listDimensionTabNames()]}
+      list={[
+        [DimensionName.none, "No filter", DimensionRef.none, noValue],
+        ...listDimensionTabNamesWithExtra(),
+      ]}
       fnOnChange={(value) => {
         setState(
           "activityCube",
@@ -261,10 +268,13 @@ function DimensionTabsVertical(props: PropsDimensionTabs) {
         <SelectButton
           label=""
           dimension={DimensionField.uiDimension1}
-          list={[["time", "Time"], ...listDimensionTabNames()]}
+          list={[
+            [DimensionName.time, "Time", DimensionRef.none, noValue],
+            ...listDimensionTabNamesWithExtra(),
+          ]}
         />
         <div data-name="filterSection" class="text-sm">
-          <FilterBySelectButton />
+          <SelectButtonFilterBy />
         </div>
       </div>
       <ViewFilterOptions cubeData={props.cubeData} class="" />
@@ -298,7 +308,7 @@ function ViewFilterOptions(props: { cubeData: CubeData; class?: string }) {
         <div class="flex grow items-center defaultOpen max-w-screen-sm border border-zinc-200 bg-backgroundlite dark:border-zinc-600 dark:bg-zinc-800 rounded-lg py-2 pe-2">
           <SelectSliceBy
             dimension="uiFilter1Value"
-            list={filterOptions(props.cubeData)}
+            list={optionsFilterDropdown()}
             class="defaultOpen grow"
             defaultOpen={true}
           />
@@ -332,7 +342,7 @@ interface PropsSelectButton {
     | undefined;
   class?: string;
   fnOnChange?: (arg0: DimensionName) => void;
-  list?: string[][];
+  list?: DropdownOptionData[];
 }
 
 function SelectButton(props: PropsSelectButton) {
@@ -355,18 +365,18 @@ function SelectSliceBy(props: {
   dimension: DimensionField | "uiFilter1Value";
   class?: string;
   fnOnChange?: (arg0: DimensionName) => void;
-  list?: string[][];
+  list?: DropdownOptionData[];
   defaultOpen?: boolean;
 }) {
   const { state, setState } = contextState();
   const defaultOpen = () =>
     !!props.defaultOpen && !state.activityCube.uiFilter1Value;
-  const each = () => props.list || listDimensionTabNames();
+  const each: () => DropdownOptionData[] = () =>
+    props.list || listDimensionTabNamesWithExtra();
   return (
     <>
       <select
         data-testclass="selectSliceBy"
-        // multiple={defaultOpen()}
         size={defaultOpen() ? Math.min(10, each.length) : 0}
         onChange={(event) => {
           const value = event.target.value as DimensionName;
@@ -374,32 +384,22 @@ function SelectSliceBy(props: {
           else setState("activityCube", props.dimension, value);
         }}
         class={`bg-transparent px-2 focus:outline-none ${props.class}`}
+        // multiple={defaultOpen()}
       >
         <For each={each()}>
           {(value) => {
-            // TODO BEGIN: remove this block once SQL is working again
-            if (
-              props.dimension === DimensionField.uiFilter1 &&
-              value[0] === DimensionName.query
-            ) {
-              return (
-                <option
-                  data-testid="filterBySqlDisabed"
-                  value={value[0]}
-                  // selected={props.selected || undefined}
-                  class="appearance-none bg-neutral-100 dark:bg-neutral-800 text-zinc-500"
-                  disabled={true}
-                >
-                  {value[1]}
-                </option>
-              );
-            }
-            // TODO END: remove this block once SQL is working again
             return (
               <Option
-                value={value[0]}
+                value={value[3] || value[0]}
                 txt={value[1]}
-                selected={state.activityCube[props.dimension] === value[0]}
+                selected={
+                  state.activityCube[props.dimension] === value[0] ||
+                  !!(
+                    value[2] &&
+                    value[3] &&
+                    state.activityCube[props.dimension] === value[3]
+                  )
+                }
               />
             );
           }}
@@ -421,39 +421,33 @@ function Option(props: { value: string; txt: string; selected: boolean }) {
   );
 }
 
-function filterOptions(cubeData: CubeData): [string, string][] {
+function optionsFilterDropdown(): DropdownOptionData[] {
   const { state } = contextState();
-  const dimensionName: DimensionName =
-    state.activityCube[DimensionField.uiFilter1];
 
-  const list: [string, string][] = state.activityCube.filter1Options
-    ? state.activityCube.filter1Options
-        .map(
-          (rec) =>
-            [
-              rec.metric[state.activityCube.uiFilter1],
-              rec.values[0]?.value
-                ? `${rec.values[0].value.toFixed(1)}: ${
-                    rec.metric[state.activityCube.uiFilter1]
-                  }`
-                : rec.metric[state.activityCube.uiFilter1],
-            ] as [string, string],
-        )
-        .filter(([v1, v2]) => !!v1 && !!v2)
-    : tidy(
-        cubeData,
-        filter((d) => !!d.metric[dimensionName]),
-        map((d) => ({ result: d.metric[dimensionName] })),
-        distinct((d) => d.result),
-        filter(({ result }) => !!result),
-      )
-        // biome-ignore lint/style/noNonNullAssertion: TS doesn't recognize the filter above
-        .map(({ result }) => result!)
-        .map((x) => [x, x]);
+  const list: DropdownOptionData[] = (state.activityCube.filter1Options || [])
+    .map((rec) => {
+      const valueMain = rec.metric[state.activityCube.uiFilter1];
+      const valueAlternate =
+        state.activityCube.uiFilter1 === DimensionName.query &&
+        Object.prototype.hasOwnProperty.call(rec.metric, DimensionRef.query)
+          ? // @ts-expect-error TODO fix this type
+            [DimensionRef.query, rec.metric[DimensionRef.query]]
+          : [DimensionRef.none, ""];
+      return [
+        valueMain,
+        rec.values[0]?.value
+          ? `${rec.values[0].value.toFixed(1)}: ${valueMain}`
+          : valueMain,
+        valueAlternate[0],
+        valueAlternate[1],
+      ] as DropdownOptionData;
+    })
+    .filter(([v1, v2, _]) => !!v1 && !!v2);
 
-  // let list: [string, string][] = input.map((x) => [x, x]);
-
-  // if (state.activityCube.uiFilter1Value) list.unshift(["", "no filter"]);
-  list.unshift(["", "no filter"]);
+  list.unshift([DimensionName.none, "no filter", DimensionRef.none, noValue]);
   return list;
+}
+
+function listDimensionTabNamesWithExtra(): [string, string, string, string][] {
+  return listDimensionTabNames().map(([a, b, c]) => [a, b, c, ""]);
 }
