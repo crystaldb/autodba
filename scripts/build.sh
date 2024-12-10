@@ -86,6 +86,11 @@ for arch in amd64 arm64; do
     cp prometheus/prometheus.reprocess.yml "${PROMETHEUS_CONFIG_DIR}/prometheus.reprocess.yml"
     cp prometheus/recording_rules.yml "${PROMETHEUS_CONFIG_DIR}/recording_rules.yml"
 
+    # Copy and build the reloader service
+    cd prometheus/cmd/reloader
+    go build -o ${INSTALL_DIR}/prometheus-reloader
+    cd -
+
     echo "Building collector-api-server..."
     mkdir -p "${COLLECTOR_API_SERVER_DIR}"
     cp -r collector-api/* "${COLLECTOR_API_SERVER_DIR}/"
