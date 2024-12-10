@@ -12,7 +12,7 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 # Default values
-VERSION="0.6.0"
+VERSION="0.7.0-rc0"
 ARCH="amd64"
 CONFIG_PATH="${CURRENT_DIR}/autodba.conf"
 
@@ -34,7 +34,7 @@ show_usage() {
 Usage: $0 [OPTIONS]
 Options:
     --config PATH          Path to autodba.conf file (default: ./autodba.conf)
-    --version VERSION      AutoDBA version (default: 0.6.0)
+    --version VERSION      AutoDBA version (default: 0.7.0-rc0)
     --help                Show this help message
 EOF
     exit 1
