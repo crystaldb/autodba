@@ -294,7 +294,9 @@ async function queryActivityCubeTimeWindow(): Promise<boolean> {
   return json;
 }
 
-export async function queryFilterOptionsOldRelativeToNow(): Promise<boolean | unknown> {
+export async function queryFilterOptionsOldRelativeToNow(): Promise<
+  boolean | unknown
+> {
   const { state, setState } = contextState();
   if (!state.database_list.length) return false;
   if (!state.instance_active?.dbIdentifier) return false;

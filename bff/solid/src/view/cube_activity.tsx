@@ -15,8 +15,8 @@ import {
 } from "solid-js";
 import { produce } from "solid-js/store";
 import { contextState } from "../context_state";
-import { queryFilterOptions } from "../http_simple";
 import { queryFilterOptionsOldRelativeToNow } from "../http";
+import { queryFilterOptions } from "../http_simple";
 import {
   type ActivityCube,
   type CubeData,
