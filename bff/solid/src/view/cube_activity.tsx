@@ -16,6 +16,7 @@ import {
 import { produce } from "solid-js/store";
 import { contextState } from "../context_state";
 import { queryFilterOptions } from "../http_simple";
+import { queryFilterOptionsOldRelativeToNow } from "../http";
 import {
   type ActivityCube,
   type CubeData,
@@ -75,7 +76,11 @@ export function CubeActivity() {
     on(
       () => state.activityCube.uiFilter1,
       () => {
-        untrack(() => queryFilterOptions());
+        untrack(() =>
+          import.meta.env.VITE_DEV_MODE === "true"
+            ? queryFilterOptions()
+            : queryFilterOptionsOldRelativeToNow(),
+        );
       },
       { defer: true },
     ),

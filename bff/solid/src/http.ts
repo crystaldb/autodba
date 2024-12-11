@@ -5,6 +5,7 @@ import { contextState } from "~/context_state";
 import {
   ApiEndpoint,
   DimensionName,
+  DimensionRef,
   type State,
   allowInFlight,
   clearBusyWaiting,
@@ -65,7 +66,7 @@ export async function fetchPrometheusMetrics(apiEndpoint: ApiEndpoint) {
   batch(() => {
     setState("server_now", server_now);
     const dataBucketName = "prometheusMetricsData" as Part<State, keyof State>;
-    setState(dataBucketName, data);
+    setState(dataBucketName, data || []);
 
     clearBusyWaiting();
   });
@@ -129,14 +130,14 @@ async function queryActivityCubeFullTimeframe(): Promise<boolean> {
   }&limitlegend=${
     state.activityCube.limit //
   }&legend=${
-    state.activityCube.uiLegend //
+    rewriteDimension(state.activityCube.uiLegend) //
   }&dim=${
-    state.activityCube.uiDimension1 //
+    rewriteDimension(state.activityCube.uiDimension1) //
   }&filterdim=${
     state.activityCube.uiFilter1 === DimensionName.none ||
     !state.activityCube.uiFilter1Value
       ? ""
-      : state.activityCube.uiFilter1
+      : rewriteDimension(state.activityCube.uiFilter1)
   }&filterdimselected=${encodeURIComponent(
     state.activityCube.uiFilter1 !== DimensionName.none
       ? state.activityCube.uiFilter1Value || ""
@@ -244,14 +245,14 @@ async function queryActivityCubeTimeWindow(): Promise<boolean> {
   }&limitlegend=${
     state.activityCube.limit //
   }&legend=${
-    state.activityCube.uiLegend //
+    rewriteDimension(state.activityCube.uiLegend) //
   }&dim=${
-    state.activityCube.uiDimension1 //
+    rewriteDimension(state.activityCube.uiDimension1) //
   }&filterdim=${
     state.activityCube.uiFilter1 === DimensionName.none ||
     !state.activityCube.uiFilter1Value
       ? ""
-      : state.activityCube.uiFilter1
+      : rewriteDimension(state.activityCube.uiFilter1)
   }&filterdimselected=${encodeURIComponent(
     state.activityCube.uiFilter1 !== DimensionName.none
       ? state.activityCube.uiFilter1Value || ""
@@ -293,72 +294,75 @@ async function queryActivityCubeTimeWindow(): Promise<boolean> {
   return json;
 }
 
-// export async function queryFilterOptions(): Promise<boolean | unknown> {
-//   const { state, setState } = contextState();
-//   if (!state.database_list.length) return false;
-//   if (!state.instance_active?.dbIdentifier) return false;
-//   if (!state.server_now) return false;
-//   if (!state.activityCube.uiFilter1) {
-//     batch(() => {
-//       setState(
-//         "activityCube",
-//         produce((activityCube: State["activityCube"]) => {
-//           activityCube.filter1Options = [];
-//         }),
-//       );
-//     });
-//     return Promise.resolve([]);
-//   }
-//
-//   const url = `/api/v1/activity?why=filteroptions&database_list=(${
-//     state.database_list.join("|") //
-//   })&start=${
-//     `now-${state.timeframe_ms}ms` //
-//   }&end=${
-//     "now" //
-//   }&step=${
-//     state.interval_ms //
-//   }ms&limitdim=${
-//     state.activityCube.limit //
-//   }&limitlegend=${
-//     state.activityCube.limit //
-//   }&legend=${
-//     state.activityCube.uiFilter1 //
-//   }&dim=${
-//     state.activityCube.uiFilter1 //
-//   }&filterdim=${
-//     "" //
-//   }&filterdimselected=${encodeURIComponent(
-//     "", //
-//   )}&dbidentifier=${
-//     state.instance_active.dbIdentifier //
-//   }`;
-//   const response = await fetchWithAuth(url, { method: "GET" });
-//
-//   if (!response.ok) {
-//     if (response.status === 400) {
-//       setState("activityCube", "error", await response.text());
-//     }
-//     return false;
-//   }
-//   // biome-ignore lint/style/noNonNullAssertion: required by SolidJS
-//   setState("activityCube", "error", undefined!);
-//
-//   const json = await response.json();
-//   if (!json) {
-//     return false;
-//   }
-//
-//   batch(() => {
-//     setState(
-//       "activityCube",
-//       produce((activityCube: State["activityCube"]) => {
-//         activityCube.filter1Options = json.data;
-//       }),
-//     );
-//   });
-//   return json;
-// }
+export async function queryFilterOptionsOldRelativeToNow(): Promise<boolean | unknown> {
+  const { state, setState } = contextState();
+  if (!state.database_list.length) return false;
+  if (!state.instance_active?.dbIdentifier) return false;
+  if (!state.server_now) return false;
+  if (!state.activityCube.uiFilter1) {
+    batch(() => {
+      setState(
+        "activityCube",
+        produce((activityCube: State["activityCube"]) => {
+          activityCube.filter1Options = [];
+        }),
+      );
+    });
+    return Promise.resolve([]);
+  }
+
+  const dimensionForBothLegendAndDim = rewriteDimension(
+    state.activityCube.uiFilter1,
+  );
+  const url = `/api/v1/activity?why=filteroptions&database_list=(${
+    state.database_list.join("|") //
+  })&start=${
+    `now-${state.timeframe_ms}ms` //
+  }&end=${
+    "now" //
+  }&step=${
+    state.interval_ms //
+  }ms&limitdim=${
+    state.activityCube.limit //
+  }&limitlegend=${
+    state.activityCube.limit //
+  }&legend=${
+    dimensionForBothLegendAndDim //
+  }&dim=${
+    dimensionForBothLegendAndDim //
+  }&filterdim=${
+    "" //
+  }&filterdimselected=${encodeURIComponent(
+    "", //
+  )}&dbidentifier=${
+    state.instance_active.dbIdentifier //
+  }`;
+  const response = await fetchWithAuth(url, { method: "GET" });
+
+  if (!response.ok) {
+    if (response.status === 400) {
+      setState("activityCube", "error", await response.text());
+    }
+    return false;
+  }
+  // biome-ignore lint/style/noNonNullAssertion: required by SolidJS
+  setState("activityCube", "error", undefined!);
+
+  const json = await response.json();
+  if (!json) {
+    return false;
+  }
+
+  batch(() => {
+    setState(
+      "activityCube",
+      produce((activityCube: State["activityCube"]) => {
+        activityCube.filter1Options = json.data;
+      }),
+    );
+  });
+  return json;
+}
 
 async function queryStandardEndpointFullTimeframe(
   apiEndpoint: string,
@@ -411,9 +415,17 @@ async function queryStandardEndpointFullTimeframe(
   batch(() => {
     setState("server_now", server_now);
     const dataBucketName = `${apiEndpoint}Data` as Part<State, keyof State>;
-    setState(dataBucketName, data);
+    setState(dataBucketName, data || []);
 
     clearBusyWaiting();
   });
   return true;
+}
+
+function rewriteDimension(
+  dimensionName: DimensionName,
+): DimensionName | DimensionRef {
+  return dimensionName === DimensionName.query
+    ? DimensionRef.query
+    : dimensionName;
 }
