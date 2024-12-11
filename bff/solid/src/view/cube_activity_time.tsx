@@ -152,11 +152,11 @@ export function CubeDimensionTime() {
             })),
           ),
         ),
-      arrange(["timestamp"]),
       pivotWider({
         namesFrom: state.activityCube.uiLegend,
         valuesFrom: "value",
       }),
+      arrange(["timestamp"]),
     );
   });
 
