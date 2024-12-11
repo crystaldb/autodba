@@ -84,9 +84,10 @@ export enum ApiEndpoint {
   prometheus_metrics = "prometheus_metrics",
 }
 
+export type DimensionSpec = [DimensionName, string, DimensionRef];
 export enum DimensionName {
-  none = "none",
-  query = "query_fp",
+  none = "",
+  query = "query_text",
   wait_event_name = "wait_event_name",
   time = "time",
   client_addr = "client_addr",
@@ -95,16 +96,20 @@ export enum DimensionName {
   application_name = "application_name",
   datname = "datname",
 }
+export enum DimensionRef {
+  none = "",
+  query = "query_fp",
+}
 
-export function listDimensionTabNames(): [DimensionName, string][] {
+export function listDimensionTabNames(): DimensionSpec[] {
   return [
-    [DimensionName.wait_event_name, "Wait"],
-    [DimensionName.query, "Sql"],
-    [DimensionName.client_addr, "Host"],
-    [DimensionName.usename, "User"],
-    [DimensionName.backend_type, "Session type"],
-    [DimensionName.application_name, "Application"],
-    [DimensionName.datname, "Database"],
+    [DimensionName.wait_event_name, "Wait", DimensionRef.none],
+    [DimensionName.query, "Sql", DimensionRef.query],
+    [DimensionName.client_addr, "Host", DimensionRef.none],
+    [DimensionName.usename, "User", DimensionRef.none],
+    [DimensionName.backend_type, "Session type", DimensionRef.none],
+    [DimensionName.application_name, "Application", DimensionRef.none],
+    [DimensionName.datname, "Database", DimensionRef.none],
   ];
 }
 
@@ -113,6 +118,10 @@ export enum DimensionField {
   uiDimension1 = "uiDimension1",
   uiFilter1 = "uiFilter1",
 }
+export enum DimensionFieldWithValue {
+  uiFilter1Value = "uiFilter1Value",
+}
+export type DimensionFieldExtended = DimensionField | DimensionFieldWithValue;
 
 export type CubeData = {
   metric: Partial<Record<DimensionName, string>>;

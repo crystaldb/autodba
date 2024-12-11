@@ -71,6 +71,8 @@ type ValidationErrorResponse struct {
 
 const api_prefix = "/api"
 const replace_prefix = "$"
+const query_fp_label = "query_fp"
+const query_text_label = "query_text"
 
 const (
 	SYSTEM_ID_MAX_LENGTH      = 63
@@ -585,9 +587,9 @@ func handleQueryFP(metric interface{}, query_storage query_storage.QueryStorage)
 
 	switch m := metric.(type) {
 	case map[string]interface{}:
-		m[query_fp_label] = queryText
+		m[query_text_label] = queryText
 	case map[string]string:
-		m[query_fp_label] = queryText
+		m[query_text_label] = queryText
 	}
 
 	return metric

@@ -52,8 +52,6 @@ func isValidDimension(dim string) bool {
 	return false
 }
 
-const query_fp_label = "query_fp"
-
 func shouldUseRecordingRules(timeRange time.Duration) bool {
 	return timeRange >= 6*time.Hour
 }

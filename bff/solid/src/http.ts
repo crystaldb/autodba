@@ -5,6 +5,7 @@ import { contextState } from "~/context_state";
 import {
   ApiEndpoint,
   DimensionName,
+  DimensionRef,
   type State,
   allowInFlight,
   clearBusyWaiting,
@@ -14,89 +15,6 @@ import {
 } from "~/state";
 
 const magicPrometheusMaxSamplesLimit = 11000;
-
-// BEGIN HACK CODE: we are (temporarily) prioritizing time-to-completion over quality here while we work out the product spec for retries and exponential backoffs.
-/** globalWithTemporaryHackTimeouts
- * CONTEXT: This code is temporary until we implement retry with exponential backoff. A global variable is used because, during development, each time this file is saved, Vite reloads the code, getting around the check to see if a timeout already exists. As a result, a developer can quickly have tons of requests being retried every 5 seconds, causing requests to continually be sending, which turns your laptop fan on. So, for now, we're polluting the global namespace since this code will be removed soon.
- */
-const retryMs = 5000;
-type GlobalWithTemporaryHackTimeouts = typeof globalThis & {
-  timeout_queryDatabases: NodeJS.Timeout | null;
-  timeout_queryInstances: NodeJS.Timeout | null;
-};
-const globalWithTemporaryHackTimeouts =
-  globalThis as GlobalWithTemporaryHackTimeouts;
-export function retryQuery(
-  blockExcessRetriesKey: "timeout_queryDatabases" | "timeout_queryInstances",
-  fn: (arg0: boolean) => Promise<boolean>,
-): boolean {
-  if (globalWithTemporaryHackTimeouts[blockExcessRetriesKey]) return false;
-  console.log(`Query: ${blockExcessRetriesKey}: will retry in ${retryMs}ms`);
-  globalWithTemporaryHackTimeouts[blockExcessRetriesKey] = setTimeout(() => {
-    globalWithTemporaryHackTimeouts[blockExcessRetriesKey] = null;
-    fn(true);
-  }, retryMs);
-  return false;
-}
-// END HACK CODE
-
-export async function queryInstances(retryIfNeeded: boolean): Promise<boolean> {
-  const { setState } = contextState();
-  const response = await fetchWithAuth("/api/v1/instance", { method: "GET" });
-
-  if (!response.ok) {
-    if (retryIfNeeded)
-      return retryQuery("timeout_queryInstances", queryInstances);
-    return false;
-  }
-  const json = await response.json();
-  const instance_list = json?.list || [];
-  if (!instance_list.length) {
-    if (retryIfNeeded)
-      return retryQuery("timeout_queryInstances", queryInstances);
-    return false;
-  }
-  const instance_active = instance_list[0]
-    ? JSON.parse(JSON.stringify(instance_list[0]))
-    : null;
-  batch(() => {
-    setState("instance_active", instance_active);
-    setState("instance_list", [
-      ...instance_list,
-      // {
-      //   dbIdentifier: "0000000000111111111222222222233333333334444444444455555555555" + "::" + "amazon_rds" + "::" + "us-west-99",
-      //   systemId: "0000000000111111111222222222233333333334444444444455555555555",
-      //   systemType: "amazon_rds",
-      //   systemScope: "us-west-99",
-      // },
-    ]);
-  });
-  if (retryIfNeeded) queryDatabases(retryIfNeeded);
-  return true;
-}
-
-export async function queryDatabases(retryIfNeeded: boolean): Promise<boolean> {
-  const { state, setState } = contextState();
-  if (!state.instance_active?.dbIdentifier) {
-    if (retryIfNeeded)
-      return retryQuery("timeout_queryDatabases", queryDatabases);
-    return false;
-  }
-  const response = await fetchWithAuth(
-    `/api/v1/instance/database?dbidentifier=${state.instance_active.dbIdentifier}`,
-    { method: "GET" },
-  );
-
-  if (!response.ok) {
-    if (retryIfNeeded)
-      return retryQuery("timeout_queryDatabases", queryDatabases);
-    return false;
-  }
-  const json = await response.json();
-
-  setState("database_list", json || []);
-  return true;
-}
 
 export function isLive(): boolean {
   const { state } = contextState();
@@ -148,7 +66,7 @@ export async function fetchPrometheusMetrics(apiEndpoint: ApiEndpoint) {
   batch(() => {
     setState("server_now", server_now);
     const dataBucketName = "prometheusMetricsData" as Part<State, keyof State>;
-    setState(dataBucketName, data);
+    setState(dataBucketName, data || []);
 
     clearBusyWaiting();
   });
@@ -212,14 +130,14 @@ async function queryActivityCubeFullTimeframe(): Promise<boolean> {
   }&limitlegend=${
     state.activityCube.limit //
   }&legend=${
-    state.activityCube.uiLegend //
+    rewriteDimension(state.activityCube.uiLegend) //
   }&dim=${
-    state.activityCube.uiDimension1 //
+    rewriteDimension(state.activityCube.uiDimension1) //
   }&filterdim=${
     state.activityCube.uiFilter1 === DimensionName.none ||
     !state.activityCube.uiFilter1Value
       ? ""
-      : state.activityCube.uiFilter1
+      : rewriteDimension(state.activityCube.uiFilter1)
   }&filterdimselected=${encodeURIComponent(
     state.activityCube.uiFilter1 !== DimensionName.none
       ? state.activityCube.uiFilter1Value || ""
@@ -327,14 +245,14 @@ async function queryActivityCubeTimeWindow(): Promise<boolean> {
   }&limitlegend=${
     state.activityCube.limit //
   }&legend=${
-    state.activityCube.uiLegend //
+    rewriteDimension(state.activityCube.uiLegend) //
   }&dim=${
-    state.activityCube.uiDimension1 //
+    rewriteDimension(state.activityCube.uiDimension1) //
   }&filterdim=${
     state.activityCube.uiFilter1 === DimensionName.none ||
     !state.activityCube.uiFilter1Value
       ? ""
-      : state.activityCube.uiFilter1
+      : rewriteDimension(state.activityCube.uiFilter1)
   }&filterdimselected=${encodeURIComponent(
     state.activityCube.uiFilter1 !== DimensionName.none
       ? state.activityCube.uiFilter1Value || ""
@@ -376,12 +294,28 @@ async function queryActivityCubeTimeWindow(): Promise<boolean> {
   return json;
 }
 
-export async function queryFilterOptions(): Promise<boolean> {
+export async function queryFilterOptionsOldRelativeToNow(): Promise<
+  boolean | unknown
+> {
   const { state, setState } = contextState();
   if (!state.database_list.length) return false;
   if (!state.instance_active?.dbIdentifier) return false;
   if (!state.server_now) return false;
+  if (!state.activityCube.uiFilter1) {
+    batch(() => {
+      setState(
+        "activityCube",
+        produce((activityCube: State["activityCube"]) => {
+          activityCube.filter1Options = [];
+        }),
+      );
+    });
+    return Promise.resolve([]);
+  }
 
+  const dimensionForBothLegendAndDim = rewriteDimension(
+    state.activityCube.uiFilter1,
+  );
   const url = `/api/v1/activity?why=filteroptions&database_list=(${
     state.database_list.join("|") //
   })&start=${
@@ -395,9 +329,9 @@ export async function queryFilterOptions(): Promise<boolean> {
   }&limitlegend=${
     state.activityCube.limit //
   }&legend=${
-    state.activityCube.uiFilter1 //
+    dimensionForBothLegendAndDim //
   }&dim=${
-    state.activityCube.uiFilter1 //
+    dimensionForBothLegendAndDim //
   }&filterdim=${
     "" //
   }&filterdimselected=${encodeURIComponent(
@@ -483,9 +417,17 @@ async function queryStandardEndpointFullTimeframe(
   batch(() => {
     setState("server_now", server_now);
     const dataBucketName = `${apiEndpoint}Data` as Part<State, keyof State>;
-    setState(dataBucketName, data);
+    setState(dataBucketName, data || []);
 
     clearBusyWaiting();
   });
   return true;
+}
+
+function rewriteDimension(
+  dimensionName: DimensionName,
+): DimensionName | DimensionRef {
+  return dimensionName === DimensionName.query
+    ? DimensionRef.query
+    : dimensionName;
 }
