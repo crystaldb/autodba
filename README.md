@@ -1,8 +1,8 @@
-![Build Status](https://github.com/crystaldb/autodba/actions/workflows/build.yml/badge.svg)
+![Build Status](https://github.com/crystaldba/crystaldba/actions/workflows/build.yml/badge.svg)
 
-# 🤖 AutoDBA for PostgreSQL 🐘
+# 🤖 Crystal DBA for PostgreSQL 🐘
 
-AutoDBA is an AI agent that runs PostgreSQL databases.
+Crystal DBA is an AI agent that runs PostgreSQL databases.
 This project exists to ensure that everyone who runs PostgreSQL has access to a skilled virtual database administrator (DBA) at all times.
 
 ## 💡 Motivation
@@ -16,24 +16,24 @@ They have better ways to spend their time than tuning or troubleshooting databas
 
 Reliability and security are the top priorities for database operations, and our approach reflects that.
 The success of autonomous vehicles shows that with careful engineering, one can build systems that operate safely in complex environments.
-The time has come to do the same for similarly challenging IT operations—as AutoDBA does for databases.
+The time has come to do the same for similarly challenging IT operations—as Crystal DBA does for databases.
 
 
 ## 🔍 Project Status: Observability Only
 
-As of today, this project includes only the basic observability features of AutoDBA.
+As of today, this project includes only the basic observability features of Crystal DBA.
 Building an AI agent requires quality data, so we first need to make sure that this foundation is solid.
 
 Why did we put effort into tools for visualizing and exploring data when we envision a future were only machines consume it?
 For one, we need to verify that the data is sufficient to support good decision making—if a human expert does not have enough information to make a good decision, then we are probably asking too much of the AI agent if we expect it to do so.
-Furthermore, AutoDBA's observability tools add value to the PostgreSQL ecosystem, even without an AI agent.
+Furthermore, Crystal DBA's observability tools add value to the PostgreSQL ecosystem, even without an AI agent.
 
 The core AI agent is under development and will be released once it reaches a reasonable degree of accuracy and stability.
 
 
 ## 🚧 Temporary Limitations
 
-This is an early release of AutoDBA's observability features.
+This is an early release of Crystal DBA's observability features.
 We are committed to supporting PostgreSQL in all environments and popular major versions.
 However, the following temporary limitations are presently in place:
 
@@ -65,25 +65,25 @@ GRANT USAGE ON SCHEMA public TO autodba;
 
 4. AWS or Google Cloud credentials with permissions to read database metrics
 
-### AutoDBA Agent Installation
+### Crystal DBA Agent Installation
 
-Follow these instructions to install AutoDBA Agent on Linux.
+Follow these instructions to install Crystal DBA Agent on Linux.
 
-1. Download the latest release of AutoDBA Agent from the [releases page](https://github.com/crystaldb/autodba/releases).
+1. Download the latest release of Crystal DBA Agent from the [releases page](https://github.com/crystaldba/crystaldba/releases).
 Choose the version appropriate to your architecture and operating system.
 For example:
 
 ```bash
-wget https://github.com/crystaldb/autodba/releases/latest/download/autodba-0.7.0-rc0-amd64.tar.gz
+wget https://github.com/crystaldba/crystaldba/releases/latest/download/crystaldba-0.7.0-rc0-amd64.tar.gz
 ```
 
 2. Extract the downloaded tar.gz file:
 ```bash
-tar -xzvf autodba-0.7.0-rc0-amd64.tar.gz
-cd autodba-0.7.0-rc0
+tar -xzvf crystaldba-0.7.0-rc0-amd64.tar.gz
+cd crystaldba-0.7.0-rc0
 ```
 
-3. Run the `install.sh` script to install AutoDBA Agent.
+3. Run the `install.sh` script to install Crystal DBA Agent.
 
 For system-wide installation:
 
@@ -94,7 +94,7 @@ sudo ./install.sh --system
 Or for a user-specific installation, specify your preferred install directory:
 
 ```bash
-./install.sh --install-dir "$HOME/autodba"
+./install.sh --install-dir "$HOME/crystaldba"
 ```
 
 Or to install in the same extracted directory:
@@ -102,20 +102,20 @@ Or to install in the same extracted directory:
 ./install.sh
 ```
 
-4. Verify the AutoDBA service is running
+4. Verify the Crystal DBA service is running
 
 ```bash
-systemctl is-active autodba
+systemctl is-active crystaldba
 ```
 
-5. Take a look at the AutoDBA service logs:
+5. Take a look at the Crystal DBA service logs:
 ```
 sudo journalctl -xefu autodba.service
 ```
 
 This command should output `active`.
 
-6. Connect to the AutoDBA web portal on port 4000. If you have installed AutoDBA on a remote server you can use [ssh tunneling](https://www.ssh.com/academy/ssh/tunneling-example) to access it.
+6. Connect to the Crystal DBA web portal on port 4000. If you have installed Crystal DBA on a remote server you can use [ssh tunneling](https://www.ssh.com/academy/ssh/tunneling-example) to access it.
 For example:
 ```
 ssh -L4000:localhost:4000 <MY_USERNAME>@<MY_HOSTNAME>
@@ -184,7 +184,7 @@ Then, run this command from the CLI:
 aws iam create-policy
     --policy-name autodba
     --policy-document file://autodba_policy.json
-    --description "Allow AutoDBA to access RDS"
+    --description "Allow Crystal DBA to access RDS"
 ```
 
 ##### Create IAM role
@@ -222,10 +222,10 @@ Continue to the **Collector Installation** section.
 
 ##### Create Service Account
 
-Create a new service account for AutoDBA with the following command:
+Create a new service account for Crystal DBA with the following command:
 
 ```bash
-gcloud iam service-accounts create autodba --display-name "AutoDBA"
+gcloud iam service-accounts create autodba --display-name "Crystal DBA"
 ```
 
 ##### Add Roles to the Service Account
@@ -308,17 +308,17 @@ gcloud compute instances set-service-account INSTANCE_ID \
 ```
 
 
-### AutoDBA Collector Installation
+### Crystal DBA Collector Installation
 
 
-Follow these instructions to install AutoDBA Collector on Linux.
+Follow these instructions to install Crystal DBA Collector on Linux.
 
-1. Download the latest release of AutoDBA Collector from the [releases page](https://github.com/crystaldb/autodba/releases).
+1. Download the latest release of Crystal DBA Collector from the [releases page](https://github.com/crystaldba/crystaldba/releases).
 Choose the version appropriate to your architecture and operating system.
 For example:
 
 ```bash
-wget https://github.com/crystaldb/autodba/releases/latest/download/collector-0.7.0-rc0-amd64.tar.gz
+wget https://github.com/crystaldba/crystaldba/releases/latest/download/collector-0.7.0-rc0-amd64.tar.gz
 ```
 
 2. Extract the downloaded tar.gz file:
@@ -327,10 +327,10 @@ tar -xzvf collector-0.7.0-rc0-amd64.tar.gz
 cd collector-0.7.0-rc0
 ```
 
-3. Run this command to create a configuration file (`autodba.conf`) and populate it with values appropriate to your environment:
+3. Run this command to create a configuration file (`crystaldba.conf`) and populate it with values appropriate to your environment:
 
 ```conf
-cat << EOF > autodba.conf
+cat << EOF > crystaldba.conf
 [autodba]
 api_key = DEFAULT-API-KEY
 api_base_url = <YOUR_AUTODBA_API_BASE_URL, e.g., http://localhost:7080 or http://autodba-agent:7080 (if you are using run.sh)>
@@ -361,7 +361,7 @@ EOF
 ```
 
 #### Notes:
-  - `api_base_url` should be the URL for `AutoDBA Agent` installed in the previous section.
+  - `api_base_url` should be the URL for `Crystal DBA Agent` installed in the previous section.
 
   - If you have a PostgreSQL connection string (i.e., URI) of the form `postgres://<db_username>:<db_password>@<db_host>:<db_port>/<db_name>` you can extract `db_username`, `db_password`, `db_host`, `db_port`, and `db_name`.
 
@@ -371,39 +371,39 @@ EOF
 
   - For Google Cloud SQL, you need to follow [these instructions](https://cloud.google.com/sql/docs/postgres/connect-auth-proxy#install) to install cloud-sql-proxy on your GCE instance (if your database is not directly accessible from this machine). Then, you need to:
     - Run the proxy: `./cloud-sql-proxy --port <YOUR_PROXIED_DB_PORT> <YOUR_GCP_PROJECT_ID>:<YOUR_GCP_CLOUDSQL_INSTANCE_ID> &`.
-    - Then, in the configuration file (`autodba.conf`), you should set `db_host = localhost`, and `db_port = <YOUR_PROXIED_DB_PORT>`.
+    - Then, in the configuration file (`crystaldba.conf`), you should set `db_host = localhost`, and `db_port = <YOUR_PROXIED_DB_PORT>`.
     - You'll want to set up the proxy to run as a service on startup.
 
 #### Install the Collector:
 
-4. Run the `install.sh` script to install AutoDBA Collector.
+4. Run the `install.sh` script to install Crystal DBA Collector.
 
 For system-wide installation:
 
 ```bash
-sudo ./install.sh --config autodba.conf --system
+sudo ./install.sh --config crystaldba.conf --system
 ```
 
 Or for a user-specific installation, specify your preferred install directory:
 
 ```bash
-./install.sh --config autodba.conf --install-dir "$HOME/autodba-collector"
+./install.sh --config crystaldba.conf --install-dir "$HOME/autodba-collector"
 ```
 
 Or to install in the same extracted directory:
 ```bash
-./install.sh --config autodba.conf
+./install.sh --config crystaldba.conf
 ```
 
-5. Verify the AutoDBA service is running
+5. Verify the Crystal DBA service is running
 
 ```bash
 systemctl is-active autodba-collector
 ```
 
-6. Take a look at the AutoDBA service logs:
+6. Take a look at the Crystal DBA service logs:
 ```
-sudo journalctl -xefu autodba-collector.service
+sudo journalctl -xefu crystaldba-collector.service
 ```
 
 This command should output `active`.
@@ -425,25 +425,25 @@ Our near-term roadmap includes the following:
 
 ## 🤝 Contributing
 
-We welcome contributions to AutoDBA! Contributor guidelines are under development so [please reach out](mailto:johann@crystaldb.cloud) if you are interested in working with us.
+We welcome contributions to Crystal DBA! Contributor guidelines are under development so [please reach out](mailto:johann@crystaldba.ai) if you are interested in working with us.
 
 
 ## 🧑‍💻 About the Authors
 
-AutoDBA is developed by the engineers and database experts at  [CrystalDB](https://www.crystaldb.cloud/).
+Crystal DBA is developed by the engineers and database experts at  [Crystal DBA](https://www.crystaldba.ai/).
 Our mission is to make it easy for you to run your database well, so you can focus on building better software.
-CrystalDB also offers commercial support for AutoDBA and PostgreSQL.
+CrystalDB also offers commercial support for Crystal DBA and PostgreSQL.
 
 
 ## 📖 Frequently Asked Questions
 
-### What is AutoDBA?
+### What is Crystal DBA?
 
-AutoDBA is an AI agent for operating PostgreSQL databases.
+Crystal DBA is an AI agent for operating PostgreSQL databases.
 This means that it connects to an existing PostgreSQL database and takes actions, as necessary, to ensure that the database remains reliable, efficient, scalable, and secure.
 
 
-### Will AutoDBA replace my DBA?
+### Will Crystal DBA replace my DBA?
 
 Time will tell whether AI agents completely replace human database administrators (DBAs).
 Our work suggests that AI agents will do some tasks much better than humans.
@@ -454,38 +454,38 @@ On the other hand, people working in the team will have a more nuanced understan
 They will be better able to make high-level design decisions and to analyze trade-offs that impact the development process.
 
 
-### Do I still need to hire a DBA if I use AutoDBA?
+### Do I still need to hire a DBA if I use Crystal DBA?
 
-If you do not already have a DBA on staff, then chances are good that AutoDBA can allow you to postpone hiring one, particularly if you have platform engineers or site reliability engineers who are interested in applying its recommendations.
+If you do not already have a DBA on staff, then chances are good that Crystal DBA can allow you to postpone hiring one, particularly if you have platform engineers or site reliability engineers who are interested in applying its recommendations.
 CrystalDB and others also offer commercial support for PostgreSQL.
 
 
 ### Which PostgreSQL versions are supported?
 
-Currently, AutoDBA is only compatible with PostgreSQL version 16.
+Currently, Crystal DBA is only compatible with PostgreSQL version 16.
 We are working on expanding support to other versions.
 Please share your thoughts on how far back we should go.
 
 
-### Can I use AutoDBA with my on-premises PostgreSQL installation?
+### Can I use Crystal DBA with my on-premises PostgreSQL installation?
 
-At present, AutoDBA only works with AWS RDS PostgreSQL.
+At present, Crystal DBA only works with AWS RDS PostgreSQL.
 Support for on-premises installations, Google Cloud SQL, and Azure SQL is coming.
-We want AutoDBA to run anywhere that PostgreSQL runs.
+We want Crystal DBA to run anywhere that PostgreSQL runs.
 
 
-### Will AutoDBA support databases other than PostgreSQL?
+### Will Crystal DBA support databases other than PostgreSQL?
 
-At present, we are fully focused on AutoDBA for PostgreSQL.
-We expect to maintain that focus for the forseeable future.
+At present, we are fully focused on Crystal DBA for PostgreSQL.
+We expect to maintain that focus for the foreseeable future.
 
 
-### Is AutoDBA open source?
+### Is Crystal DBA open source?
 
 We believe that every PostgreSQL database should be managed by an AI agent.
-In pursuit of this vision, we are releasing the core operational features of AutoDBA under the Apache 2.0 open source license.
+In pursuit of this vision, we are releasing the core operational features of Crystal DBA under the Apache 2.0 open source license.
 
-For avoidance of doubt, AutoDBA is commercial open source software.
+For avoidance of doubt, Crystal DBA is commercial open source software.
 Certain enterprise features will be available only in commercial versions of the product.
 
 As of this writing (August 2024), there is active debate what the term “open source” means for AI models.
@@ -495,21 +495,21 @@ We are committed to providing open weights and some training data.
 However, we also expect to release models trained on proprietary data sets.
 
 
-### What happens to the data that AutoDBA collects?
+### What happens to the data that Crystal DBA collects?
 
-AutoDBA collects and stores operational metrics collected from your database.
+Crystal DBA collects and stores operational metrics collected from your database.
 It does not transmit this data to anyone.
 You should keep the web interface secure to avoid exposing this data to others.
 
 
-### How can I get support for AutoDBA?
+### How can I get support for Crystal DBA?
 
-CrystalDB offers commercial support for AutoDBA and PostgreSQL.
-For more information or to discuss your needs, please contact us at [support@crystaldb.cloud](mailto:support@crystaldb.cloud).
+CrystalDB offers commercial support for Crystal DBA and PostgreSQL.
+For more information or to discuss your needs, please contact us at [support@crystaldba.ai](mailto:support@crystaldba.ai).
 
 
-### How can I support the AutoDBA project?
+### How can I support the Crystal DBA project?
 
-Foremost, use AutoDBA and give us feedback!
+Foremost, use Crystal DBA and give us feedback!
 
 We also welcome feature suggestions, bug reports, or contributions to the codebase.

@@ -14,7 +14,7 @@ NC='\033[0m' # No Color
 # Default values
 VERSION="0.7.0-rc0"
 ARCH="amd64"
-CONFIG_PATH="${CURRENT_DIR}/autodba.conf"
+CONFIG_PATH="${CURRENT_DIR}/crystaldba.conf"
 
 # Function to print colored messages
 log_info() {
@@ -33,7 +33,7 @@ show_usage() {
     cat << EOF
 Usage: $0 [OPTIONS]
 Options:
-    --config PATH          Path to autodba.conf file (default: ./autodba.conf)
+    --config PATH          Path to crystaldba.conf file (default: ./crystaldba.conf)
     --version VERSION      AutoDBA version (default: 0.7.0-rc0)
     --help                Show this help message
 EOF
@@ -61,7 +61,7 @@ while [ "$#" -gt 0 ]; do
 done
 
 # Check prerequisites
-if [ "$EUID" -ne 0 ]; then 
+if [ "$EUID" -ne 0 ]; then
     log_error "Please run as root (sudo)"
     exit 1
 fi

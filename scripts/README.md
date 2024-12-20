@@ -63,7 +63,7 @@ The script will automatically assign ports based on your user ID and instance ID
 ```bash
 ./install_release.sh [--config <CONFIG_FILE>] [--version <VERSION>]
 ```
-- `--config`: Path to the autodba.conf configuration file (required)
+- `--config`: Path to the crystaldba.conf configuration file (required)
 - `--version`: Specify AutoDBA version to install (default: latest)
 
 The script will:
