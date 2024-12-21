@@ -55,12 +55,12 @@ CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
 SELECT * FROM pg_stat_statements LIMIT 1;
 ```
 
-3. *Monitoring DB user*: connect to your database using psql. Then run the following to create a monitoring user. Replace 'YOUR_AUTODBA_PASSWORD' with your desired password for that user:
+3. *Monitoring DB user*: connect to your database using psql. Then run the following to create a monitoring user. Replace 'YOUR_CRYSTALDBA_PASSWORD' with your desired password for that user:
 
 ```sql
-CREATE USER autodba WITH PASSWORD 'YOUR_AUTODBA_PASSWORD' CONNECTION LIMIT 5;
-GRANT pg_monitor TO autodba;
-GRANT USAGE ON SCHEMA public TO autodba;
+CREATE USER crystaldba WITH PASSWORD 'YOUR_CRYSTALDBA_PASSWORD' CONNECTION LIMIT 5;
+GRANT pg_monitor TO crystaldba;
+GRANT USAGE ON SCHEMA public TO crystaldba;
 ```
 
 4. AWS or Google Cloud credentials with permissions to read database metrics
@@ -110,7 +110,7 @@ systemctl is-active crystaldba
 
 5. Take a look at the Crystal DBA service logs:
 ```
-sudo journalctl -xefu autodba.service
+sudo journalctl -xefu crystaldba.service
 ```
 
 This command should output `active`.
@@ -131,7 +131,7 @@ We'll set up the roles/policies in your cloud provider, so that the collector ca
 
 We'll create an IAM policy that allows the collector to view RDS instances, CloudWatch metrics and RDS log files.
 
-First, save this JSON to a file called **autodba_policy.json**
+First, save this JSON to a file called **crystaldba_policy.json**
 
 ```json
 {
@@ -182,8 +182,8 @@ Then, run this command from the CLI:
 
 ```bash
 aws iam create-policy
-    --policy-name autodba
-    --policy-document file://autodba_policy.json
+    --policy-name crystaldba
+    --policy-document file://crystaldba_policy.json
     --description "Allow Crystal DBA to access RDS"
 ```
 
@@ -193,8 +193,8 @@ First, run this command to create the IAM role:
 
 ```bash
 aws iam create-role
-    --role-name autodba
-    --description "autodba collector"
+    --role-name crystaldba
+    --description "crystaldba collector"
     --assume-role-policy-document '{"Version": "2012-10-17", "Statement": [{"Effect": "Allow", "Principal": {"Service": "ec2.amazonaws.com"}, "Action": "sts:AssumeRole"}]}'
 ```
 
@@ -202,8 +202,8 @@ Then, run this command to attach the policy, after replacing `AWS_ACCOUNT_ID`:
 
 ```bash
 aws iam attach-role-policy
-    --role-name autodba
-    --policy-arn arn:aws:iam::AWS_ACCOUNT_ID:policy/autodba
+    --role-name crystaldba
+    --policy-arn arn:aws:iam::AWS_ACCOUNT_ID:policy/crystaldba
 ```
 
 ##### Attach IAM role to EC2 instance
@@ -213,7 +213,7 @@ Either start a new `t3.small` EC2 instance and attach the IAM role during creati
 ```bash
 aws ec2 associate-iam-instance-profile
     --instance-id INSTANCE_ID
-    --iam-instance-profile Name=autodba
+    --iam-instance-profile Name=crystaldba
 ```
 
 Continue to the **Collector Installation** section.
@@ -225,7 +225,7 @@ Continue to the **Collector Installation** section.
 Create a new service account for Crystal DBA with the following command:
 
 ```bash
-gcloud iam service-accounts create autodba --display-name "Crystal DBA"
+gcloud iam service-accounts create crystaldba --display-name "Crystal DBA"
 ```
 
 ##### Add Roles to the Service Account
@@ -240,19 +240,19 @@ To add the roles use the following commands, replacing `PROJECT_ID`:
 
 ```bash
 gcloud projects add-iam-policy-binding PROJECT_ID \
-    --member="serviceAccount:autodba@PROJECT_ID.iam.gserviceaccount.com" \
+    --member="serviceAccount:crystaldba@PROJECT_ID.iam.gserviceaccount.com" \
     --role="roles/cloudsql.viewer"
 
 gcloud projects add-iam-policy-binding PROJECT_ID \
-    --member="serviceAccount:autodba@PROJECT_ID.iam.gserviceaccount.com" \
+    --member="serviceAccount:crystaldba@PROJECT_ID.iam.gserviceaccount.com" \
     --role="roles/cloudsql.client"
 
 gcloud projects add-iam-policy-binding PROJECT_ID \
-    --member="serviceAccount:autodba@PROJECT_ID.iam.gserviceaccount.com" \
+    --member="serviceAccount:crystaldba@PROJECT_ID.iam.gserviceaccount.com" \
     --role="roles/monitoring.notificationServiceAgent"
 
 gcloud projects add-iam-policy-binding PROJECT_ID \
-    --member="serviceAccount:autodba@PROJECT_ID.iam.gserviceaccount.com" \
+    --member="serviceAccount:crystaldba@PROJECT_ID.iam.gserviceaccount.com" \
     --role="roles/pubsub.subscriber"
 ```
 
@@ -263,13 +263,13 @@ We'll use a Pub/Sub topic to collect logs from the CloudSQL instance.
 First, create a Pub/Sub topic for the logs:
 
 ```bash
-gcloud pubsub topics create autodba-cloudsql-logs
+gcloud pubsub topics create crystaldba-cloudsql-logs
 ```
 
 Then, create a subscription to the topic:
 
 ```bash
-gcloud pubsub subscriptions create autodba-cloudsql-logs-sub --topic autodba-cloudsql-logs --message-retention-duration=1d
+gcloud pubsub subscriptions create crystaldba-cloudsql-logs-sub --topic crystaldba-cloudsql-logs --message-retention-duration=1d
 ```
 
 Write down the `SUBSCRIPTION_NAME` that is output from the previous command, as you will need it later for the collector configuration. The output will look something like this:
@@ -282,8 +282,8 @@ Created subscription [SUBSCRIPTION_NAME].
 Then, set up a logging sink to publish logs from the CloudSQL instance to the topic, replacing `PROJECT_ID` and `CLOUDSQL_INSTANCE_ID`:
 
 ```bash
-gcloud logging sinks create autodba-cloudsql-logs-sink \
-    pubsub.googleapis.com/projects/PROJECT_ID/topics/autodba-cloudsql-logs \
+gcloud logging sinks create crystaldba-cloudsql-logs-sink \
+    pubsub.googleapis.com/projects/PROJECT_ID/topics/crystaldba-cloudsql-logs \
     --log-filter='resource.type="cloudsql_database" resource.labels.database_id="CLOUDSQL_INSTANCE_ID"'
 ```
 
@@ -295,7 +295,7 @@ If you're creating a new instance, you can attach the service account with the `
 
 ```bash
 gcloud compute instances create \
-    --service-account="autodba@PROJECT_ID.iam.gserviceaccount.com"
+    --service-account="crystaldba@PROJECT_ID.iam.gserviceaccount.com"
 ```
 
 If you are attaching the service account to an existing instance, run the following command, replacing `INSTANCE_ID`, `INSTANCE_ZONE`, and `PROJECT_ID`:
@@ -303,7 +303,7 @@ If you are attaching the service account to an existing instance, run the follow
 ```bash
 gcloud compute instances set-service-account INSTANCE_ID \
     --zone=INSTANCE_ZONE \
-    --service-account=autodba@PROJECT_ID.iam.gserviceaccount.com \
+    --service-account=crystaldba@PROJECT_ID.iam.gserviceaccount.com \
     --scopes=https://www.googleapis.com/auth/cloud-platform
 ```
 
@@ -331,9 +331,9 @@ cd collector-0.7.0-rc0
 
 ```conf
 cat << EOF > crystaldba.conf
-[autodba]
+[crystaldba]
 api_key = DEFAULT-API-KEY
-api_base_url = <YOUR_AUTODBA_API_BASE_URL, e.g., http://localhost:7080 or http://autodba-agent:7080 (if you are using run.sh)>
+api_base_url = <YOUR_CRYSTALDBA_API_BASE_URL, e.g., http://localhost:7080 or http://crystaldba-agent:7080 (if you are using run.sh)>
 
 [server1]
 db_host = <YOUR_PG_DATABASE_HOST, e.g., xyz.abcdefgh.us-west-2.rds.amazonaws.com>
@@ -387,7 +387,7 @@ sudo ./install.sh --config crystaldba.conf --system
 Or for a user-specific installation, specify your preferred install directory:
 
 ```bash
-./install.sh --config crystaldba.conf --install-dir "$HOME/autodba-collector"
+./install.sh --config crystaldba.conf --install-dir "$HOME/crystaldba-collector"
 ```
 
 Or to install in the same extracted directory:
@@ -398,7 +398,7 @@ Or to install in the same extracted directory:
 5. Verify the Crystal DBA service is running
 
 ```bash
-systemctl is-active autodba-collector
+systemctl is-active crystaldba-collector
 ```
 
 6. Take a look at the Crystal DBA service logs:

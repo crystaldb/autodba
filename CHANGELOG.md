@@ -31,7 +31,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - **Installation issues** affecting new deployments.
 
 ### Security    
-- **Added AUTODBA_FORCE_BYPASS_ACCESS_KEY environment variable** for flexible authentication control during development and testing.
+- **Added CRYSTALDBA_FORCE_BYPASS_ACCESS_KEY environment variable** for flexible authentication control during development and testing.
 
 ## [0.5.0] - 2024-11-04
 

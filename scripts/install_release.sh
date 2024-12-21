@@ -34,7 +34,7 @@ show_usage() {
 Usage: $0 [OPTIONS]
 Options:
     --config PATH          Path to crystaldba.conf file (default: ./crystaldba.conf)
-    --version VERSION      AutoDBA version (default: 0.7.0-rc0)
+    --version VERSION      Crystal DBA version (default: 0.7.0-rc0)
     --help                Show this help message
 EOF
     exit 1
@@ -71,40 +71,40 @@ if [ ! -f "$CONFIG_PATH" ]; then
     exit 1
 fi
 
-# Install AutoDBA Agent
-log_info "Installing AutoDBA Agent..."
+# Install Crystal DBA Agent
+log_info "Installing Crystal DBA Agent..."
 cd ${CURRENT_DIR}
-wget "https://github.com/crystaldb/autodba/releases/latest/download/autodba-${VERSION}-${ARCH}.tar.gz"
-tar -xzvf "autodba-${VERSION}-${ARCH}.tar.gz"
-cd "autodba-${VERSION}"
+wget "https://github.com/crystaldb/crystaldba/releases/latest/download/crystaldba-${VERSION}-${ARCH}.tar.gz"
+tar -xzvf "crystaldba-${VERSION}-${ARCH}.tar.gz"
+cd "crystaldba-${VERSION}"
 ./install.sh --system
 
-# Verify AutoDBA Agent installation
-if ! systemctl is-active --quiet autodba; then
-    log_error "AutoDBA Agent installation failed"
+# Verify Crystal DBA Agent installation
+if ! systemctl is-active --quiet crystaldba; then
+    log_error "Crystal DBA Agent installation failed"
     exit 1
 fi
-log_info "AutoDBA Agent installed successfully"
+log_info "Crystal DBA Agent installed successfully"
 
-# Install AutoDBA Collector
-log_info "Installing AutoDBA Collector..."
+# Install Crystal DBA Collector
+log_info "Installing Crystal DBA Collector..."
 cd ${CURRENT_DIR}
-wget "https://github.com/crystaldb/autodba/releases/latest/download/collector-${VERSION}-${ARCH}.tar.gz"
+wget "https://github.com/crystaldb/crystaldba/releases/latest/download/collector-${VERSION}-${ARCH}.tar.gz"
 tar -xzvf "collector-${VERSION}-${ARCH}.tar.gz"
 cd "collector-${VERSION}"
 ./install.sh --config "$CONFIG_PATH" --system
 
-# Verify AutoDBA Collector installation
-if ! systemctl is-active --quiet autodba-collector; then
-    log_error "AutoDBA Collector installation failed"
+# Verify Crystal DBA Collector installation
+if ! systemctl is-active --quiet crystaldba-collector; then
+    log_error "Crystal DBA Collector installation failed"
     exit 1
 fi
-log_info "AutoDBA Collector installed successfully"
+log_info "Crystal DBA Collector installed successfully"
 
 # Clean up downloaded files
 cd ${CURRENT_DIR}
-rm -rf "autodba-${VERSION}" "collector-${VERSION}" "autodba-${VERSION}-${ARCH}.tar.gz" "collector-${VERSION}-${ARCH}.tar.gz"
+rm -rf "crystaldba-${VERSION}" "collector-${VERSION}" "crystaldba-${VERSION}-${ARCH}.tar.gz" "collector-${VERSION}-${ARCH}.tar.gz"
 
 log_info "Installation completed successfully!"
-log_info "You can access the AutoDBA web portal at http://localhost:4000"
+log_info "You can access the Crystal DBA web portal at http://localhost:4000"
 log_warn "Please make sure to secure your installation and keep your credentials safe"
